@@ -1,6 +1,6 @@
 # Moments Studio — 构建、运行与测试
 
-Stage 01 的 iOS 应用工程（Swift / SwiftUI，iPhone 优先，可扩展到 iPad）。
+Stage 01 基础工程及 Stage 02 照片管线的 iOS 应用工程（Swift / SwiftUI，iPhone 优先，可扩展到 iPad）。
 
 ## 环境要求
 
@@ -87,7 +87,7 @@ python tools/verify_project.py       # 校验工程引用完整性、构建设�
 
 ## 当前限制
 
-- **Stage 02（照片导入）源码尚未在 Xcode 编译或测试**：Windows 本机无 Xcode，78 个单元测试 + 4 个 UI 测试从未执行；首个 macOS 运行（run 37131111464）在编译阶段失败、0 个测试执行，FIX02 修正后需重跑。此处只完成工程结构、Swift 语法与契约一致性静态校验。详见 [STAGE-02-REPORT.md](../.ai/reports/STAGE-02-REPORT.md)、[STAGE-02-FIX-01-REPORT.md](../.ai/reports/STAGE-02-FIX-01-REPORT.md) 与 [STAGE-02-FIX-02-REPORT.md](../.ai/reports/STAGE-02-FIX-02-REPORT.md)。
+- **Stage02真实编译测试门禁通过**：run9/source728f435在macOS15.7.9/Xcode16.4/arm64 iPhone16Pro18.5实际80单元+5UI全85通过，0失败0skip，取消选择器及完整照片流程同时通过，原生预览PNG已审。有效新ZIP已核SHA且04:39上传既有Appetize；17.2真实预置4032×3024 HEIC预览成功，不复现旧缺模型fatal。Done返回/同会话重启/深色大字号尚未完成；free30/30、0分钟，按所有者指令暂停等重置。Windows仅结构/语法检查，真机/iPad/VoiceOver/精确17.0/Xcode15.4/26未测，Stage02所有者PENDING。最新事实见[Round20](../.ai/reviews/STAGE-02-ARCHITECT-ROUND-20.md)和[验收证据](../.ai/acceptance/STAGE-02.md)。
 - Stage 01 外壳曾有真实构建证据：Architect 在 macOS 云端对源码 `6e8f449` 编译并执行 31 项测试（零失败），运行入口与警告见 [Round04](../.ai/reviews/STAGE-01-ARCHITECT-ROUND-04.md)。**该结果只对应 Stage 01 源码，不是 Stage 02 的构建证据。**
 - 未保存的空项目只在内存中，退出即丢失；导入过照片的项目写入 `Application Support/MomentsStudio/`，重启后恢复（界面已标注两者区别）。
 - Stage 02 暂定上限：每项目 20 张、每文件 100 MiB、每图 80 MP、thumbnail 320 / preview 2048、串行处理；未做真机性能测量。

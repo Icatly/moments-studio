@@ -7,10 +7,10 @@
 | 项 | 值 |
 | --- | --- |
 | Stage | Stage02 — Photo Import and Asset Pipeline |
-| 状态 | `READY_FOR_ARCHITECT_REVIEW`（DSH已交付并停止；正在准备实际macOS验证，Stage02验收PENDING） |
-| 代码 | Stage02实现与FIX01已交付；76单元+4UI测试尚未在Xcode执行 |
-| 可运行版本 | 最近可运行包仍是已批准Stage01源码 `6e8f449`；不是Stage02版本 |
-| 下一步 | [Stage02执行任务](.ai/tasks/STAGE-02-IMPLEMENT-01.md) → 自动测试 → Architect Review → 可运行包 → 所有者验收 |
+| 状态 | Stage02 CHANGES_REQUESTED / 运行暂停（免费额度用完）；所有者PENDING，Stage03禁止 |
+| 代码 | 照片管线及FIX01–09已交付；run9/source728f435实际80单元+5UI全85通过、0失败0skip，原生预览截图实际已审 |
+| 可运行版本 | source728f435有效新ZIP已核SHA，04:39实际更新Appetize；17.2单张HEIC真实预览成功。当前free30/30、0分钟，已关闭会话 |
+| 下一步 | 按所有者要求等额度重置；补Done返回/同会话重启恢复/深色大字号→完成运行Review→所有者验收；不代批准 |
 
 ## 快速导航
 

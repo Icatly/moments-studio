@@ -4,27 +4,31 @@ Stage: 02
 
 Name: Photo Import and Asset Pipeline
 
-Status: READY_FOR_ARCHITECT_REVIEW
+Status: CHANGES_REQUESTED（运行Review暂停，免费额度耗尽）
 
 User Decision: PENDING
 
-## 最新Architect运行检查（2026-10-04 04:18 Round18，取代下方历史交付快照）
+## 最新Architect实际证据（2026-10-04 04:45，Round20）
 
-第八次macOS run37149876593/source`b9cf5a7fff593a9b7ed55660f0ab21fdbb4afe3d`真实编译成功；**80单元+4既有UI通过**，**新的完整真实流程用例通过（54.357秒）**：精确选择器查询 → 真实照片 → `Add` → 导入1张 → 点缩略图 → 预览（`preview.info`、`preview.image` 加载证据、无 `missingPhoto`/`unavailable`）→ Done → 取消移除 → 确认移除 → 空画廊/计数0 → 再次导入同一来源。**其实际截图已由 Architect 目视审查**（`6BA9E4EB-EDE1-4B17-B345-563367F66A26.png`，1206×2622，素材360×540 PNG，附件 SHA256 `2577e72f…27c1`）：照片正向、2:3、aspect-fit 留白、无裁断，Preview/Done/Remove 与信息可辨，无 loading/missing/unavailable。**唯一失败**是既有 `testImportPickerCanBeDismissedBackToTheEditor`（`Stage02ImportUITests.swift:65`，Cancel 点击后 20 秒有界消失等待超时），总85/84通过/1失败/0跳过。原生录屏（`6250FC7B-…mp4`）显示选择器先出现初始化 Loading+Cancel（约6秒）、约13秒才有完整 Photos 导航/网格；原生树（run 37147120379:72-77）证实真正的 Cancel 位于 `NavigationBar identifier: 'Photos'` 之下、`Add` 当时 Disabled。Round18/FIX09 仅授权把该 smoke 的就绪判据改为正向等待 Photos 导航 → 该作用域内类型化 Cancel → 有界 enabled+hittable → 单次点击 → Cancel 与 Photos 导航双双有界消失 → Editor enabled+hittable，并保留原生 `app.debugDescription` 诊断；**不声称 Apple 内部机制或生产回调缺陷**。第七次 run37148549701 的只读图片判据失败、第六次 run37147120379 的选择器定位失败、第五次 run37138644682 的 iOS17.2 预览退出 fatal 与更早的编译失败记录均保留为历史。**当前仍没有通过构建门禁的新版模拟器 ZIP**（Appetize 仍是旧的 0121261，额度 27/30、剩 3 分钟、暂停未消耗）。待 FIX09 重新测试/运行检查后更新每项当前证据。
+source728f435a48f3f3fec5f422ac5a0407b2ed7d45ea，run[37151573797](https://github.com/Icatly/moments-studio/actions/runs/37151573797)，macOS15.7.9/Xcode16.4/arm64 iPhone16Pro18.5：**真实编译成功，80单元+5UI=85全部通过，0失败0跳过0expectedFailures**。取消smoke19.652秒、完整真实导入→预览→Done→取消移除→确认移除→0计数→再次导入57.758秒。新原生1206×2622预览PNG实际目视通过：方向/比例/留白/按钮/信息正常。没有为通过删除测试或修改生产代码。
 
-## 当前证据快照（2026-10-04 04:25，run8 / FIX09源码复审）
+有效应用ZIP5,971,857bytes/SHA2564280c4587b21c0a4e1f4677d43083ed21a08e9f56274ad1d70fdbce477beaed1已04:39实际更新既有Appetize。17.2真实Create→Private Access→预置Flowers→Add→1张/SavedYes→点缩略图→完整预览4032×3024 HEIC成功，旧缺PhotoImportModel fatal本次不复现。**Done点击后未取得Editor返回确认；同会话重启/深色大字号尚未完成**。free已实际30/30、0分钟、会话关闭；按所有者指令暂停后续运行，等重置后补检查。不是所有者批准，Stage03禁止，也尚不请求正式验收。
+
+## 当前证据快照（run9 +17.2短会话）
 
 | 验收项 | 已验证与待验证 |
 | --- | --- |
-| 多选/顺序/数量 | run8协调器顺序/数量测试通过；旧0121261在17.2真实多选3张顺序/数量正确；当前18.5完整真实选择/导入/再次导入通过。新包17.2待复查 |
-| 图库权限/原始副本 | 真实选择器Private Access；original字节不变/本项目副本/源文件保留实际单测通过；用户真机相册未测 |
-| 方向/比例/透明/格式 | run8 JPEG/PNG半透明/HEIC/EXIF方向镜像/不放大/original字节全部通过且未skip。实际18.5预览截图正向2:3比例/无裁断；HDR不承诺，真实17.2待查 |
-| 预览/移除/追加/隔离 | 18.5真实完整预览/Done/取消移除/确认移除/0计数/再次导入1计数通过；存储隔离/符号链接/回滚单测通过。17.2旧包fatal的新包复查待做 |
-| 进度/取消/失败 | 单元/集成回归通过；既有原生picker Cancel smoke失败（早期Cancel不是就绪证明），FIX09仅改Photos导航+作用域内Cancel enabled/hittable与双重消失；源码复审通过，真实重跑待执行 |
-| 重启恢复 | 文件/store恢复单测通过；同一模拟器会话关闭/重开实际手查待做；刷新页面不算重启 |
-| 视觉/交互 | 18.5加载预览实际PNG已审，照片/比例/按钮清晰，临时中性原生样式；17.2、深色、大字号待复查，非最终品牌验收 |
-| 构建/测试/Review | run8编译成功，85/84通过/1取消smoke失败/0skip。Round18定位与FIX09/Round19限定源码接受；生产Swift无变化、85方法/完整流程/截图保留；Windows40文件0语法错误。FIX09 macOS未运行 |
-| 所有者验收 | 未开始，9复选框均保持未勾选；Stage03禁止 |
+| 多选/顺序/数量 | run9顺序/数量自动测试通过；旧17.2真实多选3张正确；新18.5真实完整导入/再次导入通过，新17.2单张正确 |
+| 图库权限/原始副本 | Private Access实见；original字节不变/副本归属/源保留自动测试通过；真实用户图库未测 |
+| 方向/比例/透明/格式 | run9 JPEG/半透明PNG/HEIC/EXIF方向镜像/不放大/original身份全部通过、未skip；新17.2预置4032×3024 HEIC预览比例/方向正常；HDR不承诺 |
+| 预览/移除/追加/隔离 | 18.5真实完整预览/Done/Cancel移除/Confirm移除/空计数/再次导入通过，隔离/符号链接/回滚单测通过；17.2真实预览加载成功、Done返回待确认 |
+| 进度/取消/失败 | 单元/集成回归通过；原生picker Cancel smoke限定修正后真实通过，双重消失+可操作Editor成立 |
+| 重启恢复 | 文件/store恢复单测通过；同一17.2会话关闭再开手查未完成，平台刷新不能代替 |
+| 视觉/交互 | 18.5有效原生预览截图已实际审；17.2默认浅色预置照片可见；深色/大字号待补，临时系统样式非最终品牌 |
+| 构建/Review/性能 | run9全85通过，Round20；实际3×12MP串行0.470秒、两时点内存非峰值非真机性能；3条无AppIntents依赖提取告警，无已观察Swift actor/compiler警告 |
+| 所有者验收 | 尚未开始，9框全未勾；免费0额度暂停，重置后补运行Review并提供验收；Stage03禁止 |
+
+原始结果在 .ai/build/downloads/run-37151573797/，外层6,958,941bytes/fullSHA54bf87900599430afac7b0e86abcd38ee33fb43121ab9d4f8b259949ccaa52fd与GitHub原生上传一致。17.2画面来自本会话实际Snapshot；额外Windows截图保存失败文件标INVALID，不作为证据。更早运行失败与限制如下保留为历史。
 
 Stage01于2026-10-03由所有者明确批准，并授权继续下一阶段。Stage02 需求、架构与执行任务已定义；DSH 已完成实现，处理完 Architect 实现中检查 `.ai/reviews/STAGE-02-INFLIGHT-NOTE-01.md` 的**全部 13 项**（该记录最初为 10 项，随后扩展），并依次完成 FIX-01（6 项）、FIX-02（3 项，编译失败修正）、FIX-03（10 处调用标签）、FIX-04（前端崩溃的显式类型）、FIX-05（4 项运行期失败修正）。交付总览见 `.ai/reports/STAGE-02-REPORT.md`。
 
@@ -46,7 +50,7 @@ Stage01于2026-10-03由所有者明确批准，并授权继续下一阶段。Sta
 
 用至少3张合成照片（竖/横/EXIF旋转或镜像、不同格式）一次导入，再追加、预览、移除。返回Home、重开对应项目，terminate/relaunch后核对照片和项目；取消新一批导入，确认已完成项保留而剩余项停止；受控失败不损坏旧数据。容量、大图、文件摘要、方向和回滚由自动测试及Architect证据补充。
 
-需求/完成标准：[Stage02架构](../../docs/architecture/STAGE-02-PHOTO-ASSET-PIPELINE.md)。执行任务：[IMPLEMENT01](../tasks/STAGE-02-IMPLEMENT-01.md)。当前没有Stage02运行包；Stage01 Appetize链接不能冒充新阶段版本。用户操作说明在真实构建与Review完成后提供。
+需求/完成标准：[Stage02架构](../../docs/architecture/STAGE-02-PHOTO-ASSET-PIPELINE.md)。执行任务：[IMPLEMENT01](../tasks/STAGE-02-IMPLEMENT-01.md)。Stage02当前有效运行包为source728f435，已更新既有Appetize；当前0额度无法启动，运行Review仍缺重启/深色大字号，操作说明保持暂停验收状态。
 
 ## 历史交付证据（第四次运行，不是当前状态）
 
@@ -104,6 +108,8 @@ Stage01于2026-10-03由所有者明确批准，并授权继续下一阶段。Sta
 
 | 2026-10-04 | READY_FOR_ARCHITECT_REVIEW（FIX-09 完成） | 第八次 macOS 运行（source `b9cf5a7fff593a9b7ed55660f0ab21fdbb4afe3d`，run 37149876593，job 111281259985；下载 ZIP 86,201,221 字节 / SHA256 `2da71fb8…2bd2a`）**编译成功**：80 单元 + 4 既有 UI 通过，**新的完整真实流程用例通过（54.357 秒）**且**其预览截图已由 Architect 目视审查**（照片正向、2:3、aspect-fit、无裁断、按钮与信息可辨、无 loading/missing/unavailable）；**唯一失败**是既有 `testImportPickerCanBeDismissedBackToTheEditor`（`:65` Cancel 点击后 20 秒有界消失等待超时，总 85/84/1/0）。原生录屏显示选择器先有初始化 Loading+Cancel、约 13 秒才有完整 Photos 导航/网格；原生树（run 37147120379:72-77）证实真 Cancel 位于 `NavigationBar identifier: 'Photos'` 之下、`Add` 当时 Disabled。Architect Round 18 判 CHANGES_REQUESTED 并授权 `STAGE-02-ARCHITECT-FIX-09.md`：**仅**修该 smoke 的就绪判据——正向等待 `app.navigationBars["Photos"]`（无早期 Cancel 兜底）→ 该作用域内类型化 `buttons["Cancel"]` → 有界 enabled+hittable → 单次点击 → **Cancel 与 Photos 导航双双有界消失** → Editor 导入入口 enabled+hittable，失败均附 `app.debugDescription`；无 sleep/重试/坐标/跳过/relaunch，未选照片、未要求非空图库、未注入控件。**未改生产 Swift、全流程用例、选择器 helper、保留截图逻辑、工作流/工程/工具**；85 个方法（80 单元 + 5 UI）保留。本机：**本轮仅 1 个 Swift 文件改动（28+/15−）**、`git diff --check` 无空白错误、`verify_project.py` PASS（40 Swift 文件 6567 行、11 个 UI 标识符解析）、tree-sitter `WITH_ERRORS=0`、FIX-09 一致性 13/13、FIX-02…FIX-08 及澄清与 `STAGE02_ALL_CORRECTIONS_CHECK`/`STAGE02_CONFORMANCE` 全 PASS；**85 项本机全部未执行**，**FIX-09 的 macOS 结果 UNVERIFIED** |
 
+| 2026-10-04 04:45 | CHANGES_REQUESTED / 运行暂停 | run9/source728f435全85通过/有效新包已上传；17.2真实HEIC预览成功、不复现旧fatal；Done返回/同会话重启/深色大字号未完，免费30/30、0分钟、会话已关闭；按所有者额度耗尽暂停要求等重置，不代批准 |
+
 只有所有者亲自检查并明确通过后可APPROVED。提出修改意见即CHANGES_REQUESTED，仅修当前阶段。DSH交付只到READY_FOR_ARCHITECT_REVIEW；Stage03–15未批准。
 
 2026-10-03 22:16 当前更新：初版交付文档生成后，Architect继续发现并记录13项范围内缺陷/风险，DSH正在修正，尚未停止开发。状态回到IMPLEMENTING，最终Review仍未完成；所有者判断保持全部未勾选。依据 `.ai/reviews/STAGE-02-INFLIGHT-NOTE-01.md`。
@@ -145,3 +151,4 @@ Architect Round 16 判 CHANGES_REQUIRED 并授权 `STAGE-02-ARCHITECT-FIX-08.md`
 Architect Round 18 判 CHANGES_REQUIRED 并授权 `STAGE-02-ARCHITECT-FIX-09.md`，DSH 已完成（**只改该 smoke 用例**）：① 正向 `app.navigationBars["Photos"].waitForExistence(timeout: 20)`（**无**早期 Cancel 兜底）；② 在该作用域内 `photosNavigationBar.buttons["Cancel"]`；③ 复用既有 `waitUntilEnabledAndHittable()` 后**单次**点击；④ **Cancel 控件与 Photos 导航都要有界消失**，随后仍要求 Editor 导入入口 enabled **且** hittable；⑤ 6 处失败消息附 `app.debugDescription`。**无** sleep/重试/坐标/跳过/relaunch/为取消而选照片/注入控件；**未改**全流程用例、选择器 helper、保留截图逻辑与任何生产字节；85 个方法（80 单元 + 5 UI）保留。
 
 本机（Windows，无 Xcode）实际执行：`generate_xcodeproj.py` exit 0（132 对象/41 文件引用）；`verify_project.py` **PASS**（40 Swift 文件 **6567 行**；11 个 UI 标识符解析，系统项显式豁免；本轮无需改工具）；tree-sitter `TREE_SITTER_PARSED=40 WITH_ERRORS=0`；FIX-09 一致性 **13/13**；FIX-02…FIX-08（含两轮澄清）与 `STAGE02_ALL_CORRECTIONS_CHECK`（item 11 期望已按本次授权更新为更强的就绪判据）、`STAGE02_CONFORMANCE` 全 PASS；**本轮仅 1 个 Swift 文件改动（28+/15−）**、`git diff --check` 无空白错误、全仓 markdown 有效 UTF-8。测试 **85 项本机全部未执行**，**FIX-09 的 macOS 结果 UNVERIFIED**；**尚无通过构建门禁的新交付包**；iOS 17.2 复查、同会话重启、深色/大字号仍待完成。Appetize 额度 27/30、剩 3 分钟、暂停未消耗；未 push/upload、未改账户、未运行云端构建、未删或跳过测试、未开始 Stage03。停止在 `READY_FOR_ARCHITECT_REVIEW`；Round 18 的 CHANGES_REQUESTED 判定在本轮复审通过前继续有效。
+

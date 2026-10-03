@@ -5,11 +5,11 @@
 | 项 | 值 |
 | --- | --- |
 | 当前 Stage | **Stage02 — Photo Import and Asset Pipeline** |
-| Stage 状态 | CHANGES_REQUESTED（Architect Round18）；run8 完整流程（导入→预览→移除→再导入）**实际通过且预览截图已目视审过**，仅既有 Cancel smoke 的就绪判据需 FIX09；17.2 复查与新交付包仍缺；所有者PENDING，Stage03禁止 |
+| Stage 状态 | CHANGES_REQUESTED / 运行暂停（免费额度耗尽）；自动构建/测试门禁通过，17.2预览真实成功；剩Done返回/同会话重启/深色大字号；所有者PENDING，Stage03禁止 |
 | 实现 | Stage01 已完成并获所有者批准；Stage02 已实现，并完成 Architect 实现中检查 13 项、FIX-01 六项、FIX-02 三项、FIX-03 调用标签、FIX-04 测试字面量显式类型、FIX-05 四项运行期修正 + 三项复审澄清、FIX-06 模态环境注入与导入预览 UI 回归、FIX-07 系统选择器原生定位修正、FIX-08 只读预览判据与保留截图、FIX-09 Cancel smoke 就绪同步：多图导入、应用自有 original 副本、ImageIO 缩略图/预览、项目包持久化与恢复、导入/网格/只读预览/移除 UI |
-| Xcode 构建 / 测试 | 第八次run37149876593/sourceb9cf5a7：**编译成功**，80单元+4既有UI通过，**新的完整真实流程用例通过（54.357秒）**且其预览截图已目视审查（照片正向、2:3、无裁断、信息与按钮可辨、无 loading/missing/unavailable）；**唯一失败**是既有 `testImportPickerCanBeDismissedBackToTheEditor`（`Stage02ImportUITests.swift:65` Cancel 点击后 20 秒有界消失等待超时），85/84/1/0。原生录屏显示选择器先出现初始化 Loading+Cancel、约 13 秒才有完整 Photos 导航/网格；原生树（run 37147120379:72-77）证实真正的 Cancel 位于 `NavigationBar identifier: 'Photos'` 之下。**FIX09 已把该 smoke 改为：正向等待 Photos 导航 → 该作用域内类型化 Cancel → 有界 enabled+hittable → 单次点击 → Cancel 与 Photos 导航双双有界消失 → Editor enabled+hittable，失败附原生层级。** 本机 Windows 无 Xcode，**80 单元 + 5 UI = 85 项全部未执行**，FIX09 的 macOS 结果 **UNVERIFIED** |
-| 可运行版本 | Stage02源码0121261已上传Appetize，真实多选3张成功；预览退出，当前版本阻塞验收；FIX06–09 修正版均未打包（尚无通过构建门禁的新交付包）。Appetize 额度 27/30、剩 3 分钟、暂停未消耗；原Stage01批准保持 |
-| 下一步 | Architect 复审 FIX09 → macOS 重跑全 85 项（期望 Cancel smoke 与完整流程同时通过）→ 生成有效新包并做 17.2/重启/深色大字号必要复查 → 所有者验收 |
+| Xcode 构建 / 测试 | run9/source728f435实际编译成功，80单元+5UI全85通过，0失败0skip；取消smoke与完整导入/预览/移除/再次导入同时通过，实际原生预览截图已审。Windows本机只静态检查 |
+| 可运行版本 | source728f435有效模拟器ZIP已核SHA、04:39实际更新既有Appetize；新17.2单张HEIC预览成功。当前free30/30、无剩余分钟、会话关闭，等待重置再补运行Review/所有者验收 |
+| 下一步 | 按所有者指令暂停运行，重置后只补Done返回/同会话关闭重开恢复/深色大字号→完成Review→所有者验收。自动85通过不替本人批准 |
 
 Stage 01 的详细任务见 [.ai/tasks/STAGE-01-TASKS.md](.ai/tasks/STAGE-01-TASKS.md)，验收清单见 [.ai/acceptance/STAGE-01.md](.ai/acceptance/STAGE-01.md)。
 
