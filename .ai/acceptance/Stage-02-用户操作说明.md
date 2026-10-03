@@ -8,7 +8,7 @@
 
 ## 测试照片
 
-Architect已准备合成竖图、横图、透明PNG，位置 `.ai/build/downloads/stage02-photo-fixtures/`，没有真实人物或私人照片。将这三张图通过模拟器工具栏 Upload File 放入相册后，再进入应用选择。第四次macOS运行（source0c905a3，run37135113445）的JPEG、合成HEIC和EXIF旋转/镜像单元测试实际通过；该轮总体失败，修正后的当前源码仍需重跑。上述三张PNG本身不证明其他格式，Appetize媒体上传也不作为HEIC验证。
+模拟器默认相册的照片可直接用于导入/预览检查，无需先上传。Architect另备合成竖图、横图、透明PNG，位置 `.ai/build/downloads/stage02-photo-fixtures/`，没有真实人物或私人照片。检查方向/透明时，通过工具栏 Upload File **逐个**上传到当前会话相册，再在应用内选择；此前一次多文件选择仅观察到第一张实际加入，不能假定三张都已上传。第六次macOS运行（source96dece5，run37147120379）JPEG、半透明PNG、合成HEIC和EXIF旋转/镜像单测通过；该轮新UI定位失败，最新源码run7仍进行中。上述PNG本身不证明HEIC，Appetize上传不作为HEIC验证。
 
 ## 操作顺序（待新包可用后执行）
 
@@ -17,7 +17,7 @@ Architect已准备合成竖图、横图、透明PNG，位置 `.ai/build/download
 3. 再次Import Photos追加一张（允许再次选相同照片，独立副本）。检查原有照片仍在、总数增加。
 4. 打开一张预览 → Remove → Cancel，照片保持；再次Remove并确认，只有本项目这一副本移除，相册照片仍在。
 5. 返回Home，再打开同一项目，照片与数量保持。
-6. 在同一个模拟器会话内通过 iOS 应用切换器关闭 Moments Studio，再点应用图标重新启动，核对项目与照片恢复。当前 Appetize 工具栏已观察到 Home 等按钮，但未观察到 Restart App；不要假定有该按钮。也不要用结束会话/刷新网页代替应用重启。
+6. 在同一个模拟器会话内，从屏幕底边上滑到中部并停顿，打开应用切换器；将 Moments Studio 的应用预览向上滑动关闭，再点应用图标启动，核对项目与照片恢复（[Apple 操作说明](https://support.apple.com/guide/iphone/switch-between-open-apps-iph1a1f981ad/ios)）。当前 Appetize 工具栏已观察到 Home 等按钮，但未观察到 Restart App；不要假定有该按钮。也不要用结束会话/刷新网页代替应用重启。
 7. 新一批导入中Cancel或返回Home：已保存项保留，剩余项停止；取消不显示为失败。小测试图处理可能太快，需要较大的测试图才能观察到取消。
 8. 检查浅/深色和大字号下的导入、数量、预览、移除确认与返回能看清/点击。
 

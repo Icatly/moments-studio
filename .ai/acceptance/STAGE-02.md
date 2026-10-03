@@ -8,9 +8,23 @@ Status: READY_FOR_ARCHITECT_REVIEW
 
 User Decision: PENDING
 
-## 最新Architect运行检查（2026-10-04 03:28，取代下方历史交付快照）
+## 最新Architect运行检查（2026-10-04 03:49 Round16，取代下方历史交付快照）
 
-第六次macOS run37147120379/source96dece5真实编译成功；80单元+4UI通过，第5个UI因原生PhotosPicker定位错误在选照片步骤失败，85总数/84通过/1失败/0跳过。Round14/FIX07仅授权修测试定位；预览修复没有执行到，未验证。第五次macOS run37138644682/source0121261实际80单元+4UI全部通过、零失败零跳过；该包已上传。实际iOS17.2多选3张导入且顺序/数量正确，但点预览退出，原始fatal日志确认缺PhotoImportModel。Round12/FIX06已定义，不能交所有者验收；原84项测试未覆盖导入后预览。下方第四次失败与FIX05未重跑描述保留为历史，不是当前测试事实。待FIX06重新测试/运行检查后更新每项当前证据。
+第七次macOS run37148549701/source`e84b834740ea52c477c0f57080e36cc0baa7b1d7`真实编译成功；80单元+4既有UI通过，新增第5个UI**已成功**走到：精确选择器查询 → 真实照片 → `Add` → 导入1张 → 点缩略图 → 预览（`preview.info` 出现、`missingPhoto`/`unavailable` 不存在、加载指示器消失），**仅因把只读图片的 `isHittable` 当作可见性断言而在 `Stage02ImportUITests.swift:158` 失败**，85总数/84通过/1失败/0跳过。原生层级：`Image preview.image` frame(16,166.3,370,555) 位于 402×874 内、info `360 × 540 · PNG`、Done/Remove 各有同标识的 Other+Button 重复包装。Round16/FIX08 仅授权修正只读图片判据（类型化 Image + 有限非空且全在屏内 frame，保留全部加载/缺失/不可用/info 检查）并新增 1 张 keepAlways 完整预览截图，Done/Remove 改用类型化 Button 且有界 enabled+hittable。**像素可见性尚未证明**（无像素比对，截图交由 Architect 审图）；iOS 17.2 崩溃是否消失未验证。第六次 run37147120379/source96dece5 的定位失败、第五次 run37138644682/source0121261 的 iOS17.2 预览退出 fatal、以及更早的编译失败记录均保留为历史。**当前没有通过构建门禁的新版模拟器 ZIP；Appetize 仍是有预览缺陷的 0121261，额度 27/30、剩 3 分钟、暂停未消耗。** 待 FIX08 重新测试/运行检查后更新每项当前证据。
+
+## 当前证据快照（2026-10-04 03:39）
+
+| 验收项 | 已验证与待验证 |
+| --- | --- |
+| 多选/顺序/数量 | 80单元中的协调器顺序/数量回归通过；原0121261在Appetize iOS17.2真实多选3张，顺序与数量正确。当前生产管线未改变，但新的UI完整流程尚未通过 |
+| 图库权限/原始副本 | 真实选择器显示Private Access；字节不变/本项目副本/源文件保留的实际单测通过。未验证用户真机图库 |
+| 方向/比例/透明/格式 | run6真实单测中的JPEG/PNG半透明/HEIC/EXIF方向镜像/不放大/原始字节全部通过；真实17.2预览修正版待查，HDR不承诺 |
+| 预览/移除/追加/隔离 | 存储隔离、符号链接、移除/回滚单测通过。0121261真实预览崩溃，96dece5修复尚未执行到；FIX07只修测试定位，run7进行中 |
+| 进度/取消/失败 | 真实单元/集成回归通过；取消与保存后继续提交、staging清理等有实际证据。模拟器界面取消/导航仍需核对 |
+| 重启恢复 | 文件与store恢复单测通过；同一模拟器会话terminate/relaunch实际检查尚未完成，刷新页面不算重启 |
+| 视觉/交互 | 临时中性原生界面；原0121261真实导入网格看见用户照片。修正后预览、浅/深色、大字号尚未完成Review；最终品牌设计后续阶段 |
+| 构建/测试/Review | run6真实编译成功，85总数/84通过/1失败/0跳过；失败为PhotosPicker测试定位，Round14定位/FIX07修正/Round15静态复审接受。run7 sourcee84b834进行中，不声明通过 |
+| 所有者验收 | 尚未开始，9项复选框保持未勾选；Stage03禁止 |
 
 Stage01于2026-10-03由所有者明确批准，并授权继续下一阶段。Stage02 需求、架构与执行任务已定义；DSH 已完成实现，处理完 Architect 实现中检查 `.ai/reviews/STAGE-02-INFLIGHT-NOTE-01.md` 的**全部 13 项**（该记录最初为 10 项，随后扩展），并依次完成 FIX-01（6 项）、FIX-02（3 项，编译失败修正）、FIX-03（10 处调用标签）、FIX-04（前端崩溃的显式类型）、FIX-05（4 项运行期失败修正）。交付总览见 `.ai/reports/STAGE-02-REPORT.md`。
 
@@ -86,6 +100,8 @@ Stage01于2026-10-03由所有者明确批准，并授权继续下一阶段。Sta
 
 | 2026-10-04 | READY_FOR_ARCHITECT_REVIEW（FIX-07 完成） | 第六次 macOS 运行（source `96dece596be8eee0d8a0ec06eb10e40d894c5c1f`，run 37147120379，macOS 15.7.9 / Xcode 16.4 / iPhone 16 Pro / iOS 18.5）**编译成功**：80 单元 + 4 既有 UI 通过，**新增第 5 个 UI 用例在导入之前的选照片步骤失败**（原生汇总 85 项 / 84 通过 / 1 失败 / 0 跳过）。原生失败附件证明该 iOS 18.5 选择器**没有 collection view**：网格是 `ScrollView identifier 'content_scroll_view'`，其中真实照片为 `Image identifier 'PXGGridLayout-Info'`（9 张，前三张为工作流种入的合成图），`Button 'Add'` 在未选中时 Disabled。Architect Round 14 判 CHANGES_REQUIRED 并授权 `STAGE-02-ARCHITECT-FIX-07.md`：**仅**修正测试 helper 的定位为上述观测范围/标识符（有界等待存在且可点、失败保留原生 `app.debugDescription` 与范围/照片诊断），不做无范围 `app.images`、不用坐标、不 skip。DSH 完成：`selectFirstPhotoCell` 改用 `app.scrollViews["content_scroll_view"]` + `scope.images.matching(identifier: "PXGGridLayout-Info")`；**85 个方法与全部端到端断言保留**；未改任何生产 Swift/模型/存储/渲染/导航/依赖/工作流/工程设置。本机：仅 1 个 Swift 文件本轮改动（34+/15−）、`git diff --check` 无空白错误、`verify_project.py` PASS（40 Swift 文件 6512 行、8 个 UI 标识符解析，`content_scroll_view` 作为系统选择器标识符显式豁免）、tree-sitter `WITH_ERRORS=0`、FIX-07 一致性 15/15、FIX-02…FIX-06 及澄清与 `STAGE02_ALL_CORRECTIONS_CHECK`/`STAGE02_CONFORMANCE` 全 PASS；**80 单元 + 5 UI（85 项）本机全部未执行**。本轮**未到达导入/预览**，故**不能**声称预览修复已验证；Appetize 额度 27/30、剩 3 分钟、无活跃会话，DSH 未消耗 |
 
+| 2026-10-04 | READY_FOR_ARCHITECT_REVIEW（FIX-08 完成） | 第七次 macOS 运行（source `e84b834740ea52c477c0f57080e36cc0baa7b1d7`，run 37148549701，workflow 8m26 / job 8m14，Xcode 16.4 / iOS 18.5）**编译成功**：80 单元 + 4 既有 UI 通过，新增第 5 个 UI 用例**已真正走到预览**——精确选择器查询 → 真实照片 → `Add` → 导入 1 张 → 点缩略图 → `preview.info` 出现、`preview.missingPhoto`/`photo.unavailable` 不存在、加载指示器消失，这些检查全部通过；**仅因把只读装饰性图片的 `isHittable` 当作可见性断言而在 `Stage02ImportUITests.swift:158` 失败**（原生汇总 85 / 84 / 1 / 0）。原生层级：`Image identifier 'preview.image'` frame `{{16, 166.3}, {370, 555}}` 位于 402×874 窗口内、`preview.info` 为 `360 × 540 · PNG`、`preview.done`/`preview.remove` 各有同标识的 `Other` + `Button` 重复包装；无 missing/unavailable/fatal。Architect Round 16 判 CHANGES_REQUIRED 并授权 `STAGE-02-ARCHITECT-FIX-08.md`：① 只读图片判据改为**类型化** `app.images["preview.image"]` + 有界等待 + **有限、非空、宽高>0 且完全落在 `app.frame` 内**的 frame（`isHittable` 对只读图片不是可见性测试；Apple 内部机制不再断言）；② 图片就绪后新增 **1 张 `keepAlways` 完整预览截图**（名称 `Stage02 imported photo preview`，无 golden 对比）；③ Done/Remove 改用已观测的**类型化 Button** 并每次点击前有界 enabled+hittable（含 Cancel 之后）；其余加载/缺失/不可用/info 检查、确认框文案与 Cancel/Remove、空画廊与再次导入全流程、85 个方法、FIX-07 选择器查询与诊断全部保留。本机：**本轮仅改 1 个 Swift 文件（56+/14−）**、`git diff --check` 无空白错误、`verify_project.py` PASS（40 Swift 文件 6554 行、**11 个 UI 标识符**解析，系统项显式豁免）、tree-sitter `WITH_ERRORS=0`、FIX-08 一致性 **21/21**、FIX-02…FIX-07（含两轮澄清）与 `STAGE02_ALL_CORRECTIONS_CHECK`/`STAGE02_CONFORMANCE` 全 PASS；**80 单元 + 5 UI（85 项）本机全部未执行**，FIX-08 的 macOS 结果 **UNVERIFIED**。**像素可见性尚未证明**，需 Architect 审图；Appetize 额度 27/30、剩 3 分钟、暂停未消耗 |
+
 只有所有者亲自检查并明确通过后可APPROVED。提出修改意见即CHANGES_REQUESTED，仅修当前阶段。DSH交付只到READY_FOR_ARCHITECT_REVIEW；Stage03–15未批准。
 
 2026-10-03 22:16 当前更新：初版交付文档生成后，Architect继续发现并记录13项范围内缺陷/风险，DSH正在修正，尚未停止开发。状态回到IMPLEMENTING，最终Review仍未完成；所有者判断保持全部未勾选。依据 `.ai/reviews/STAGE-02-INFLIGHT-NOTE-01.md`。
@@ -113,3 +129,9 @@ Stage01于2026-10-03由所有者明确批准，并授权继续下一阶段。Sta
 Architect Round 14 判 CHANGES_REQUIRED 并授权 `STAGE-02-ARCHITECT-FIX-07.md`：**仅**把 `selectFirstPhotoCell` 改为使用已观测的 `app.scrollViews["content_scroll_view"]` 与其中 `scope.images.matching(identifier: "PXGGridLayout-Info")`，有界等待（范围 20 秒存在、照片 20 秒存在且可点）后选第一张；失败诊断给出范围缺失或无可用照片（exists/hittable/count），并保留原生 `app.debugDescription`；**无**无范围 `app.images`、**无**坐标、**无** sleep、**无** skip、**无**盲回退、**无**生产改动。旧的 `collectionViews` 假设只作为"为何失败"的注释保留。**85 个方法（80 单元 + 5 UI）与全部端到端断言保留**，`RootView` 同实例注入未变。
 
 本机（Windows，无 Xcode）实际执行：`generate_xcodeproj.py` exit 0（132 对象/41 文件引用）；`verify_project.py` **PASS**（40 Swift 文件 **6512 行**；8 个 UI 查询标识符解析，`content_scroll_view` 作为**系统选择器标识符**写入豁免表并显式列出）；tree-sitter `TREE_SITTER_PARSED=40 WITH_ERRORS=0`；FIX-07 一致性 **15/15**；FIX-02…FIX-06（含澄清）、`STAGE02_ALL_CORRECTIONS_CHECK`、`STAGE02_CONFORMANCE` 全 PASS；**本请求轮次只改 1 个 Swift 文件（34+/15−）**、`git diff --check` 无空白错误、全仓 markdown 有效 UTF-8。测试计数 **80 单元 + 5 UI（85 项）本机全部未执行**。Appetize 额度 27/30、剩 3 分钟、无活跃会话；DSH 未消耗额度、未上传、未改账户。**新定位能否选中照片、以及导入→预览是否不再崩溃，只能由下一次真实 macOS 运行判定。** 停止在 `READY_FOR_ARCHITECT_REVIEW`；Round 14 的 CHANGES_REQUESTED 判定在本轮复审通过前继续有效。
+
+2026-10-04 03:53（实测时间，FIX-08 交付）：第七次 macOS 运行 run 37148549701（source `e84b834`，ZIP 84,100,743 字节 / SHA256 `814bbb59…7e082b`）结果：**编译成功、85 项 / 84 通过 / 1 失败 / 0 跳过**；新增第 5 个 UI 用例**首次真正走完"精确选照片 → Add → 导入 1 张 → 点缩略图 → 预览"**，`preview.info` 出现、`preview.missingPhoto` 与 `photo.unavailable` 不存在、加载指示器消失——全部通过；**唯一失败**是 `Stage02ImportUITests.swift:158` 用只读装饰性图片的 `isHittable` 当可见性判据。原生失败附件（`.ai/build/downloads/run-37148549701/failure-attachments/BBA7314A-FB29-4E7F-B227-35532026428D.txt`）第 70 行 `Image identifier 'preview.image'` frame `{{16, 166.3}, {370, 555}}`（在 402×874 窗口内）、第 71 行 `preview.info` label `360 × 540 · PNG`、第 63/65 与 76/78 行为 `preview.done`/`preview.remove` 的 `Other`+`Button` 重复包装，无 missing/unavailable/fatal。
+
+Architect Round 16 判 CHANGES_REQUIRED 并授权 `STAGE-02-ARCHITECT-FIX-08.md`，DSH 已完成（**只改 `Stage02ImportUITests.swift`**）：① 只读图片判据改为**类型化** `app.images["preview.image"]` + 有界等待（30 秒）+ **有限、非空、宽高>0 且完全落在 `app.frame` 内**的 frame（逐分量 `isFinite`；不再对图片用 `isHittable`）；② 紧随其后新增 **1 张 `keepAlways` 完整应用截图**，名称 `Stage02 imported photo preview`（无 golden 对比、无快照框架）；③ Done/Remove 改用已观测的**类型化 Button** `app.buttons["preview.done"]`/`["preview.remove"]`，每次点击前有界 enabled+hittable（含 Cancel 之后重新等待 Remove 与 Done）；④ 保留加载指示器有界消失、missingPhoto/unavailable 不存在、info 存在、确认框文案与 Cancel/Remove、空画廊与再次导入同一来源等全部端到端断言，以及 FIX-07 的选择器查询与诊断；**85 个方法（80 单元 + 5 UI）未增删改名**。**未改任何生产 Swift**、模型、序列化字段、存储、渲染、导航、依赖、工程设置或工作流（Architect 自行改动工作流附件导出，DSH 未触碰）。
+
+本机（Windows，无 Xcode）实际执行：`generate_xcodeproj.py` exit 0；`verify_project.py` **PASS**（40 Swift 文件 **6554 行**；**11 个 UI 查询标识符**解析，`preview.done`/`preview.image`/`preview.remove` 现为 App 标识符，系统项显式豁免；本轮**无需**改该工具）；tree-sitter `TREE_SITTER_PARSED=40 WITH_ERRORS=0`；FIX-08 一致性 **21/21**；FIX-02…FIX-07（含两轮澄清）与 `STAGE02_ALL_CORRECTIONS_CHECK`、`STAGE02_CONFORMANCE` 全 PASS；**本轮仅 1 个 Swift 文件改动（56+/14−）**、`git diff --check` 无空白错误、全仓 markdown 有效 UTF-8。测试 **80 单元 + 5 UI（85 项）本机全部未执行**，**FIX-08 的 macOS 结果 UNVERIFIED**。**像素可见性未证明**（已保留整张截图供 Architect 审图，不做像素比对）；iOS 17.2 崩溃是否消失仍未验证。Appetize 额度 27/30、剩 3 分钟、暂停未消耗；未 push/upload、未改账户、未运行云端构建、未删或跳过测试、未开始 Stage03。停止在 `READY_FOR_ARCHITECT_REVIEW`；Round 16 的 CHANGES_REQUESTED 判定在本轮复审通过前继续有效。

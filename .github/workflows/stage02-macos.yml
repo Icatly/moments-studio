@@ -67,7 +67,7 @@ jobs:
           xcrun simctl launch "$STAGE02_SIMULATOR_ID" com.example.MomentsStudio
           sleep 2
           xcrun simctl io "$STAGE02_SIMULATOR_ID" screenshot stage02-artifacts/launch.png
-      - name: Export readable test results and failure attachments
+      - name: Export readable test results and retained test attachments
         if: always()
         shell: bash
         run: |
@@ -78,8 +78,10 @@ jobs:
             if ! xcrun xcresulttool get test-results summary --path stage02-artifacts/Stage02.xcresult --compact > stage02-artifacts/test-summary.json 2> stage02-artifacts/test-summary-export.log; then
               echo '::warning::Readable test summary export failed; inspect the raw result bundle and export log.'
             fi
-            if ! xcrun xcresulttool export attachments --path stage02-artifacts/Stage02.xcresult --output-path stage02-artifacts/failure-attachments --only-failures > stage02-artifacts/attachment-export.log 2>&1; then
-              echo '::warning::Failure attachment export failed; inspect the raw result bundle and export log.'
+            # Export retained preview screenshots even when the test succeeds.
+            # The legacy failure-attachments folder name stays for evidence continuity.
+            if ! xcrun xcresulttool export attachments --path stage02-artifacts/Stage02.xcresult --output-path stage02-artifacts/failure-attachments > stage02-artifacts/attachment-export.log 2>&1; then
+              echo '::warning::Test attachment export failed; inspect the raw result bundle and export log.'
             fi
           fi
       - name: Preserve build evidence even on failure

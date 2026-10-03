@@ -144,8 +144,8 @@ final class Stage02ImportUITests: XCTestCase {
         // The `preview.image` wrapper exists while its derivative is still
         // loading, so the wrapper's presence proves nothing. Wait — bounded — for
         // the loading indicator to disappear, then assert the failure placeholder
-        // is absent and the image area/info are visible. Production UI is
-        // unchanged; no extra loading-state API was added for this test.
+        // is absent. Production UI is unchanged; no extra loading-state API was
+        // added for this test.
         let loadingIndicator = previewLoadingIndicator(in: app)
         XCTAssertTrue(
             loadingIndicator.waitForDisappearance(timeout: 60),
@@ -155,26 +155,63 @@ final class Stage02ImportUITests: XCTestCase {
             element("photo.unavailable", in: app).exists,
             "The preview image failed to load instead of showing the derivative.\n\(app.debugDescription)"
         )
+
+        // Positive proof of the loaded state: `DerivedImageView` only builds
+        // `Image(decorative:)` in its `loaded(CGImage)` branch (loading shows a
+        // `ProgressView`, failure shows the unavailable control), so a **typed**
+        // `Image` query is loaded-state evidence that the generic wrapper is not.
+        // `isHittable` is deliberately not used: it reports whether a computed
+        // hit point is available for interaction, which a read-only decorative
+        // image is not.
+        let previewImage = app.images["preview.image"]
         XCTAssertTrue(
-            element("preview.image", in: app).isHittable,
-            "The preview image area is not visible after loading.\n\(app.debugDescription)"
+            previewImage.waitForExistence(timeout: 30),
+            "The loaded preview Image never appeared.\n\(app.debugDescription)"
+        )
+        let imageFrame = previewImage.frame
+        let hasFiniteFrame = imageFrame.origin.x.isFinite
+            && imageFrame.origin.y.isFinite
+            && imageFrame.size.width.isFinite
+            && imageFrame.size.height.isFinite
+        XCTAssertTrue(
+            hasFiniteFrame && !imageFrame.isEmpty && imageFrame.width > 0 && imageFrame.height > 0,
+            "The preview Image has no finite, non-empty frame: \(imageFrame)"
+        )
+        XCTAssertTrue(
+            app.frame.contains(imageFrame),
+            "The preview Image is not wholly on screen: image \(imageFrame) vs app \(app.frame)"
         )
         XCTAssertTrue(
             element("preview.info", in: app).exists,
             "The preview info is missing after loading."
         )
 
+        // One retained full-app screenshot so the actual pixels can be inspected
+        // by hand. There is no golden comparison and no snapshot framework.
+        let previewScreenshot = XCTAttachment(screenshot: app.screenshot())
+        previewScreenshot.name = "Stage02 imported photo preview"
+        previewScreenshot.lifetime = .keepAlways
+        add(previewScreenshot)
+
         // 4. Done returns to a usable editor, with the photo still there.
-        element("preview.done", in: app).tap()
+        // The dump showed duplicate Other/Button elements carrying the same
+        // identifier, so the real action controls are queried by their observed
+        // element type and pressed only once they are enabled and hittable.
+        let doneButton = app.buttons["preview.done"]
+        XCTAssertTrue(
+            doneButton.waitUntilEnabledAndHittable(),
+            "The preview's Done control never became usable.\n\(app.debugDescription)"
+        )
+        doneButton.tap()
         XCTAssertTrue(importEntry.waitUntilEnabled(), "The editor was not usable after Done.")
         XCTAssertEqual(photoCount(in: app), "1 of 20 photos")
 
         // 5. Remove asks first; Cancel keeps this project's copy.
         importedThumbnail(in: app).tap()
-        let removeButton = element("preview.remove", in: app)
+        let removeButton = app.buttons["preview.remove"]
         XCTAssertTrue(
-            removeButton.waitForExistence(timeout: 45),
-            "The preview has no Remove control.\n\(app.debugDescription)"
+            removeButton.waitUntilEnabledAndHittable(),
+            "The preview's Remove control never became usable.\n\(app.debugDescription)"
         )
         removeButton.tap()
         XCTAssertTrue(
@@ -183,19 +220,24 @@ final class Stage02ImportUITests: XCTestCase {
         )
         confirmationButton(named: "Cancel", in: app).tap()
         XCTAssertTrue(
-            removeButton.waitForExistence(timeout: 30),
-            "Cancel must return to the preview.\n\(app.debugDescription)"
+            removeButton.waitUntilEnabledAndHittable(),
+            "Cancel must return to a usable preview.\n\(app.debugDescription)"
         )
-        element("preview.done", in: app).tap()
+        let doneAfterCancel = app.buttons["preview.done"]
+        XCTAssertTrue(
+            doneAfterCancel.waitUntilEnabledAndHittable(),
+            "Done was not usable after cancelling removal.\n\(app.debugDescription)"
+        )
+        doneAfterCancel.tap()
         XCTAssertTrue(importEntry.waitUntilEnabled(), "The editor was not usable after cancelling removal.")
         XCTAssertEqual(photoCount(in: app), "1 of 20 photos", "Cancel must keep the imported copy.")
 
         // 6. Confirming removal updates the project.
         importedThumbnail(in: app).tap()
-        let removeAgain = element("preview.remove", in: app)
+        let removeAgain = app.buttons["preview.remove"]
         XCTAssertTrue(
-            removeAgain.waitForExistence(timeout: 45),
-            "The preview has no Remove control.\n\(app.debugDescription)"
+            removeAgain.waitUntilEnabledAndHittable(),
+            "The preview's Remove control never became usable.\n\(app.debugDescription)"
         )
         removeAgain.tap()
         confirmationButton(named: "Remove", in: app).tap()

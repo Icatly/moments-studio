@@ -5,11 +5,11 @@
 | 项 | 值 |
 | --- | --- |
 | 当前 Stage | **Stage02 — Photo Import and Asset Pipeline** |
-| Stage 状态 | CHANGES_REQUESTED（Architect Round14）；原生选择器测试定位需FIX07，预览修复尚未实测；所有者PENDING，Stage03禁止 |
-| 实现 | Stage01 已完成并获所有者批准；Stage02 已实现，并完成 Architect 实现中检查 13 项、FIX-01 六项、FIX-02 三项、FIX-03 调用标签、FIX-04 测试字面量显式类型、FIX-05 四项运行期修正 + 三项复审澄清、FIX-06 模态环境注入与导入预览 UI 回归、FIX-07 系统选择器原生定位修正：多图导入、应用自有 original 副本、ImageIO 缩略图/预览、项目包持久化与恢复、导入/网格/只读预览/移除 UI |
-| Xcode 构建 / 测试 | 第六次run37147120379/source96dece5真实编译成功，80单元+4UI通过、新增第5个UI在照片选择步骤失败，85总数/84通过/1失败/0跳过；原生dump明确PhotosPicker为content_scroll_view内的PXGGridLayout-Info图片。**FIX07 已按该原生层级只修正测试 helper**（`selectFirstPhotoCell`），85 个方法与全部端到端断言保留，需 Architect 重跑；不能声称预览已验证。本机 Windows 无 Xcode，85 项全部未执行 |
-| 可运行版本 | Stage02源码0121261已上传Appetize，真实多选3张成功；预览退出，当前版本阻塞验收；FIX06/FIX07 修正版尚未打包。Appetize 额度 27/30、剩 3 分钟、无活跃会话；原Stage01批准保持 |
-| 下一步 | Architect 复审 FIX07 → macOS 重跑 85 项（重点确认选照片与导入→预览）→ 生成新包/必要运行 Review → 所有者验收 |
+| Stage 状态 | CHANGES_REQUESTED（Architect Round16）；run7 已成功选照片/导入/打开预览，仅只读图片判据需 FIX08；预览像素与 17.2 崩溃尚未验证；所有者PENDING，Stage03禁止 |
+| 实现 | Stage01 已完成并获所有者批准；Stage02 已实现，并完成 Architect 实现中检查 13 项、FIX-01 六项、FIX-02 三项、FIX-03 调用标签、FIX-04 测试字面量显式类型、FIX-05 四项运行期修正 + 三项复审澄清、FIX-06 模态环境注入与导入预览 UI 回归、FIX-07 系统选择器原生定位修正、FIX-08 只读预览判据与保留截图：多图导入、应用自有 original 副本、ImageIO 缩略图/预览、项目包持久化与恢复、导入/网格/只读预览/移除 UI |
+| Xcode 构建 / 测试 | 第七次run37148549701/sourcee84b834：编译成功，80单元+4既有UI通过；新增第5个UI**已成功**精确选照片→Add→导入1张→打开预览（info 出现、missingPhoto/unavailable 不存在、加载指示器消失），**仅在 `Stage02ImportUITests.swift:158` 把只读图片的 `isHittable` 当可见性断言而失败**（85/84/1/0）。原生 dump：`Image preview.image` frame(16,166.3,370,555) 在 402×874 内、info `360 × 540 · PNG`、Done/Remove 各有 Other+Button 重复包装。**FIX08 已改为类型化 `app.images["preview.image"]` + 有限非空且全在屏内的 frame，并新增 1 张 keepAlways 完整预览截图；Done/Remove 改用类型化 Button 且有界 enabled+hittable。** 本机 Windows 无 Xcode，**80 单元 + 5 UI = 85 项全部未执行**，FIX08 的 macOS 结果 **UNVERIFIED** |
+| 可运行版本 | Stage02源码0121261已上传Appetize，真实多选3张成功；预览退出，当前版本阻塞验收；FIX06–08 修正版均未打包。Appetize 额度 27/30、剩 3 分钟、无活跃会话（暂停、未消耗）；原Stage01批准保持 |
+| 下一步 | Architect 复审 FIX08 → macOS 重跑 85 项（本轮应可从保留附件取得完整预览截图）→ 人工审图确认像素 → 17.2/重启/深色大字号等必要复查 → 所有者验收 |
 
 Stage 01 的详细任务见 [.ai/tasks/STAGE-01-TASKS.md](.ai/tasks/STAGE-01-TASKS.md)，验收清单见 [.ai/acceptance/STAGE-01.md](.ai/acceptance/STAGE-01.md)。
 
