@@ -59,13 +59,22 @@ final class Stage02ImportUITests: XCTestCase {
 
         pickerCancel.tap()
 
-        XCTAssertFalse(
-            pickerCancel.waitForExistence(timeout: 5),
+        // A real bounded absence wait: `waitForExistence` returns immediately
+        // while the element still exists, so it cannot be used to assert that
+        // the picker went away.
+        XCTAssertTrue(
+            pickerCancel.waitForDisappearance(),
             "Cancel must dismiss the picker instead of leaving it on screen."
         )
+
+        let importEntryAfterDismissal = element("editor.importPhotos", in: app)
         XCTAssertTrue(
-            element("editor.importPhotos", in: app).waitUntilEnabled(),
+            importEntryAfterDismissal.waitUntilEnabled(),
             "The editor must be interactive again after the picker is dismissed."
+        )
+        XCTAssertTrue(
+            importEntryAfterDismissal.isHittable,
+            "The import entry must be hittable again after the picker is dismissed."
         )
     }
 

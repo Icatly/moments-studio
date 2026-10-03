@@ -53,46 +53,169 @@ enum PhotoLibraryLocation {
         return base.appendingPathComponent(libraryDirectoryName, isDirectory: true)
     }
 
-    static func stagingDirectoryURL(rootURL: URL) -> URL {
-        rootURL.appendingPathComponent(stagingDirectoryName, isDirectory: true)
+    /// The trusted root and the staging directory below it, both canonicalised
+    /// **only for the trusted root** — generated components are inspected, never
+    /// normalized, by `PhotoLibraryPathGuard`.
+    private static func canonicalRoots(rootURL: URL) throws -> (root: URL, staging: URL) {
+        let root = rootURL.resolvingSymlinksInPath().standardizedFileURL
+        let staging = try PhotoLibraryPathGuard.resolve(
+            stagingDirectoryName,
+            below: root,
+            label: stagingDirectoryName,
+            fileManager: .default
+        )
+        return (root, staging)
     }
 
-    /// The staging directory, required to resolve to exactly
-    /// `<canonical root>/Temporary`.
+    /// The staging directory, required to be exactly `<canonical root>/Temporary`.
     ///
-    /// Used before any staging create, copy or delete, so a symlinked staging
-    /// directory — pointing outside the library or aliasing something inside it —
-    /// can never redirect those operations.
+    /// Used before any staging create, copy or delete. Ownership is enforced by
+    /// inspecting the component itself (see `PhotoLibraryPathGuard`), so a
+    /// symlinked staging directory — pointing outside the library, aliasing
+    /// something inside it, or dangling — can never redirect those operations.
     static func canonicalStagingDirectory(rootURL: URL) throws -> URL {
-        let root = rootURL.resolvingSymlinksInPath().standardizedFileURL
-        let expected = root
+        try canonicalRoots(rootURL: rootURL).staging
+    }
+
+    /// Confirms that `url` **is** an owned staged file: its parent must be the
+    /// staging directory in one of the two trusted forms, and the file component
+    /// itself must be a real file, never a link (a dangling link included).
+    ///
+    /// Matching on the file name alone is not ownership, and neither is resolving
+    /// an arbitrary incoming parent: an outside directory holding a link named
+    /// `Temporary` would resolve onto the owned staging folder and be accepted.
+    /// The caller's path is therefore compared **lexically** against the trusted
+    /// forms only — the root as supplied (which may carry the platform alias) and
+    /// its canonical form — and the generated components are then inspected.
+    static func canonicalStagedFile(_ url: URL, rootURL: URL) throws -> URL {
+        let roots = try canonicalRoots(rootURL: rootURL)
+        let name = url.lastPathComponent
+        guard !name.isEmpty else {
+            throw PhotoLibraryError.invalidReference(name)
+        }
+
+        let lexicalParent = url.deletingLastPathComponent().standardizedFileURL
+        let callerForm = rootURL.standardizedFileURL
             .appendingPathComponent(stagingDirectoryName, isDirectory: true)
             .standardizedFileURL
-        let candidate = rootURL.appendingPathComponent(stagingDirectoryName, isDirectory: true)
-        let resolved = candidate.resolvingSymlinksInPath().standardizedFileURL
-        guard resolved.path == expected.path else {
-            throw PhotoLibraryError.invalidReference(stagingDirectoryName)
+        guard lexicalParent.path == callerForm.path || lexicalParent.path == roots.staging.path else {
+            throw PhotoLibraryError.invalidReference(name)
         }
-        return resolved
+
+        return try PhotoLibraryPathGuard.resolve(
+            "\(stagingDirectoryName)/\(name)",
+            below: roots.root,
+            label: name,
+            fileManager: .default
+        )
+    }
+}
+
+/// Component-wise ownership check for every generated library path.
+///
+/// Each generated path is validated one component at a time **below the
+/// canonical library root**: every component that already exists must be a real
+/// directory or file, never a symbolic link. That rejects a link pointing outside
+/// the library, an alias *inside* the library (`A/assets -> B/assets`) and a
+/// dangling link, all of which would otherwise redirect a create, read, write or
+/// delete into another project's files.
+///
+/// The failure this exists for is observed, not theoretical: in run 37135113445 a
+/// whole-path comparison accepted an in-library alias (`A/assets -> B/assets`) and
+/// an import wrote into project B's folder. The exact Foundation mechanics behind
+/// that observation are **not** established here, and this type does not depend on
+/// any theory about them. What it does instead is inspect each generated component
+/// itself with `attributesOfItem(atPath:)`, which reports the item rather than
+/// following it — unlike `fileExists`, which follows links and cannot see them.
+///
+/// A genuinely missing tail is allowed, because that is the normal state of the
+/// folder that is about to be created; "no such file" is distinguished from every
+/// other inspection error, which stays a real failure.
+enum PhotoLibraryPathGuard {
+    private enum ComponentState {
+        case exists
+        case symlink
+        case missing
+        case inspectionFailed(String)
     }
 
-    /// Confirms that `url` **is** an owned staged file: its resolved location must
-    /// be exactly `<canonical root>/Temporary/<its own file name>`.
+    /// Resolves a generated relative path below an already-canonical root.
     ///
-    /// Matching on the file name alone is not ownership: a file outside the
-    /// staging directory that happens to share a name must be refused.
-    static func canonicalStagedFile(_ url: URL, rootURL: URL) throws -> URL {
-        let staging = try canonicalStagingDirectory(rootURL: rootURL)
-        let inspected = url.resolvingSymlinksInPath().standardizedFileURL
-        let expected = staging
-            .appendingPathComponent(url.lastPathComponent, isDirectory: false)
-            .standardizedFileURL
-
-        guard inspected.path == expected.path,
-              inspected.deletingLastPathComponent().standardizedFileURL.path == staging.path else {
-            throw PhotoLibraryError.invalidReference(url.lastPathComponent)
+    /// - Parameters:
+    ///   - relativePath: generated path, `/`-separated. An empty string means the
+    ///     canonical root itself (used when the library creates its own root).
+    ///   - canonicalRootURL: trusted root, canonicalised by the caller.
+    ///   - label: value used in errors.
+    static func resolve(
+        _ relativePath: String,
+        below canonicalRootURL: URL,
+        label: String,
+        fileManager: FileManager
+    ) throws -> URL {
+        guard !relativePath.hasPrefix("/"), !relativePath.contains("\\") else {
+            throw PhotoLibraryError.invalidReference(label)
         }
-        return inspected
+
+        var components: [String] = []
+        if !relativePath.isEmpty {
+            components = relativePath
+                .split(separator: "/", omittingEmptySubsequences: false)
+                .map(String.init)
+            guard components.allSatisfy({ !$0.isEmpty && $0 != "." && $0 != ".." }) else {
+                throw PhotoLibraryError.invalidReference(label)
+            }
+        }
+
+        var current = canonicalRootURL
+        for (index, component) in components.enumerated() {
+            current.appendPathComponent(component, isDirectory: false)
+
+            switch state(of: current, fileManager: fileManager) {
+            case .symlink:
+                throw PhotoLibraryError.invalidReference(label)
+            case .exists:
+                continue
+            case .missing:
+                // Nothing below a missing component can be an alias, so the rest
+                // of this generated path is allowed to be created normally.
+                for remaining in components[(index + 1)...] {
+                    current.appendPathComponent(remaining, isDirectory: false)
+                }
+                return current
+            case .inspectionFailed(let reason):
+                throw PhotoLibraryError.fileOperationFailed(reason)
+            }
+        }
+
+        return current
+    }
+
+    /// Inspects one component without following it.
+    private static func state(of url: URL, fileManager: FileManager) -> ComponentState {
+        do {
+            let attributes = try fileManager.attributesOfItem(atPath: url.path)
+            return attributes[.type] as? FileAttributeType == .typeSymbolicLink ? .symlink : .exists
+        } catch let error as NSError {
+            if isMissing(error) {
+                return .missing
+            }
+            return .inspectionFailed("cannot inspect \(url.lastPathComponent): \(error.localizedDescription)")
+        }
+    }
+
+    /// Distinguishes "no such file" from every other inspection error.
+    ///
+    /// A missing component can be reported through either documented Cocoa code
+    /// (`NSFileNoSuchFileError` 4, `NSFileReadNoSuchFileError` 260) or as POSIX
+    /// `ENOENT`; all three mean "this generated path does not exist yet", which is
+    /// what a first launch and a brand-new asset folder look like. Anything else
+    /// stays a real failure instead of being swallowed.
+    private static func isMissing(_ error: NSError) -> Bool {
+        if error.domain == NSCocoaErrorDomain,
+           error.code == NSFileNoSuchFileError || error.code == NSFileReadNoSuchFileError {
+            return true
+        }
+        return error.domain == NSPOSIXErrorDomain && error.code == Int(ENOENT)
     }
 }
 
@@ -105,6 +228,10 @@ enum PhotoLibraryLocation {
 /// protocol, cache or job queue — this stage does not need them.
 actor PhotoLibrary {
     private let rootURL: URL
+    /// Trusted root, canonicalised **once** here so platform aliases such as
+    /// `/var -> /private/var` are supported. Generated components are never
+    /// normalized before inspection — that is what `PhotoLibraryPathGuard` does.
+    private let canonicalRootURL: URL
     private let limits: PhotoLibraryLimits
     private let fileManager: FileManager
     private let encoder: JSONEncoder
@@ -120,7 +247,9 @@ actor PhotoLibrary {
         limits: PhotoLibraryLimits = .standard,
         fileManager: FileManager = .default
     ) {
-        self.rootURL = rootURL.standardizedFileURL
+        let standardizedRoot = rootURL.standardizedFileURL
+        self.rootURL = standardizedRoot
+        self.canonicalRootURL = standardizedRoot.resolvingSymlinksInPath().standardizedFileURL
         self.limits = limits
         self.fileManager = fileManager
 
@@ -408,41 +537,24 @@ actor PhotoLibrary {
 
     // MARK: - Directories and paths
 
-    /// The library root with symlinks resolved once.
-    private var canonicalRootURL: URL {
-        rootURL.resolvingSymlinksInPath().standardizedFileURL
-    }
-
-    /// Resolves a **generated** library-relative path and requires the result to
-    /// be exactly `<canonical root>/<relative path>`.
+    /// Resolves a **generated** library-relative path below the canonical root,
+    /// enforcing the ownership invariant on every existing component.
     ///
-    /// Comparing against the expected canonical location — rather than merely
-    /// checking that the result sits somewhere inside the root — is what rejects
-    /// a symlink alias *within* the library, for example `A/assets` pointing at
-    /// `B/assets`, which would otherwise let one project write into, or clean up,
-    /// another project's files.
+    /// Every create, read, write, copy, rollback, delete and cleanup target goes
+    /// through here, so a symlink component — pointing outside the library,
+    /// aliasing another project's folder *inside* it, or dangling — is rejected
+    /// instead of redirecting the operation. A genuinely missing tail is allowed,
+    /// because that is the normal state of a folder about to be created.
     ///
     /// An empty relative path means the root itself and is only used when the
-    /// library creates its own directories; every file, asset and cleanup target
-    /// must be a strict subpath.
+    /// library creates its own directories.
     private func resolvedLibraryPath(_ relativePath: String, label: String) throws -> URL {
-        let root = canonicalRootURL
-        let expected: URL
-        let candidate: URL
-
-        if relativePath.isEmpty {
-            expected = root
-            candidate = rootURL
-        } else {
-            expected = root.appendingPathComponent(relativePath, isDirectory: false).standardizedFileURL
-            candidate = rootURL.appendingPathComponent(relativePath, isDirectory: false)
-        }
-
-        let resolved = candidate.resolvingSymlinksInPath().standardizedFileURL
-        guard resolved.path == expected.path else {
-            throw PhotoLibraryError.invalidReference(label)
-        }
-        return resolved
+        try PhotoLibraryPathGuard.resolve(
+            relativePath,
+            below: canonicalRootURL,
+            label: label,
+            fileManager: fileManager
+        )
     }
 
     private func ensureLibraryDirectories() throws {

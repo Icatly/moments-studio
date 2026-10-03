@@ -8,7 +8,9 @@ Status: READY_FOR_ARCHITECT_REVIEW
 
 User Decision: PENDING
 
-Stage01于2026-10-03由所有者明确批准，并授权继续下一阶段。Stage02 需求、架构与执行任务已定义；DSH 已完成实现，处理完 Architect 实现中检查 `.ai/reviews/STAGE-02-INFLIGHT-NOTE-01.md` 的**全部 13 项**（该记录最初为 10 项，随后扩展），并完成 Round 01 Review 授权的 `.ai/tasks/STAGE-02-ARCHITECT-FIX-01.md` **6 项**修正（第 6 项为追加；见 `.ai/reports/STAGE-02-FIX-01-REPORT.md`），以及首个 macOS 运行编译失败后的 `.ai/tasks/STAGE-02-ARCHITECT-FIX-02.md` **3 项**修正（见 `.ai/reports/STAGE-02-FIX-02-REPORT.md`）。交付总览见 `.ai/reports/STAGE-02-REPORT.md`。**本机（Windows）无 Xcode：78 个单元测试 + 4 个 UI 测试从未执行，也没有 Stage 02 可运行版本。** 真实 macOS 运行证据（run 37131111464）显示**编译失败、测试未执行**。本文件不表示 Stage02 已获验收批准。
+Stage01于2026-10-03由所有者明确批准，并授权继续下一阶段。Stage02 需求、架构与执行任务已定义；DSH 已完成实现，处理完 Architect 实现中检查 `.ai/reviews/STAGE-02-INFLIGHT-NOTE-01.md` 的**全部 13 项**（该记录最初为 10 项，随后扩展），并依次完成 FIX-01（6 项）、FIX-02（3 项，编译失败修正）、FIX-03（10 处调用标签）、FIX-04（前端崩溃的显式类型）、FIX-05（4 项运行期失败修正）。交付总览见 `.ai/reports/STAGE-02-REPORT.md`。
+
+**第四次真实 macOS 运行（run 37135113445，source `0c905a3`）已编译全部 target 并真正执行测试：78 单元 + 4 UI，其中 3 个单元方法 + 1 个 UI 方法失败，共 6 条断言。** 合成 HEIC 导入通过（未 skip）、12 MP 批次取消通过、3×4000×3000 串行导入实测 0.430 秒（仅模拟器、平坦合成图，不代表真机性能）。FIX-05 修正后源码含 **80 单元 + 4 UI**，**本机（Windows）无 Xcode，仍未执行**；Stage02 仍无通过证据、无运行包。本文件不表示 Stage02 已获验收批准。
 
 ## 所有者验收清单
 
@@ -30,25 +32,29 @@ Stage01于2026-10-03由所有者明确批准，并授权继续下一阶段。Sta
 
 ## 每项当前证据（DSH 交付，未验收）
 
+> 第四次运行（run 37135113445）已编译全部 target 并**真正执行** 78 单元 + 4 UI 测试，其中 3 个单元方法 + 1 个 UI 方法失败（6 条断言）。下表的"已执行"指该次运行；FIX-05 修正后的 80 单元 + 4 UI **尚未重跑**，因此**没有一项因测试通过而成立**。
+
 | 清单项 | 当前状态与证据 |
 | --- | --- |
-| 多选导入、顺序与数量 | **代码已实现，未运行**：`PhotoImportSection` 使用 ordered `PhotosPicker`；`PhotoImportModel` 串行逐项导入、`photos` 数组即顺序；单元测试覆盖顺序与追加（未执行） |
-| 不申请完整图库权限、原图不被修改 | **代码符合，未运行**：Info.plist 未声明任何照片权限键；导入为字节复制（单测断言 original 与源文件字节相等、源文件未被改动；未执行） |
-| 原始文件、缩略图与预览图正确保存，方向、比例与透明图显示正确 | **代码已实现，未运行**：ImageIO 派生 320/2048（与源长边取 min，不上采样）、两个派生图重绘为 8-bit sRGB、EXIF 1...8（含镜像半图取色断言）、透明 PNG 保留 alpha、original 字节不变；JPEG/PNG/HEIC 合成导入测试已写（未执行） |
-| 追加、只读预览、移除、跨项目隔离 | **代码已实现，未运行**：`SheetRoute.photoPreview` 只读预览（人类可读格式名）、确认移除；单测覆盖“移除只删本项目文件”“移除失败不改盘”（未执行） |
-| 进度、取消、失败提示 | **代码已实现，未运行**：进度+取消按钮、错误摘要、取消回滚与 manifest 失败回滚单测；并发 mutation 被串行化；每项成功/失败/取消都清理应用自有 staging 副本（均未执行） |
-| 重启恢复、未保存空项目限制明确 | **代码已实现，未运行**：启动异步恢复 + Home loading/重试/警告；文案区分未保存空项目与已保存项目；恢复测试已写（未执行） |
-| 导入时导航可操作、浅深色与大字号 | **未验证**：需模拟器实查 |
-| 自动测试与 macOS 构建实际执行、Architect Review | **未执行**：需 Architect 云端构建/测试；Windows 侧只完成结构、语法与契约静态校验 |
+| 多选导入、顺序与数量 | **代码已实现；相关测试已执行且通过**：ordered `PhotosPicker`；协调器串行逐项导入、`photos` 即顺序；`PhotoImportModelTests` 六个用例与 `LargePhotoBatchTests` 顺序断言在该次运行中全部通过。真实选择器多选仍未验证 |
+| 不申请完整图库权限、原图不被修改 | **代码符合；相关测试已执行且通过**：Info.plist 未声明照片权限键；导入为字节复制，单测断言 original 与源文件字节相等、源文件未被改动（`testImportWritesOriginalThumbnailAndPreviewAndKeepsOriginalBytes` 等通过）。相册原图不变仍需实机确认 |
+| 原始文件、缩略图与预览图正确保存，方向、比例与透明图显示正确 | **部分失败**：方向/镜像、不上采样、JPEG/HEIC、original 字节等用例通过（合成 HEIC **通过、未 skip**）；但 PNG 半透明 fixture 用例失败（230/243，fixture 缺陷）→ FIX-05 §2.3 已修，待重跑 |
+| 追加、只读预览、移除、跨项目隔离 | **部分失败**：移除隔离/未知照片/恢复等用例通过；但 `testSymlinkAliasInsideTheLibraryCannotRedirectAnotherProjectsAssets` 暴露真实越权写入（882/889）→ FIX-05 §2.1 已修，待重跑 |
+| 进度、取消、失败提示 | **代码已实现；相关测试已执行且通过**：取消回滚、manifest 失败回滚、并发 mutation 串行化、每项成功/失败/取消都清理自有 staging 副本；`testBatchCancellationKeepsCommittedPhotoAndCleansStaging` 与 `testCancelledImportCommitsNothingAndKeepsThePreviousPackage` 通过 |
+| 重启恢复、未保存空项目限制明确 | **代码已实现；恢复相关单测已执行且通过**：启动异步恢复 + Home loading/重试/警告；文案区分未保存空项目与已保存项目。terminate/relaunch 实查仍未做 |
+| 导入时导航可操作、浅深色与大字号 | **未验证**：需模拟器/实机实查 |
+| 自动测试与 macOS 构建实际执行、Architect Review | **已部分达成**：第四次运行已编译并执行 78 单元 + 4 UI（3 单元方法 + 1 UI 方法失败）；FIX-05 后需 Architect 重跑；Windows 侧只做结构、语法与契约静态校验 |
 | 所有者亲自检查并决定 | **未开始** |
 
 ## 已披露限制（详见 `.ai/reports/STAGE-02-REPORT.md` 第 7、10 节）
 
-- 未编译、未运行任何测试；首次 Xcode 构建可能出现 API 标签类修正（不影响语义）。
-- 未验证真实选择器多选、真实照片、terminate/relaunch 恢复、相册原图不变、大图批次耗时/内存与取消反应、iPad/VoiceOver。
-- 仅静态图（JPEG/PNG/HEIC/HEIF）；拒绝 RAW、动画 GIF、视频；不承诺 HDR 保真。
+- 第四次运行已编译并执行测试（78 单元 + 4 UI），但 **3 个单元方法 + 1 个 UI 方法失败**；FIX-05 修正后（80 单元 + 4 UI）**尚未重跑**，本机（Windows）无法执行。
+- 未验证真实选择器多选、真实照片、terminate/relaunch 恢复、相册原图不变、iPad/VoiceOver。
+- 实测 3×4000×3000 串行导入 0.430 秒与两次内存快照（footprint 38,443,776 → 38,656,768 字节；resident 214,761,472 → 214,958,080 字节）**仅为模拟器上平坦合成 JPEG 的可观测事实，不是峰值内存、不代表真机性能**。
+- 仅静态图（JPEG/PNG/HEIC/HEIF）；拒绝 RAW、动画 GIF、视频；不承诺 HDR 保真。合成 HEIC 导入已真实通过（未 skip），但真机 HEIC 素材仍未验证。
 - 上限 20 张/项目、100 MiB/图、80 MP/图、320/2048 为本阶段工程策略，未做真机测量；无内容去重。
 - 恢复时文件缺失的照片仍列出并给出 warning；清理失败只告警、后续启动重试。
+- 3 条 AppIntents 元数据提取告警（无 AppIntents 依赖），未观察到 Swift actor 诊断。
 
 ## 状态记录
 
@@ -68,6 +74,10 @@ Stage01于2026-10-03由所有者明确批准，并授权继续下一阶段。Sta
 
 | 2026-10-03 | READY_FOR_ARCHITECT_REVIEW（FIX-04 完成） | 第三次真实 macOS 运行（source `70721cf13362475bfea5648b26241b4ea1df2c66`，run 37133937308）**编译失败、0 个测试执行、无运行包**，但**不是普通诊断**：日志中无 `error:`，而是 Swift 6.1.2 前端崩溃 —— `TypeCheckFunctionBodyRequest(... ProjectPackageTests.testDecodingRejectsInvalidDimensionsOrientationAndContentType())` + `ActorIsolationChecker::walkToExprPre`（只发生 1 次），结尾 `** TEST FAILED **`（2 failures）；App target 已 `Ld .../MomentsStudio.debug.dylib`，仅说明 App target 编译链接完成，**不声称整体构建成功**。Architect Round 07 判 CHANGES_REQUIRED 并授权 `STAGE-02-ARCHITECT-FIX-04.md`；DSH 把 :168 的内联混合 Int/String 元组字面量改为显式 `let cases: [(key: String, value: Any)]` 后遍历，四个损坏值（pixelWidth 0、pixelHeight −5、orientation 9、contentType ""）与逐例断言原样保留；审计确认这是全测试唯一未类型化异质元组。本机：1 文件 12+/1−、`git diff --check` 无空白错误、`verify_project.py` PASS（40 Swift 文件 6002 行）、tree-sitter `WITH_ERRORS=0`、FIX-04 一致性 6/6、FIX-03 回归 PASS；合计 **78 单元 + 4 UI**。**仍未编译未运行**；该修复为推断候选，待云端判定 |
 
+| 2026-10-04 | READY_FOR_ARCHITECT_REVIEW（FIX-05 完成） | 第四次真实 macOS 运行（source `0c905a3f038b770169a930e8c16d27572fb639ca`，run 37135113445）**全部 target 编译通过并真正执行测试**：78 单元 + 4 UI，**3 个单元方法 + 1 个 UI 方法失败、共 6 条断言**（`PhotoLibraryTests` symlink 别名越权写 882/889、PNG 半透明 fixture 230/243、`ProjectPackageTests` 260 `original.gif` 被接受、`Stage02ImportUITests` 62 用 `waitForExistence` 断言消失）。Architect Round 09 判 CHANGES_REQUIRED 并授权 `STAGE-02-ARCHITECT-FIX-05.md` 四项，DSH 完成：1) 新增 `PhotoLibraryPathGuard` 逐组件属主校验（`attributesOfItem` + `.typeSymbolicLink`，拒绝库内/库外/悬空链接，允许真正缺失的尾部，区分缺失类错误，拒绝 `..`/绝对路径），根只规范化一次，全部生成路径解析与暂存检查共用同一不变量，并删除未校验的旧 helper；2) `supportedOriginalExtensions` 白名单 jpg/jpeg/png/heic/heif；3) fixture 先 clear 再填 alpha 0.5（保留 alpha 0 方块与全部像素断言）；4) 新增 `waitForDisappearance`（`exists == false` + `XCTNSPredicateExpectation` + `XCTWaiter`）并要求导入入口 enabled 且 hittable。新增 2 个聚焦回归（悬空链接、外部别名不得冒充自有暂存文件）。本机：6 文件 287+/67−、`git diff --check` 无空白错误、`verify_project.py` PASS（40 Swift 文件 6221 行）、tree-sitter `WITH_ERRORS=0`、FIX-05 一致性 27/27、澄清检查 12/12、既有回归脚本全 PASS；合计 **80 单元 + 4 UI**。**本机仍未执行**；实测 0.430 秒与两次内存快照仅代表模拟器 |
+
+| 2026-10-04 00:46（实测时间，FIX-05 澄清交付）：Architect 在同一 FIX-05 范围内追加三点澄清，DSH 完成：① `isMissing` 除 Cocoa `NSFileNoSuchFileError`(4) 外同时接受 `NSFileReadNoSuchFileError`(260) 与 POSIX `ENOENT`（其余错误不放宽，首次启动/新建目录可用）；② `canonicalStagedFile` 不再对外来父路径做符号链接解析，改为纯词法比较且只接受调用方根与其规范化形式两种可信形式 —— 外部"名为 Temporary 的别名"不再被当成自有文件，只有可信根被规范化，生成组件先检查；新增回归 `testExternalAliasToTheOwnedStagingFolderIsNotAcceptedAsOwnership`；③ `PhotoLibraryPathGuard` 注释改为只描述已观察到的失败（run 37135113445 的库内别名越权写入），明确其确切 Foundation 机制未确立。本机：`verify_project.py` PASS（40 Swift 文件 6221 行）、tree-sitter 0 错误、FIX-05 主检查 27/27、澄清检查 12/12、既有回归全 PASS、6 文件 287+/67−、`git diff --check` 无空白错误；合计 **80 单元 + 4 UI**，本机未执行。仍停在 `READY_FOR_ARCHITECT_REVIEW` |
+
 只有所有者亲自检查并明确通过后可APPROVED。提出修改意见即CHANGES_REQUESTED，仅修当前阶段。DSH交付只到READY_FOR_ARCHITECT_REVIEW；Stage03–15未批准。
 
 2026-10-03 22:16 当前更新：初版交付文档生成后，Architect继续发现并记录13项范围内缺陷/风险，DSH正在修正，尚未停止开发。状态回到IMPLEMENTING，最终Review仍未完成；所有者判断保持全部未勾选。依据 `.ai/reviews/STAGE-02-INFLIGHT-NOTE-01.md`。
@@ -84,4 +94,4 @@ Stage01于2026-10-03由所有者明确批准，并授权继续下一阶段。Sta
 
 2026-10-03 23:33（实测时间，FIX-03 交付）：第二次 macOS 运行 run 37132895287（source `20e9d5f`，4m25s）**编译失败、0 测试执行**：首轮诊断消失，改为 5 处 `extraneous argument label 'projectID:'`。DSH 只改调用标签：`PhotoLibraryPath.swift` :109/:119、`PhotoLibrary.swift` :206/:246/:337（App target）+ `PhotoLibraryTests.swift` :53、`ProjectPackageTests.swift` :18/:212/:240、`ProjectStoreTests.swift` :172（测试 target，编译未到达但同模式）= **10 处**；5 个 helper 声明、路径字符串、序列化字段与既有测试全部不变，未新增镜像测试。检查：`git diff` 仅 10 行标签改动、`git diff --check` 无空白错误、Python 空白扫描干净、`verify_project.py` PASS（40 Swift 文件 5991 行）、tree-sitter 40/40 0 错误、FIX-03 一致性 11/11、FIX-02 回归 20/20、`STAGE02_CONFORMANCE` PASS；**78 单元 + 4 UI 仍全部未执行**。停止在 `READY_FOR_ARCHITECT_REVIEW`，等云端重跑；未运行云端服务、未推送/上传、未开始 Stage03。
 
-2026-10-03 23:51（实测时间，FIX-04 交付）：第三次 macOS 运行 run 37133937308（source `70721cf`）**不是普通编译错误**：日志 705 行中无 `error:`，失败形式是 Swift 6.1.2 前端崩溃 —— `TypeCheckSourceFileRequest` → `TypeCheckFunctionBodyRequest(ProjectPackageTests.testDecodingRejectsInvalidDimensionsOrientationAndContentType())` → `ActorIsolationChecker::walkToExprPre`（崩溃 1 次，`** TEST FAILED **`/2 failures，`Command SwiftCompile failed with a nonzero exit code`），**0 个测试执行、无运行包**；App target 已 `Ld .../MomentsStudio.debug.dylib`，只说明 App target 编译链接完成，**不构成整体构建成功**。DSH 按 FIX04 只改 `ProjectPackageTests.swift:168`：内联混合 Int/String 元组字面量 → 显式 `let cases: [(key: String, value: Any)]` 后逐项遍历，四个值（pixelWidth 0、pixelHeight −5、orientation 9、contentType ""）与逐例 JSON 改写 + `assertInvalidPackage` 断言全部保留；审计确认修正前全测试仅此一处未类型化异质元组，另一处 `[(field: String, value: String)]` 已有标注未改。检查：`git diff --stat` 1 文件 12+/1−、`git diff --check` 无空白错误、`verify_project.py` PASS（132 对象/41 文件引用/40 Swift 文件 6002 行）、tree-sitter 40/40 0 错误、FIX-04 一致性 6/6、FIX-03 回归 PASS、`STAGE02_CONFORMANCE` PASS；**78 单元 + 4 UI 仍全部未执行**。未改生产代码/SDK/编译器/部署/工作流，未新增或跳过测试，未运行云端服务、未推送/上传。**该修复是推断候选，是否有效只能由下一次云端编译判定。** 停止在 `READY_FOR_ARCHITECT_REVIEW`。
+2026-10-04 00:32（实测时间，FIX-05 交付）：**第四次 macOS 运行 run 37135113445（source `0c905a3`）全部 target 编译通过并真正执行测试**：78 单元 + 4 UI，**3 个单元方法 + 1 个 UI 方法失败、共 6 条断言** —— ① `PhotoLibraryTests:882/889` 库内 `A/assets -> B/assets` 别名被接受、B 目录被写入（真实生产越权缺陷）；② `PhotoLibraryTests:230/243` PNG fixture 无半透明像素（source-over 画在不透明底上）；③ `ProjectPackageTests:260` `original.gif` 被当作合法引用；④ `Stage02ImportUITests:62` 用 `waitForExistence` 断言"消失"（元素仍在时立即返回）。同次运行中：合成 HEIC 导入 **通过（未 skip）**、12 MP 批次取消通过、3×4000×3000 串行导入实测 0.430 秒、内存快照 footprint 38,443,776→38,656,768 字节 / resident 214,761,472→214,958,080 字节（**仅模拟器两次快照，非峰值内存、不代表真机性能**）、3 条 AppIntents 元数据告警。DSH 按 FIX-05 完成四项修正：逐组件属主校验（`PhotoLibraryPathGuard`，`attributesOfItem`+`.typeSymbolicLink`，覆盖全部 17 处生成路径解析与暂存检查，允许真正缺失尾部、区分 ENOENT、拒绝 `..`/绝对路径/库内别名/悬空链接，根只规范化一次）、original 扩展名白名单（jpg/jpeg/png/heic/heif）、fixture 先 clear 再填 alpha 0.5、`waitForDisappearance` 有界消失等待并要求 enabled+hittable；新增 1 个悬空链接回归测试。本机：6 文件 223+/67−（**00:32 时点数字；00:46 追加澄清后为 287+/67−、6221 行**）、`git diff --check` 干净、`verify_project.py` PASS（40 Swift 文件 6157 行）、tree-sitter 0 错误、FIX-05 一致性 27/27、既有回归脚本全 PASS；**80 单元 + 4 UI（含 00:46 追加的两项澄清与第二个聚焦回归）本机仍未执行**。未改 SDK/编译器/actor/部署/工作流/公开契约，未删除或跳过测试，未运行云端服务、未推送/上传。**四项修正的运行时有效性只能由下一次 macOS 运行判定。** 停止在 `READY_FOR_ARCHITECT_REVIEW`。

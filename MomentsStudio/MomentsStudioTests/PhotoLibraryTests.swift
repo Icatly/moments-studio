@@ -958,6 +958,84 @@ final class PhotoLibraryTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: source), sourceBytes, "the source is never modified")
     }
 
+    func testDanglingSymlinkAtAGeneratedPathIsRejected() async throws {
+        let library = makeLibrary()
+        let projectID = UUID()
+        let assetID = UUID()
+
+        // `assets/<assetID>` is a link whose destination does not exist, so
+        // `fileExists` (which follows links) reports "missing" while the link
+        // itself is still standing where a generated folder would be created.
+        let assetsDirectory = projectDirectory(projectID)
+            .appendingPathComponent(PhotoLibraryPath.assetsDirectoryName, isDirectory: true)
+        try FileManager.default.createDirectory(at: assetsDirectory, withIntermediateDirectories: true)
+
+        let danglingDestination = baseURL.appendingPathComponent("Missing", isDirectory: true)
+        try FileManager.default.createSymbolicLink(
+            at: assetsDirectory.appendingPathComponent(assetID.uuidString, isDirectory: true),
+            withDestinationURL: danglingDestination
+        )
+
+        let reference = PhotoLibraryPath.derivativeReference(
+            .thumbnail,
+            projectID: projectID,
+            assetID: assetID,
+            fileExtension: "jpg"
+        )
+
+        do {
+            _ = try await library.loadDerivedImage(reference: reference)
+            XCTFail("a dangling generated symlink must be refused")
+        } catch {
+            XCTAssertEqual(error as? PhotoLibraryError, .invalidReference(reference))
+        }
+
+        XCTAssertFalse(
+            FileManager.default.fileExists(atPath: danglingDestination.path),
+            "a rejected path must never create the link's destination"
+        )
+    }
+
+    func testExternalAliasToTheOwnedStagingFolderIsNotAcceptedAsOwnership() async throws {
+        let library = makeLibrary()
+        let source = try SyntheticImageFactory.writeFixture(
+            in: fixturesURL,
+            name: "alias-owned.jpg",
+            width: 60,
+            height: 60
+        )
+
+        // An owned staged copy inside the library's own staging folder.
+        let owned = try await PhotoFileTransfer.stageCopy(of: source, rootURL: rootURL)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: owned.path))
+
+        // An outside directory holding a link named like the staging folder, so
+        // resolving the incoming parent would land on the owned Temporary.
+        let outside = baseURL.appendingPathComponent("OutsideStagingAlias", isDirectory: true)
+        try FileManager.default.createDirectory(at: outside, withIntermediateDirectories: true)
+        let alias = outside.appendingPathComponent(PhotoLibraryLocation.stagingDirectoryName, isDirectory: true)
+        try FileManager.default.createSymbolicLink(
+            at: alias,
+            withDestinationURL: rootURL.appendingPathComponent(
+                PhotoLibraryLocation.stagingDirectoryName,
+                isDirectory: true
+            )
+        )
+        let aliasedURL = alias.appendingPathComponent(owned.lastPathComponent)
+        XCTAssertTrue(
+            FileManager.default.fileExists(atPath: aliasedURL.path),
+            "the outside alias does reach the owned file"
+        )
+
+        let warnings = await library.discardStagedFile(at: aliasedURL)
+
+        XCTAssertTrue(warnings.isEmpty)
+        XCTAssertTrue(
+            FileManager.default.fileExists(atPath: owned.path),
+            "an external alias must not be accepted as ownership of the owned staged file"
+        )
+    }
+
     func testStagingCancellationLeavesNoCopy() async throws {
         let source = try SyntheticImageFactory.writeFixture(
             in: fixturesURL,

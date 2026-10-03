@@ -5,3 +5,5 @@
 Windows实际verify PASS：132对象/41引用/40 Swift6001行（注释澄清后的当前值）；diff whitespace PASS；78单元+4UI待实际执行。第三次失败证据ZIP SHA256143f242c34aa88b5ebedd062baf3e3ec34281f386d5aee20ddd42a9083e2ab88，与GitHub产物匹配；source70721cf。
 
 准备用本轮稳定提交第四次实际macOS验证，是否解决崩溃/有无后续诊断取决于实际结果。仍无Stage02运行包与通过证据；owner PENDING，Stage03未授权。
+
+实际第四次验证：https://github.com/Icatly/moments-studio/actions/runs/37135113445 ，source0c905a3f038b770169a930e8c16d27572fb639ca，10月3日23:58启动，00:00仍in_progress。

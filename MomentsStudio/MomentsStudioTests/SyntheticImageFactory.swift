@@ -98,10 +98,15 @@ enum SyntheticImageFactory {
                 )
             )
 
-            // Semi-transparent band along the bottom.
+            // Semi-transparent band along the bottom. The rectangle is cleared
+            // first: filling alpha 0.5 with source-over on top of the opaque
+            // background leaves the resulting alpha at 1, which is exactly what
+            // the earlier fixture did and why the pixel-alpha assertion failed.
             let bandHeight = max(1, height / 4)
+            let band = CGRect(x: 0, y: 0, width: width, height: bandHeight)
+            context.clear(band)
             context.setFillColor(red: 0, green: 1, blue: 0, alpha: 0.5)
-            context.fill(CGRect(x: 0, y: 0, width: width, height: bandHeight))
+            context.fill(band)
         }
 
         guard let image = context.makeImage() else {

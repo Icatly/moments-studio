@@ -8,7 +8,7 @@
 
 ## 测试照片
 
-Architect已准备合成竖图、横图、透明PNG，位置 `.ai/build/downloads/stage02-photo-fixtures/`，没有真实人物或私人照片。将这三张图通过模拟器工具栏 Upload File 放入相册后，再进入应用选择。JPEG/HEIC与EXIF镜像/旋转需补充macOS自动测试或实际检查证据；上述PNG本身不证明这些格式。
+Architect已准备合成竖图、横图、透明PNG，位置 `.ai/build/downloads/stage02-photo-fixtures/`，没有真实人物或私人照片。将这三张图通过模拟器工具栏 Upload File 放入相册后，再进入应用选择。第四次macOS运行（source0c905a3，run37135113445）的JPEG、合成HEIC和EXIF旋转/镜像单元测试实际通过；该轮总体失败，修正后的当前源码仍需重跑。上述三张PNG本身不证明其他格式，Appetize媒体上传也不作为HEIC验证。
 
 ## 操作顺序（待新包可用后执行）
 

@@ -84,6 +84,11 @@ enum PhotoLibraryPath {
     /// Extensions allowed for generated derivatives. Originals keep the
     /// extension ImageIO detected for the received file.
     static let derivativeExtensions: Set<String> = ["jpg", "jpeg", "png"]
+    /// Extensions allowed for stored originals: exactly the still-image formats
+    /// this stage accepts (JPEG/PNG/HEIC/HEIF). A reference such as
+    /// `original.gif` is not something this pipeline can produce or read, so it
+    /// is rejected instead of being accepted as a "generated" path.
+    static let supportedOriginalExtensions: Set<String> = ["jpg", "jpeg", "png", "heic", "heif"]
 
     static func projectDirectoryName(_ projectID: UUID) -> String {
         projectID.uuidString
@@ -145,8 +150,7 @@ enum PhotoLibraryPath {
         let fileExtension = nameParts[1].lowercased()
         switch kind {
         case .original:
-            guard !fileExtension.isEmpty,
-                  fileExtension.allSatisfy({ $0.isLetter || $0.isNumber }) else {
+            guard supportedOriginalExtensions.contains(fileExtension) else {
                 throw PhotoLibraryError.invalidReference(reference)
             }
         case .thumbnail, .preview:

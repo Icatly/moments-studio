@@ -67,6 +67,21 @@ jobs:
           xcrun simctl launch "$STAGE02_SIMULATOR_ID" com.example.MomentsStudio
           sleep 2
           xcrun simctl io "$STAGE02_SIMULATOR_ID" screenshot stage02-artifacts/launch.png
+      - name: Export readable test results and failure attachments
+        if: always()
+        shell: bash
+        run: |
+          set -uo pipefail
+          if test -d stage02-artifacts/Stage02.xcresult; then
+            # Apple's Xcode 16 xcresulttool commands; retain raw bundle even if export fails.
+            xcrun xcresulttool help export attachments > stage02-artifacts/attachment-export-help.txt 2>&1
+            if ! xcrun xcresulttool get test-results summary --path stage02-artifacts/Stage02.xcresult --compact > stage02-artifacts/test-summary.json 2> stage02-artifacts/test-summary-export.log; then
+              echo '::warning::Readable test summary export failed; inspect the raw result bundle and export log.'
+            fi
+            if ! xcrun xcresulttool export attachments --path stage02-artifacts/Stage02.xcresult --output-path stage02-artifacts/failure-attachments --only-failures > stage02-artifacts/attachment-export.log 2>&1; then
+              echo '::warning::Failure attachment export failed; inspect the raw result bundle and export log.'
+            fi
+          fi
       - name: Preserve build evidence even on failure
         if: always()
         uses: actions/upload-artifact@v7
