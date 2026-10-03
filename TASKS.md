@@ -6,10 +6,10 @@
 | --- | --- |
 | 当前 Stage | **Stage02 — Photo Import and Asset Pipeline** |
 | Stage 状态 | `READY_FOR_ARCHITECT_REVIEW`（DSH 已交付实现与报告，等待 Architect Review；Stage02验收 PENDING，Stage03 未开始） |
-| 实现 | Stage01 已完成并获所有者批准；Stage02 已实现：多图导入、应用自有 original 副本、ImageIO 缩略图/预览、项目包持久化与恢复、导入/网格/只读预览/移除 UI |
-| Xcode 构建 / 测试 | **Stage02 尚未执行**：本机（Windows）无 Xcode，59 单元 + 4 UI 测试从未运行；仅完成结构/语法/契约静态校验。Stage01 源码 `6e8f449` 的 31 项测试通过证据**不属于** Stage02 |
+| 实现 | Stage01 已完成并获所有者批准；Stage02 已实现，并完成 Architect 实现中检查 13 项、FIX-01 六项、FIX-02 三项修正：多图导入、应用自有 original 副本、ImageIO 缩略图/预览、项目包持久化与恢复、导入/网格/只读预览/移除 UI |
+| Xcode 构建 / 测试 | **Stage02 首次 macOS 运行在编译阶段失败**：run 37131111464（source `dcfacd0f489b5fe517e07a5f2c283773d2eb37c6`，Xcode 16.4，3m50s）——`PhotoImportModel.swift` 缺公开 `SwiftUI` 交叉导入致 `PhotosPickerItem` 不在作用域（含 1 条级联诊断），**0 个单元/UI 测试执行、无运行包**；FIX-02 三项已修正，等待重跑。本机（Windows）无 Xcode，**当前 78 单元 + 4 UI（82 项）测试从未运行**；仅完成结构/语法/契约静态校验。Stage01 源码 `6e8f449` 的 31 项测试通过证据**不属于** Stage02 |
 | 可运行版本 | 当前仅有已批准 Stage01 包；Stage02 没有运行产物 |
-| 下一步 | Architect Review（[STAGE-02-REVIEW-PACKET.md](.ai/reviews/STAGE-02-REVIEW-PACKET.md)）→ macOS 云端构建与测试 → 所有者亲自验收 |
+| 下一步 | Architect 复审 FIX-02（[STAGE-02-FIX-02-REPORT.md](.ai/reports/STAGE-02-FIX-02-REPORT.md)）→ 对当前源码重跑 macOS 云端构建与 78 单元 + 4 UI 测试（含 12 MP 批次耗时/内存记录）→ 所有者亲自验收 |
 
 Stage 01 的详细任务见 [.ai/tasks/STAGE-01-TASKS.md](.ai/tasks/STAGE-01-TASKS.md)，验收清单见 [.ai/acceptance/STAGE-01.md](.ai/acceptance/STAGE-01.md)。
 

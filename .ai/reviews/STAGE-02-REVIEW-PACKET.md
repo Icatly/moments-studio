@@ -140,3 +140,22 @@ Architect 的实现中检查 `.ai/reviews/STAGE-02-INFLIGHT-NOTE-01.md` 先列�
 | 附 | 新 UI 类型显式 `@MainActor`（不依赖新 SDK 推断） | `PhotoImportSection`、`PhotoPreviewSheet`、`DerivedImageView` |
 
 **本轮本机实际执行**：130 对象 / 40 文件引用 / 39 Swift 文件 5714 行、`verify_project.py` PASS、tree-sitter `WITH_ERRORS=0`、`STAGE02_ALL_CORRECTIONS_CHECK` 19/19 通过、`STAGE02_CONFORMANCE` PASS；测试计数 **76 单元 + 4 UI**。**仍未执行**任何 Xcode 编译或测试。
+
+## 12. FIX-02：首个 macOS 运行的编译失败与修正（2026-10-03）
+
+真实证据：run 37131111464（source `dcfacd0f489b5fe517e07a5f2c283773d2eb37c6`，Xcode 16.4 / macOS 15 ARM / iOS 18.5 模拟器，FAILURE 3m50s）**编译失败，0 个单元/UI 测试执行，无运行包**。本地读取 `.ai/build/downloads/run-37131111464/evidence/xcodebuild.log` 得到全部 4 条 error：
+
+| 日志行 | 诊断 | 性质 |
+| --- | --- | --- |
+| :342 | `PhotoImportModel.swift:35:44: cannot find type 'PhotosPickerItem' in scope` | 根因（`PhotoFileLoader` typealias） |
+| :349 | 同文件 `:146:36` 同诊断 | 根因（`importSelection` 参数） |
+| :352 | 同文件 `:243:37` 同诊断 | 根因（`runBatch` 参数） |
+| :345 | 同文件 `:63:24: @escaping attribute only applies to function types` | 上游类型缺失的级联 |
+
+修正（完整证据见 `.ai/reports/STAGE-02-FIX-02-REPORT.md`）：
+
+1. **公开交叉导入**：`PhotoImportModel.swift` 与 `PhotoImportModelTests.swift` 各补 `import SwiftUI`；审计确认 4 个引用 `PhotosPickerItem` 的文件全部同时导入 PhotosUI 与 SwiftUI；未用下划线/私有模块，未改 picker 流程、`PhotoFileLoader` 类型或生产默认 loader。
+2. **显式 Void 任务**：`let task: Task<Void, Never> = Task { [weak self] in guard let self else { return }; await self.runBatch(...) }`；`batchTask` 契约、token 生命周期、取消转发、提交后 apply 全部保留；`importSelection` 签名不变。日志中**没有** Task 推断诊断，故此项为 Architect 指示的预防性修正，未被 Xcode 证实。
+3. **12 MP 批次与取消验证**：新增 `MomentsStudioTests/LargePhotoBatchTests.swift`（3×4000×3000 JPEG，生成在计时外、串行经真实库；断言顺序/字节/320-2048 边界；记录耗时与字节单位内存快照，无阈值）+ `TestGate` 确定性取消用例（已提交保留、剩余不提交、staging 清空）。
+
+本机实际执行：132 对象 / 41 文件引用 / 40 Swift 文件 5989 行、`verify_project.py` PASS、tree-sitter `WITH_ERRORS=0`、FIX-02 一致性脚本通过（部署目标 8/8 处 17.0、Swift 语言模式 8/8 处 5.0 未变）；**78 单元 + 4 UI 全部未执行**。未运行云端服务、未推送/上传。

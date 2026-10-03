@@ -122,6 +122,10 @@
 			"isa" = "PBXBuildFile";
 			"fileRef" = "B25845C17189CB8059E6B1A1";
 		};
+		86517E904D60AF84FE4E2C18 /* LargePhotoBatchTests.swift in Sources */ = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "8DB6AC3304D59C5CE052CBAA";
+		};
 		B934F567AE5F8E7A7C1149E4 /* LayerModelTests.swift in Sources */ = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "D66B006CE770611E6DD645AE";
@@ -356,6 +360,12 @@
 			"isa" = "PBXFileReference";
 			"lastKnownFileType" = "sourcecode.swift";
 			"path" = "CanvasDocumentTests.swift";
+			"sourceTree" = "<group>";
+		};
+		8DB6AC3304D59C5CE052CBAA /* LargePhotoBatchTests.swift */ = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "LargePhotoBatchTests.swift";
 			"sourceTree" = "<group>";
 		};
 		D66B006CE770611E6DD645AE /* LayerModelTests.swift */ = {
@@ -613,6 +623,7 @@
 			"children" = (
 				"35746E052CEDD6DA3C63CC62",
 				"B25845C17189CB8059E6B1A1",
+				"8DB6AC3304D59C5CE052CBAA",
 				"D66B006CE770611E6DD645AE",
 				"7AF00B0CF0F16C0B086560ED",
 				"996FC1087C77B08D12C916E8",
@@ -815,6 +826,7 @@
 			"files" = (
 				"F9B9A967931721AA5A2920F3",
 				"B95794E5E697EF0E40C5423D",
+				"86517E904D60AF84FE4E2C18",
 				"B934F567AE5F8E7A7C1149E4",
 				"8FFB07C6E08A036D2BDFAB9B",
 				"5EE1A0DC96207E5CBED7627F",

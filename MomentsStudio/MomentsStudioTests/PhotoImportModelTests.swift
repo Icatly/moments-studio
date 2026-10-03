@@ -1,6 +1,9 @@
 import CoreGraphics
 import Foundation
 import PhotosUI
+// Same cross import as the model: `PhotosPickerItem` needs the public SwiftUI
+// module in scope, not only PhotosUI.
+import SwiftUI
 import UniformTypeIdentifiers
 import XCTest
 @testable import MomentsStudio

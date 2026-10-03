@@ -2,6 +2,11 @@ import CoreGraphics
 import Foundation
 import Observation
 import PhotosUI
+// `PhotosPickerItem` is declared in the PhotosUI SwiftUI support layer, so the
+// public SwiftUI module must be imported alongside PhotosUI for the type to be
+// in scope (Apple's own PhotosPicker example imports both). No underscored or
+// private overlay module is used.
+import SwiftUI
 
 /// Orchestrates photo import for the UI.
 ///
@@ -164,8 +169,14 @@ final class PhotoImportModel {
         totalCount = min(items.count, capacity)
         itemErrors = []
 
-        let task = Task { [weak self] in
-            await self?.runBatch(items, projectID: projectID, batchID: batch)
+        // Explicitly `Task<Void, Never>`: a weak-self optional call would infer
+        // `Task<Void?, Never>`, which does not match `batchTask`. The guard keeps
+        // the weak reference, the awaited call stays non-optional, and mutation
+        // token lifetime, cancel forwarding and committed-result application are
+        // unchanged.
+        let task: Task<Void, Never> = Task { [weak self] in
+            guard let self else { return }
+            await self.runBatch(items, projectID: projectID, batchID: batch)
         }
         batchTask = task
         await task.value

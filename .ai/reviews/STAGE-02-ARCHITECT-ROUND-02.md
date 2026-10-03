@@ -15,3 +15,5 @@
 - HEIC生成无法运行的环境可有明确skip，但skip不构成HEIC导入支持证据，实际日志需单独记录。两次removal的调度断言需留意运行可靠性，不能把未执行的测试当作通过。
 
 结论：范围/结构复审已完成；开始已授权的免费macOS构建验证以暴露真实错误，不等于最终Review通过。构建/测试和手工证据齐备前不可WAITING_FOR_USER，所有者亲自验收前不可APPROVED。当前Appetize仍为Stage01（6e8f449）。
+
+实际构建验证已启动：源码dcfacd0f489b5fe517e07a5f2c283773d2eb37c6， https://github.com/Icatly/moments-studio/actions/runs/37131111464 ，2026-10-03 22:51当前in_progress。

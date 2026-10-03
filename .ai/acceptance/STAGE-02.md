@@ -8,7 +8,7 @@ Status: READY_FOR_ARCHITECT_REVIEW
 
 User Decision: PENDING
 
-Stage01于2026-10-03由所有者明确批准，并授权继续下一阶段。Stage02 需求、架构与执行任务已定义；DSH 已完成实现，处理完 Architect 实现中检查 `.ai/reviews/STAGE-02-INFLIGHT-NOTE-01.md` 的**全部 13 项**（该记录最初为 10 项，随后扩展），并完成 Round 01 Review 授权的 `.ai/tasks/STAGE-02-ARCHITECT-FIX-01.md` **6 项**修正（第 6 项为追加；见 `.ai/reports/STAGE-02-FIX-01-REPORT.md`）。交付总览见 `.ai/reports/STAGE-02-REPORT.md`。**本机（Windows）无 Xcode：76 个单元测试 + 4 个 UI 测试从未执行，也没有 Stage 02 可运行版本。** 本文件不表示 Stage02 已获验收批准。
+Stage01于2026-10-03由所有者明确批准，并授权继续下一阶段。Stage02 需求、架构与执行任务已定义；DSH 已完成实现，处理完 Architect 实现中检查 `.ai/reviews/STAGE-02-INFLIGHT-NOTE-01.md` 的**全部 13 项**（该记录最初为 10 项，随后扩展），并完成 Round 01 Review 授权的 `.ai/tasks/STAGE-02-ARCHITECT-FIX-01.md` **6 项**修正（第 6 项为追加；见 `.ai/reports/STAGE-02-FIX-01-REPORT.md`），以及首个 macOS 运行编译失败后的 `.ai/tasks/STAGE-02-ARCHITECT-FIX-02.md` **3 项**修正（见 `.ai/reports/STAGE-02-FIX-02-REPORT.md`）。交付总览见 `.ai/reports/STAGE-02-REPORT.md`。**本机（Windows）无 Xcode：78 个单元测试 + 4 个 UI 测试从未执行，也没有 Stage 02 可运行版本。** 真实 macOS 运行证据（run 37131111464）显示**编译失败、测试未执行**。本文件不表示 Stage02 已获验收批准。
 
 ## 所有者验收清单
 
@@ -62,14 +62,18 @@ Stage01于2026-10-03由所有者明确批准，并授权继续下一阶段。Sta
 
 | 2026-10-03 | READY_FOR_ARCHITECT_REVIEW（FIX-01 六项完成） | Architect Round 01 Review 判 CHANGES_REQUIRED 并授权 `STAGE-02-ARCHITECT-FIX-01.md`：**6 项**（第 6 项为报告生成前追加）全部完成 —— 1) Transferable 返回自身类型；2) canonical staging 边界与精确归属；3) 清理 warnings 回传协调器；4) import/remove/writeManifest 入口校验且无 schema 降级；5) 像素上限溢出防护；6) 合成 fixture 真实透明/半透明像素 + 派生图像素 alpha 断言 + 协调器 import-vs-removal/双批次覆盖 + 窄注入 loader + 关键 fixture/PNG/JPEG 失败不用 XCTSkip（仅 HEIC 编码不可用可 skip 且不证明 HEIC 支持）；另按附加要求给新 UI 类型加显式 `@MainActor`。本机：130 对象/40 文件引用/39 Swift 文件 5714 行语法 0 错误/`verify_project.py` PASS/`STAGE02_ALL_CORRECTIONS_CHECK` 19/19/`STAGE02_CONFORMANCE` PASS；合计 **76 单元 + 4 UI**。**仍未编译未运行** |
 
+| 2026-10-03 | READY_FOR_ARCHITECT_REVIEW（FIX-02 完成） | 首个真实 macOS 运行（source `dcfacd0`，run 37131111464，Xcode 16.4，3m50s）**编译失败、0 个测试执行**：日志 4 条 error 均为 `PhotoImportModel` 缺公开 `SwiftUI` 导入导致 `PhotosPickerItem` 不在作用域（`@escaping` 一条为级联）。Architect Round 03 判 CHANGES_REQUIRED 并授权 `STAGE-02-ARCHITECT-FIX-02.md` **3 项**；DSH 完成：1) 4 个引用文件全部同时导入 PhotosUI+SwiftUI（未用下划线模块、未改 picker 流程与 loader 类型）；2) 弱引用批次任务显式 `Task<Void, Never>` + `guard let self` + 非可选 await，取消转发/token 生命周期/提交后 apply 保留，`importSelection` 契约不变；3) 新增 3×4000×3000 JPEG 串行导入用例（断言顺序/字节/320-2048 边界、记录真实耗时与**字节**单位内存快照，无阈值、生成先于计时）与 `TestGate` 确定性取消用例（已提交保留、剩余不提交、staging 清空）。本机：132 对象/41 文件引用/40 Swift 文件 5989 行语法 0 错误/`verify_project.py` PASS/`STAGE02_FIX02_CHECK` 通过；合计 **78 单元 + 4 UI**。**仍未编译未运行** |
+
 只有所有者亲自检查并明确通过后可APPROVED。提出修改意见即CHANGES_REQUESTED，仅修当前阶段。DSH交付只到READY_FOR_ARCHITECT_REVIEW；Stage03–15未批准。
 
 2026-10-03 22:16 当前更新：初版交付文档生成后，Architect继续发现并记录13项范围内缺陷/风险，DSH正在修正，尚未停止开发。状态回到IMPLEMENTING，最终Review仍未完成；所有者判断保持全部未勾选。依据 `.ai/reviews/STAGE-02-INFLIGHT-NOTE-01.md`。
 
-2026-10-03 22:2x 续：上一条已被本轮完成取代——13 项实现中检查全部处理完毕（含扩展后的第 11–13 项），本机静态校验重跑通过，DSH 已停止开发并把本文件状态交回 `READY_FOR_ARCHITECT_REVIEW`。**测试与构建仍未执行**，最终 Review、可运行版本与所有者判断仍未完成。
+2026-10-03 续（13 项完成）：上一条已被本轮完成取代——13 项实现中检查全部处理完毕（含扩展后的第 11–13 项），本机静态校验重跑通过，DSH 已停止开发并把本文件状态交回 `READY_FOR_ARCHITECT_REVIEW`。**测试与构建仍未执行**，最终 Review、可运行版本与所有者判断仍未完成。
 
-2026-10-03 22:4x 续：Round 01 Review 的 **6 项**发现也已全部修正（`.ai/reports/STAGE-02-FIX-01-REPORT.md`），测试合计 **76 单元 + 4 UI**，仍未执行。DSH 停止开发，等待 Architect 复审与当前 commit 的 macOS 构建。
+2026-10-03 续（FIX-01 六项完成）：Round 01 Review 的 **6 项**发现也已全部修正（`.ai/reports/STAGE-02-FIX-01-REPORT.md`），测试合计 **76 单元 + 4 UI**，仍未执行。DSH 停止开发，等待 Architect 复审与当前 commit 的 macOS 构建。
 
 2026-10-03 22:35：FIX01第6项必要行为测试仍在补充，5项报告不是全部6项完成；当前状态IMPLEMENTING，所有者决定仍PENDING。
 
-2026-10-03 22:45 续（回应上一条）：第 6 项已补齐并复核——`SyntheticImageFactory` 现在真的画出 alpha 0 的透明区与 alpha 0.5 的半透明带，PNG 派生图断言逐像素 alpha（JPEG 断言无 alpha）；协调器新增“注入 loader 的完整批次”“导入进行中移除被拒”“第二批次被拒”三个用例（合成标识符从不交给真实照片库）；`XCTSkip` 只保留在 HEIC/HEIF 编码不可用分支，且明确不证明 HEIC 支持。故上一条 IMPLEMENTING 的理由已消失，本文件状态交回 `READY_FOR_ARCHITECT_REVIEW`；**测试与构建仍未执行**，所有者判断保持全部未勾选。
+2026-10-03 续（回应上一条，FIX-01 第 6 项完成）：第 6 项已补齐并复核——`SyntheticImageFactory` 现在真的画出 alpha 0 的透明区与 alpha 0.5 的半透明带，PNG 派生图断言逐像素 alpha（JPEG 断言无 alpha）；协调器新增“注入 loader 的完整批次”“导入进行中移除被拒”“第二批次被拒”三个用例（合成标识符从不交给真实照片库）；`XCTSkip` 只保留在 HEIC/HEIF 编码不可用分支，且明确不证明 HEIC 支持。故上一条 IMPLEMENTING 的理由已消失，本文件状态交回 `READY_FOR_ARCHITECT_REVIEW`；**测试与构建仍未执行**，所有者判断保持全部未勾选。
+
+2026-10-03 23:14（实测时间，FIX-02 交付）：收到真实 macOS 证据——run 37131111464（source `dcfacd0`）在**编译阶段失败**，4 条 error 全为 `PhotoImportModel.swift` 缺公开 `SwiftUI` 导入致 `PhotosPickerItem` 不在作用域（第 345 行 `@escaping` 为级联），**0 个测试执行、无运行包**。Architect Round 03 判 CHANGES_REQUIRED 并授权 `STAGE-02-ARCHITECT-FIX-02.md` 三项，DSH 已完成（交叉导入审计 4 处、显式 `Task<Void, Never>`+`guard let self`、3×12MP 串行批次与 `TestGate` 确定性取消验证）。本机静态校验：132 对象/41 文件引用/40 Swift 文件 5989 行语法 0 错误、`verify_project.py` PASS、FIX-02 一致性通过；测试合计 **78 单元 + 4 UI，仍全部未执行**。DSH 已停止开发，状态保持 `READY_FOR_ARCHITECT_REVIEW`，等待对当前源码的云端重跑；未运行任何云端服务、未推送/上传。
