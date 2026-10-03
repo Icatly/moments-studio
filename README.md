@@ -7,8 +7,8 @@
 | 项 | 值 |
 | --- | --- |
 | Stage | Stage02 — Photo Import and Asset Pipeline |
-| 状态 | `IMPLEMENTING`（DSH已确认开始Stage02；尚未完成实现或验收） |
-| 代码 | Stage01已批准；DSH正在实现Stage02导入管线 |
+| 状态 | `READY_FOR_ARCHITECT_REVIEW`（DSH已交付并停止；正在准备实际macOS验证，Stage02验收PENDING） |
+| 代码 | Stage02实现与FIX01已交付；76单元+4UI测试尚未在Xcode执行 |
 | 可运行版本 | 最近可运行包仍是已批准Stage01源码 `6e8f449`；不是Stage02版本 |
 | 下一步 | [Stage02执行任务](.ai/tasks/STAGE-02-IMPLEMENT-01.md) → 自动测试 → Architect Review → 可运行包 → 所有者验收 |
 
@@ -29,7 +29,7 @@
 ## 基线文档
 
 - [产品与架构基线](docs/产品与架构基线.md)
-- [Stage 01 原始 Prompt](docs/Stage-01-用户原始Prompt.txt)（本 Stage 唯一任务来源）
+- [Stage 01 原始 Prompt](docs/Stage-01-用户原始Prompt.txt)（Stage01唯一原始需求依据；Stage02以当前架构与执行任务为准）
 - [Stage 01 Architect Review 备忘](docs/Stage-01-Architect-Review备忘.md)
 
 ## 重要提醒

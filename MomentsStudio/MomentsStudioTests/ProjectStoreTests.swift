@@ -84,4 +84,113 @@ final class ProjectStoreTests: XCTestCase {
         XCTAssertEqual(store.recentProjects.map(\.id), [second.id, first.id])
         XCTAssertEqual(store.projects.map(\.id), [first.id, second.id])
     }
+
+    // MARK: - Stage 02 photo snapshot seams
+
+    @MainActor
+    func testPhotosAreEmptyForAnUnknownProject() async {
+        let store = ProjectStore()
+        let project = store.createProject(at: createdAt)
+
+        XCTAssertTrue(store.photos(for: project.id).isEmpty)
+        XCTAssertTrue(store.savedProjectIDs.isEmpty)
+    }
+
+    @MainActor
+    func testApplyInsertsOnceAndThenReplaces() async {
+        let store = ProjectStore()
+        let projectID = UUID()
+        let photo = makePhoto(projectID: projectID)
+
+        store.apply(ProjectPackage(project: makeProject(id: projectID), photos: []))
+        XCTAssertEqual(store.projects.count, 1)
+        XCTAssertTrue(store.photos(for: projectID).isEmpty)
+        XCTAssertTrue(store.savedProjectIDs.contains(projectID))
+
+        store.apply(ProjectPackage(project: makeProject(id: projectID, name: "Renamed"), photos: [photo]))
+        XCTAssertEqual(store.projects.count, 1, "applying a known project must not duplicate it")
+        XCTAssertEqual(store.openProject(id: projectID)?.name, "Renamed")
+        XCTAssertEqual(store.photos(for: projectID).map(\.asset.id), [photo.asset.id])
+    }
+
+    @MainActor
+    func testRestoreMergesSavedPackagesAndKeepsMemoryOnlyProjects() async {
+        let store = ProjectStore()
+        let memoryOnly = store.createProject(name: "Memory only", at: createdAt)
+
+        let older = makeProject(id: UUID(), created: createdAt.addingTimeInterval(-600), name: "Older")
+        let newer = makeProject(id: UUID(), created: createdAt.addingTimeInterval(600), name: "Newer")
+
+        store.restore([
+            ProjectPackage(project: newer, photos: [makePhoto(projectID: newer.id)]),
+            ProjectPackage(project: older, photos: []),
+        ])
+
+        XCTAssertEqual(store.projects.count, 3)
+        XCTAssertTrue(
+            store.projects.contains { $0.id == memoryOnly.id },
+            "a memory-only project must survive a restore"
+        )
+        XCTAssertEqual(
+            store.projects.suffix(2).map(\.id),
+            [older.id, newer.id],
+            "restored packages keep creation order"
+        )
+        XCTAssertEqual(store.recentProjects.first?.id, newer.id)
+        XCTAssertEqual(store.savedProjectIDs, [older.id, newer.id])
+        XCTAssertEqual(store.photos(for: newer.id).count, 1)
+        XCTAssertTrue(store.photos(for: memoryOnly.id).isEmpty)
+    }
+
+    @MainActor
+    func testRestoreIsIdempotent() async {
+        let store = ProjectStore()
+        let projectID = UUID()
+        let package = ProjectPackage(
+            project: makeProject(id: projectID),
+            photos: [makePhoto(projectID: projectID)]
+        )
+
+        store.restore([package])
+        store.restore([package])
+
+        XCTAssertEqual(store.projects.count, 1)
+        XCTAssertEqual(store.photos(for: projectID).count, 1)
+    }
+
+    // MARK: - Fixtures
+
+    private func makeProject(id: UUID, created: Date? = nil, name: String = "Saved") -> Project {
+        Project(id: id, name: name, createdAt: created ?? createdAt)
+    }
+
+    private func makePhoto(projectID: UUID, assetID: UUID = UUID()) -> ImportedPhoto {
+        ImportedPhoto(
+            asset: Asset(
+                id: assetID,
+                kind: .photo,
+                localReference: PhotoLibraryPath.originalReference(
+                    projectID: projectID,
+                    assetID: assetID,
+                    fileExtension: "jpg"
+                )
+            ),
+            thumbnailReference: PhotoLibraryPath.derivativeReference(
+                .thumbnail,
+                projectID: projectID,
+                assetID: assetID,
+                fileExtension: "jpg"
+            ),
+            previewReference: PhotoLibraryPath.derivativeReference(
+                .preview,
+                projectID: projectID,
+                assetID: assetID,
+                fileExtension: "jpg"
+            ),
+            pixelWidth: 100,
+            pixelHeight: 100,
+            orientation: 1,
+            contentType: "public.jpeg"
+        )
+    }
 }

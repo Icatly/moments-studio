@@ -1,7 +1,12 @@
 import SwiftUI
 
-/// Home: entry point with the Create Project action and the session-only
-/// recent projects list.
+/// Home: entry point with the Create Project action and the recent projects
+/// list.
+///
+/// Since Stage 02 the list mixes two truthful kinds of project: a project with
+/// no photos exists only for this session, while a project that has imported
+/// photos was committed to the photo library and is restored on the next
+/// launch. The copy and the library status section say exactly that.
 ///
 /// `@MainActor` is stated explicitly rather than left to SwiftUI inference: this
 /// view reaches main-actor-isolated project state from its private computed
@@ -10,12 +15,22 @@ import SwiftUI
 struct HomeView: View {
     @Environment(ProjectStore.self) private var projectStore
     @Environment(AppNavigationModel.self) private var navigation
+    @Environment(PhotoImportModel.self) private var photoImport
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         List {
             Section {
                 createProjectButton
+            }
+
+            if showsLibraryStatus {
+                Section {
+                    libraryStatusContent
+                } header: {
+                    Text("Saved projects")
+                        .font(Typography.sectionTitle)
+                }
             }
 
             Section {
@@ -27,7 +42,7 @@ struct HomeView: View {
                 // Explicit `Color.secondary` rather than the hierarchical
                 // `.secondary` style, which renders too faint inside a list
                 // footer in both colour schemes.
-                Text("Stage 01 keeps this list in memory for the current session only. Projects are not saved to the device yet.")
+                Text("Projects without photos stay in memory for this session only. A project with imported photos is saved on this device and comes back after a restart.")
                     .font(Typography.caption)
                     .foregroundStyle(Color.secondary)
             }
@@ -47,6 +62,8 @@ struct HomeView: View {
         }
     }
 
+    // MARK: - Create
+
     private var createProjectButton: some View {
         Button {
             let project = projectStore.createProject()
@@ -59,8 +76,11 @@ struct HomeView: View {
         }
         .buttonStyle(.borderedProminent)
         .tint(Palette.accent)
+        // Creating is only safe once the library has finished loading; while it
+        // is idle, loading or failed, this stays disabled (Retry is below).
+        .disabled(!photoImport.isReady)
         .accessibilityIdentifier("home.createProject")
-        .accessibilityHint("Creates an empty project and opens the editor placeholder")
+        .accessibilityHint("Creates an empty project and opens its photo import screen")
     }
 
     /// Content colour for the prominent Create Project button.
@@ -74,6 +94,62 @@ struct HomeView: View {
         colorScheme == .dark ? .black : .white
     }
 
+    // MARK: - Library status
+
+    /// Shown only while restoring, after a restore failure, or when the library
+    /// reported something the user should know about.
+    private var showsLibraryStatus: Bool {
+        if photoImport.isRestoring { return true }
+        if case .failed = photoImport.restoreState { return true }
+        return !photoImport.warnings.isEmpty
+    }
+
+    @ViewBuilder
+    private var libraryStatusContent: some View {
+        switch photoImport.restoreState {
+        case .idle, .loading:
+            HStack(spacing: Spacing.small) {
+                ProgressView()
+                Text("Loading saved projects…")
+                    .font(Typography.caption)
+                    .foregroundStyle(Color.secondary)
+            }
+            .accessibilityIdentifier("home.libraryLoading")
+
+        case .failed(let message):
+            VStack(alignment: .leading, spacing: Spacing.small) {
+                Text(message)
+                    .font(Typography.caption)
+                    .foregroundStyle(Color.red)
+                    .accessibilityIdentifier("home.libraryError")
+
+                Button("Try Again") {
+                    Task {
+                        await photoImport.restoreProjects()
+                    }
+                }
+                .accessibilityIdentifier("home.libraryRetry")
+            }
+
+        case .ready:
+            VStack(alignment: .leading, spacing: Spacing.small) {
+                ForEach(photoImport.warnings, id: \.self) { warning in
+                    Text(warning)
+                        .font(Typography.caption)
+                        .foregroundStyle(Color.secondary)
+                        .accessibilityIdentifier("home.libraryWarning")
+                }
+
+                Button("Dismiss") {
+                    photoImport.dismissWarnings()
+                }
+                .font(Typography.caption)
+            }
+        }
+    }
+
+    // MARK: - Recent projects
+
     @ViewBuilder
     private var recentProjectsContent: some View {
         if projectStore.recentProjects.isEmpty {
@@ -86,11 +162,11 @@ struct HomeView: View {
                 Button {
                     open(project)
                 } label: {
-                    RecentProjectRow(project: project)
+                    RecentProjectRow(project: project, photoCount: projectStore.photos(for: project.id).count)
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("home.project.\(project.id.uuidString)")
-                .accessibilityHint("Opens the editor placeholder for this project")
+                .accessibilityHint("Opens this project")
             }
         }
     }
@@ -104,6 +180,7 @@ struct HomeView: View {
 /// Row for one entry in the recent projects list.
 private struct RecentProjectRow: View {
     let project: Project
+    let photoCount: Int
 
     var body: some View {
         HStack(spacing: Spacing.medium) {
@@ -119,7 +196,7 @@ private struct RecentProjectRow: View {
             VStack(alignment: .leading, spacing: Spacing.extraSmall) {
                 Text(project.name)
                     .font(Typography.body)
-                Text("Created \(project.createdAt.formatted(date: .abbreviated, time: .shortened))")
+                Text(subtitle)
                     .font(Typography.caption)
                     .foregroundStyle(.secondary)
             }
@@ -128,5 +205,11 @@ private struct RecentProjectRow: View {
         }
         .frame(minHeight: Layout.minimumTapTarget)
         .contentShape(Rectangle())
+    }
+
+    private var subtitle: String {
+        let created = "Created \(project.createdAt.formatted(date: .abbreviated, time: .shortened))"
+        guard photoCount > 0 else { return created }
+        return "\(photoCount) photo\(photoCount == 1 ? "" : "s") · \(created)"
     }
 }

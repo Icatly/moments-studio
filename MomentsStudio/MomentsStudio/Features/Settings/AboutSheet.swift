@@ -17,7 +17,7 @@ struct AboutSheet: View {
                 }
 
                 Section {
-                    Text("This is a foundation build. Photo import, collage layouts, cutouts, styling, editing and export are not implemented yet.")
+                    Text("Photo import is implemented: photos you pick are copied into this app, with a thumbnail and a preview generated on device. The canvas, layers, layouts, cutouts, AI styling, manual editing and export are not implemented yet.")
                         .font(Typography.caption)
                         .foregroundStyle(.secondary)
                 }

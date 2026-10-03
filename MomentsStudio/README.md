@@ -87,7 +87,10 @@ python tools/verify_project.py       # 校验工程引用完整性、构建设�
 
 ## 当前限制
 
-- Windows本机没有Xcode；Architect已在macOS云端对源码 `6e8f449` 实际编译并执行31项测试，零失败，生成可运行模拟器包。运行入口、摘要与警告见 [Round04](../.ai/reviews/STAGE-01-ARCHITECT-ROUND-04.md)。精确最低环境和真机性能尚未验证，所有者验收待完成。
+- **Stage 02（照片导入）源码尚未在 Xcode 编译或测试**：Windows 本机无 Xcode，76 个单元测试 + 4 个 UI 测试从未执行；只完成工程结构、Swift 语法与契约一致性静态校验。详见 [STAGE-02-REPORT.md](../.ai/reports/STAGE-02-REPORT.md) 与 [STAGE-02-FIX-01-REPORT.md](../.ai/reports/STAGE-02-FIX-01-REPORT.md)。
+- Stage 01 外壳曾有真实构建证据：Architect 在 macOS 云端对源码 `6e8f449` 编译并执行 31 项测试（零失败），运行入口与警告见 [Round04](../.ai/reviews/STAGE-01-ARCHITECT-ROUND-04.md)。**该结果只对应 Stage 01 源码，不是 Stage 02 的构建证据。**
+- 未保存的空项目只在内存中，退出即丢失；导入过照片的项目写入 `Application Support/MomentsStudio/`，重启后恢复（界面已标注两者区别）。
+- Stage 02 暂定上限：每项目 20 张、每文件 100 MiB、每图 80 MP、thumbnail 320 / preview 2048、串行处理；未做真机性能测量。
+- 仅接受 JPEG/PNG/HEIC/HEIF 静态图；拒绝 RAW、动画 GIF、视频。无内容去重。
 - 工程内所有界面文案为英文占位，显示语言待定。
-- 项目数据仅存在于内存，退出应用即丢失（界面已明确标注）。
-- 未实现：照片导入、画布、拼贴、抠图、贴纸、AI、滤镜、动画、导出、云、账户、付费。
+- 未实现：画布、图层、裁剪、拼贴、抠图、贴纸、AI、滤镜、动画、导出、云、账户、付费。

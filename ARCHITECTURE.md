@@ -16,9 +16,9 @@
 | --- | --- | --- |
 | `App/` | 应用入口与根视图，唯一把状态接到导航容器的地方 | `MomentsStudioApp`、`RootView` |
 | `Core/` | 与具体功能无关的应用级机制 | `Navigation/AppRoute`、`Navigation/AppNavigationModel` |
-| `Models/` | 可序列化的领域数据，纯 Foundation，不依赖 SwiftUI | `Project`、`CanvasDocument`、`Asset`、`Layer` |
-| `Services/` | 状态与未来 I/O、处理逻辑的归属地 | `ProjectStore`（内存） |
-| `Features/` | 各屏幕的 SwiftUI 视图 | `Home/HomeView`、`Editor/EditorPlaceholderView`、`Settings/SettingsPlaceholderView`、`Settings/AboutSheet` |
+| `Models/` | 可序列化的领域数据，纯 Foundation，不依赖 SwiftUI | Stage 01：`Project`、`CanvasDocument`、`Asset`、`Layer`；Stage 02 新增 `ImportedPhoto`、`ProjectPackage`、`PhotoLibraryPath`（含 `PhotoLibraryError`） |
+| `Services/` | 状态、I/O 与图像处理的归属地 | `ProjectStore`（内存 + 已提交快照）；Stage 02 新增 `PhotoLibrary`（actor：文件事务、派生、恢复）、`PhotoDerivativeRenderer`（ImageIO）、`PhotoFileTransfer`（Transferable 摄取 + 应用自有暂存） |
+| `Features/` | 各屏幕的 SwiftUI 视图 | `Home/HomeView`、`Editor/EditorPlaceholderView`、`Settings/SettingsPlaceholderView`、`Settings/AboutSheet`；Stage 02 新增 `PhotoImport/`（`PhotoImportModel`、`PhotoImportSection`、`PhotoPreviewSheet`、`DerivedImageView`） |
 | `DesignSystem/` | 临时设计 token 与最小组件 | `DesignTokens`、`InfoRow` |
 | `Utilities/` | 无状态小工具 | `AppInfo`（临时产品身份） |
 | `Resources/` | 资源目录 | `Assets.xcassets`（AppIcon / AccentColor 占位） |
@@ -28,23 +28,29 @@
 ## 3. 状态流
 
 ```text
-RootView（@State 持有两个对象）
+RootView（@State 持有三个对象）
   ├─ AppNavigationModel  → path: [AppRoute]、sheet: SheetRoute?
-  └─ ProjectStore        → projects: [Project]（内存）
+  ├─ ProjectStore        → projects: [Project]、photoCollections: [UUID: [ImportedPhoto]]、savedProjectIDs
+  └─ PhotoImportModel    → 恢复状态、导入进度/错误/警告（@MainActor 编排）
+        ↓ await
+     PhotoLibrary（actor：文件事务、ImageIO 派生、manifest 读写、清理）
+        ↓ 只回传已提交的 ProjectPackage
+     ProjectStore.apply(_:) / restore(_:)
         ↓ .environment(...)
-HomeView / EditorPlaceholderView / SettingsPlaceholderView / AboutSheet
+HomeView / EditorPlaceholderView / SettingsPlaceholderView / AboutSheet / PhotoPreviewSheet
 ```
 
-- 视图通过 `@Environment(Type.self)` 读取；唯一的写入口是用户动作（创建项目、重命名、push/present）。
-- `ProjectStore` 是存储的唯一接缝：未来替换为沙盒持久化仓库时，视图代码不变。
+- 视图通过 `@Environment(Type.self)` 读取；唯一的写入口是用户动作（创建项目、重命名、导入、移除、push/present）。
+- `ProjectStore` 仍是状态唯一接缝，但**文件真相在 `PhotoLibrary`**：协调器只把已提交的 package 交给 `apply(_:)`，UI 不会先显示成功再落盘。
+- `PhotoLibrary` 故意不是 `@MainActor`：复制、ImageIO 与 JSON 写盘都不在 UI 线程；主线程只编排与显示。
 - 主 actor 隔离：`ProjectStore` 与 `AppNavigationModel` 都是 `@MainActor` 类，由编译器强制主线程访问。所有会触达这两个对象的视图（`RootView`、`HomeView`、`EditorPlaceholderView`、`SettingsPlaceholderView`）以及构造 `RootView` 的 `MomentsStudioApp` 入口都**显式**标注 `@MainActor`，不依赖「SwiftUI 会把整个 `View` 类型推断为主 actor」这一 SDK 层细节；`InfoRow`、`RecentProjectRow`、`AboutSheet` 是纯展示组件，只读不可变的 `AppInfo`/`Project` 值，不需要标注。测试在**方法级**使用 `@MainActor` + `async`，不改动 `XCTestCase` 子类的隔离，也不使用 `@unchecked Sendable`、`nonisolated(unsafe)` 等绕过手段。
 
 ## 4. 导航
 
-- `NavigationStack` 只由 `RootView` 绑定；`AppRoute`（`editor(projectID:)`、`settings`）是 push 目的地，`SheetRoute`（`about`）是模态目的地。
+- `NavigationStack` 只由 `RootView` 绑定；`AppRoute`（`editor(projectID:)`、`settings`）是 push 目的地，`SheetRoute`（`about`、`photoPreview(projectID:assetID:)`）是模态目的地。
 - 路由只携带**标识符**，不携带模型值：目标页面从 `ProjectStore` 读取当前状态，避免显示过期副本。
-- 没有引入路由框架：三个屏幕用 `switch` 足够；新增屏幕只需要加一个 `case`。
-- 未来模态（照片选择、模板、导出）加在 `SheetRoute`，不引入各页面私有的 presentation flag。
+- 没有引入路由框架：屏幕用 `switch` 足够；新增屏幕只需要加一个 `case`。
+- 未来模态（模板、导出等）加在 `SheetRoute`，不引入各页面私有的 presentation flag。唯一的局部例外是系统照片选择器的 selection 绑定，它属于导入 UI 状态而不是应用导航。
 
 ## 5. 核心模型与序列化契约
 
@@ -58,6 +64,29 @@ HomeView / EditorPlaceholderView / SettingsPlaceholderView / AboutSheet
 | `Layer` | `id`、`kind`、`transform`、`opacity`、`zIndex`、`isLocked`、`isHidden` |
 | `LayerTransform` | `translationX`、`translationY`、`scale`、`rotationRadians` |
 | `Asset` | `id`、`kind`、`localReference`（沙盒相对路径，绝不存绝对 URL） |
+| `ImportedPhoto`（Stage 02） | `asset`、`thumbnailReference`、`previewReference`、`pixelWidth`、`pixelHeight`、`orientation`（EXIF 1...8）、`contentType`（ImageIO 探测 UTI）；`id` 派生自 `asset.id` |
+| `ProjectPackage`（Stage 02） | `schemaVersion`（当前 1）、`project`、`photos`（导入顺序） |
+
+### 5.0 Stage 02：照片库属于包，不属于创作文档
+
+素材库放在 `ProjectPackage` 里，`Project` 只保留创作文档。这样导入阶段不必提前决定画布/图层结构，也不新增 `Layer.assetID`。
+
+磁盘布局（库根 = `Application Support/MomentsStudio/`，本地持久数据而非 Caches）：
+
+```text
+Projects/<projectUUID>/manifest.json
+Projects/<projectUUID>/assets/<assetUUID>/original.<detectedExtension>
+Projects/<projectUUID>/assets/<assetUUID>/thumbnail.<jpgOrPng>
+Projects/<projectUUID>/assets/<assetUUID>/preview.<jpgOrPng>
+Temporary/<uuid>.<ext>          # 应用自有暂存：选择器文件在被接管前的副本
+```
+
+- 所有引用都是**库根相对路径**，恢复时重算沙盒 URL；不序列化绝对 URL、picker item、图片对象、相册标识或完整 EXIF/GPS。
+- 路径规则由 `PhotoLibraryPath` 单一实现，同时用于写入与解码校验：只接受生成的 `Projects/<uuid>/assets/<uuid>/<original|thumbnail|preview>.<ext>`，拒绝绝对路径、`..`、跨项目/跨素材引用与类型不符。
+- **每张照片是一个提交单元**：验证源 → 写 original 与派生 → 校验 package → 原子写 manifest → 才返回已提交值；提交前失败或取消回滚该项文件，旧 manifest 与已导入照片不变。
+- 移除先提交不含该照片的 manifest，再清理素材目录；清理失败只告警并在后续启动重试。
+- 恢复逐包容错：损坏或未知 `schemaVersion` 只告警并**保留文件**，不静默重置；缺失派生图仍列出该照片；只清理可验证包中未被引用的素材目录与 `Temporary/` 残留，启动不解码原图。
+- 派生图由 ImageIO 生成：thumbnail 长边 ≤320、preview 长边 ≤2048、不上采样、EXIF 1...8 含镜像按显示方向处理、透明 PNG 保留 alpha、其余 JPEG 0.85。
 
 ### 5.1 叠放语义
 
@@ -80,10 +109,11 @@ Stage 01 只**定义语义**，不含渲染器、排序 API 或任何相关功�
 
 ## 6. 未来扩展位置（尚未实现）
 
+照片导入与素材管线已在 Stage 02 实现（见 5.0 节），其余仍未实现：
+
 | 能力 | 归属 | 约束 |
 | --- | --- | --- |
-| 照片导入与素材管线 | `Services/`（AssetStore / 导入服务）+ `Features/` | 使用 `PhotosPicker` 一类用户显式选择，避免全库权限；原图复制进沙盒并以相对路径引用 |
-| 图像处理（解码、缩放、切图） | 独立于视图的处理层，运行在非主线程 | 不 import SwiftUI；输入输出为模型与素材引用，不直接改视图 |
+| 图像处理（裁剪、切图、批量调色） | 独立于视图的处理层，运行在非主线程 | 不 import SwiftUI；输入输出为模型与素材引用，不直接改视图；Stage 02 的 `PhotoLibrary`/`PhotoDerivativeRenderer` 是当前位置 |
 | AI 分析 | `Services/` 下的分析器（PhotoAnalyzer），输出结构化测量 + 置信度 + 失败原因 | 不产像素、不直接控制渲染；失败可回退 |
 | 布局/风格决策 | CompositionPlanner，输出可序列化提案 | 不覆盖用户锁定的编辑；提案被接受后成为普通项目数据 |
 | 编辑器渲染 | `Features/Editor/` + 独立确定性渲染引擎 | 同一份文档几何数据分别消费预览素材与原始素材；视图截图不能作为导出结果 |
@@ -101,7 +131,7 @@ Stage 01 只**定义语义**，不含渲染器、排序 API 或任何相关功�
 - 清单/缩略图与全尺寸解码分离，按需解码、及时释放，避免同一张图多份副本。
 - 重计算离开主线程；导入、分析、渲染需要可取消与进度反馈。
 - 原图只读：任何调整以「参数 + 引用」表达，不写回原文件。
-- 内存预算与图片数量上限需要在 Stage 02 用真实数据测量后确定，不在 Stage 01 猜测。
+- Stage 02 暂定工程上限：每项目 20 张、每文件 100 MiB、每图 80 MP、串行处理且一次最多解码一张；这些是工程策略，**尚未**用真机内存/耗时数据验证，需要在实际素材上测量后调整。
 
 ## 9. 工程与验证
 
@@ -111,10 +141,11 @@ Stage 01 只**定义语义**，不含渲染器、排序 API 或任何相关功�
 
 ## 10. 已知架构缺口（需 Architect 决定）
 
-1. `Asset` 与 `Layer` 的引用关系、素材库归属层级（Round 01 裁定：本阶段不补）。
-2. 文档版本号与未知枚举容错策略（序列化演进方案）；持久化与迁移策略同样未决定、未实现。
+1. `Asset` 与 `Layer` 的引用关系（`Layer.assetID`）仍未定义；Stage 02 已决定素材库归属 `ProjectPackage`，画布层引用留到画布阶段。
+2. 文档版本号与未知枚举容错策略：Stage 02 引入了 `ProjectPackage.schemaVersion`（当前 1）与拒绝未知版本的规则，但**迁移机制本身仍未设计**；Stage 01 的 `Layer.kind` 未知值仍会解码失败。
 3. iOS 最低版本 17.0 与 `@Observable` 的取舍（Round 01 已接受，保留）。
 4. 应用显示语言（当前所有 UI 文案为英文占位）。
 5. 脚本生成工程文件的正式可用性，最终由 Xcode 实际打开/构建验证。
+6. Stage 02 待裁定：恢复时“文件缺失的照片仍列出”、清理失败仅告警、`PhotoLibrary.init` 的 limits 测试注入（见 `.ai/reviews/STAGE-02-REVIEW-PACKET.md` 第 7 节）。
 
 已解决、不再列为缺口：`ProjectStore` / `AppNavigationModel` 的主 actor 隔离（Round 01 起由 `@MainActor` 强制）。

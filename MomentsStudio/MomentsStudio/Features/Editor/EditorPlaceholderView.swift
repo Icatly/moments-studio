@@ -1,10 +1,10 @@
 import SwiftUI
 
-/// Placeholder for the canvas editor (Stage 03+).
+/// The Stage 02 editor screen.
 ///
-/// It shows the real in-memory project so navigation and state wiring can be
-/// verified, and it states plainly that no editing feature exists yet. Nothing
-/// here draws a canvas or fakes a photo.
+/// There is still no canvas: this stage adds photo import, a thumbnail gallery,
+/// a read-only preview and removal. The copy says that plainly instead of
+/// implying that editing exists.
 ///
 /// `@MainActor` is stated explicitly rather than left to SwiftUI inference: the
 /// view reads the main-actor-isolated store from `navigationTitle` and from
@@ -14,6 +14,8 @@ struct EditorPlaceholderView: View {
     let projectID: UUID
 
     @Environment(ProjectStore.self) private var projectStore
+    @Environment(PhotoImportModel.self) private var photoImport
+    @Environment(AppNavigationModel.self) private var navigation
 
     var body: some View {
         Group {
@@ -25,6 +27,15 @@ struct EditorPlaceholderView: View {
         }
         .navigationTitle(navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
+        .onDisappear {
+            // Leaving the editor stops the remaining work of a running batch;
+            // committed photos stay. Presenting the preview sheet keeps
+            // `.editor` on the navigation path, so only a real navigation
+            // change (Back) cancels.
+            if !navigation.path.contains(.editor(projectID: projectID)) {
+                photoImport.cancelImport(projectID: projectID)
+            }
+        }
     }
 
     private var navigationTitle: String {
@@ -34,7 +45,7 @@ struct EditorPlaceholderView: View {
     private var missingProjectState: some View {
         Text("This project is not available in the current session.")
             .font(Typography.body)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Color.secondary)
             .multilineTextAlignment(.center)
             .padding(Spacing.large)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -45,34 +56,48 @@ struct EditorPlaceholderView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Spacing.large) {
                 VStack(alignment: .leading, spacing: Spacing.small) {
-                    Text("Editor placeholder")
+                    Text("Editor")
                         .font(Typography.sectionTitle)
                         .accessibilityIdentifier("editor.placeholder")
-                    Text("Photo import, collage layouts, cutouts, styling and export are not implemented in Stage 01. This screen confirms navigation and project state only.")
+                    Text("Photo import is available. The canvas, layers, layouts, cutouts, styling, manual editing and export are not implemented yet.")
                         .font(Typography.body)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color.secondary)
+                        .accessibilityIdentifier("editor.status")
                 }
 
-                VStack(alignment: .leading, spacing: Spacing.small) {
-                    Text("Project state")
-                        .font(Typography.sectionTitle)
+                PhotoImportSection(projectID: projectID)
 
-                    InfoRow(title: "Name", value: project.name)
-                    Divider()
-                    InfoRow(title: "Created", value: project.createdAt.formatted(date: .abbreviated, time: .shortened))
-                    Divider()
-                    InfoRow(
-                        title: "Canvas",
-                        value: "\(Int(project.document.canvasSize.width)) × \(Int(project.document.canvasSize.height))"
-                    )
-                    Divider()
-                    InfoRow(title: "Layers", value: "\(project.document.layers.count)")
-                    Divider()
-                    InfoRow(title: "Assets", value: "Not imported yet")
-                }
+                projectState(for: project)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(Spacing.medium)
+        }
+    }
+
+    private func projectState(for project: Project) -> some View {
+        VStack(alignment: .leading, spacing: Spacing.small) {
+            Text("Project state")
+                .font(Typography.sectionTitle)
+
+            InfoRow(title: "Name", value: project.name)
+            Divider()
+            InfoRow(title: "Created", value: project.createdAt.formatted(date: .abbreviated, time: .shortened))
+            Divider()
+            InfoRow(
+                title: "Canvas",
+                value: "\(Int(project.document.canvasSize.width)) × \(Int(project.document.canvasSize.height))"
+            )
+            Divider()
+            InfoRow(title: "Layers", value: "\(project.document.layers.count)")
+            Divider()
+            InfoRow(title: "Photos", value: "\(projectStore.photos(for: projectID).count)")
+            Divider()
+            InfoRow(
+                title: "Saved on device",
+                value: projectStore.savedProjectIDs.contains(projectID)
+                    ? "Yes"
+                    : "Not yet — import a photo to save this project"
+            )
         }
     }
 }

@@ -3,11 +3,12 @@ import Observation
 
 /// The single owner of project state for the running app.
 ///
-/// Stage 01 keeps projects in memory. The Home screen labels the list as
-/// session-only, so the app never implies that a draft survived a restart.
-/// Persistence (copying originals into the sandbox and storing the document)
-/// is a later stage; this type is the intended seam, so views never touch
-/// storage directly.
+/// A project without photos is memory-only: it disappears when the app exits.
+/// Once a project has imported photos, `PhotoLibrary` has committed a
+/// `ProjectPackage` on disk and `apply(_:)` / `restore(_:)` keep this store's
+/// snapshot in step with that committed value. This type still never touches
+/// the filesystem: `init` performs no I/O, which keeps it usable in unit tests,
+/// and views never read or write files themselves.
 ///
 /// Main actor: this type holds UI state, so it is `@MainActor`-isolated and the
 /// compiler enforces main-thread access. Views reach it through the SwiftUI
@@ -50,6 +51,53 @@ final class ProjectStore {
     func renameProject(id: UUID, to newName: String, at date: Date = Date()) -> Bool {
         guard let index = projects.firstIndex(where: { $0.id == id }) else { return false }
         return projects[index].rename(to: newName, at: date)
+    }
+
+    /// Photos of every project that exists on disk, keyed by project id.
+    ///
+    /// A project with no imported photos is memory-only and has no entry here;
+    /// `savedProjectIDs` is what tells the two apart.
+    private(set) var photoCollections: [UUID: [ImportedPhoto]] = [:]
+
+    /// Projects that have been committed to the photo library on disk.
+    private(set) var savedProjectIDs: Set<UUID> = []
+
+    /// Photos of one project in import order. Empty for a memory-only project.
+    func photos(for projectID: UUID) -> [ImportedPhoto] {
+        photoCollections[projectID] ?? []
+    }
+
+    /// Applies one **committed** package snapshot: replaces the project when its
+    /// id is already known, otherwise inserts it. It never duplicates an id and
+    /// never creates layers or changes the document.
+    func apply(_ package: ProjectPackage) {
+        merge(package)
+    }
+
+    /// Merges packages loaded from disk at startup.
+    ///
+    /// Existing in-memory projects are kept, and restored packages are inserted
+    /// in creation order so `recentProjects` stays meaningful across launches.
+    func restore(_ packages: [ProjectPackage]) {
+        let ordered = packages.sorted { lhs, rhs in
+            if lhs.project.createdAt != rhs.project.createdAt {
+                return lhs.project.createdAt < rhs.project.createdAt
+            }
+            return lhs.project.id.uuidString < rhs.project.id.uuidString
+        }
+        for package in ordered {
+            merge(package)
+        }
+    }
+
+    private func merge(_ package: ProjectPackage) {
+        if let index = projects.firstIndex(where: { $0.id == package.project.id }) {
+            projects[index] = package.project
+        } else {
+            projects.append(package.project)
+        }
+        photoCollections[package.project.id] = package.photos
+        savedProjectIDs.insert(package.project.id)
     }
 
     private func resolvedName(for requested: String?) -> String {

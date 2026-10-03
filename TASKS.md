@@ -5,11 +5,11 @@
 | 项 | 值 |
 | --- | --- |
 | 当前 Stage | **Stage02 — Photo Import and Asset Pipeline** |
-| Stage 状态 | `IMPLEMENTING`；DSH已开始，Stage02验收PENDING |
-| 实现 | Stage01已完成；Stage02范围与接口已定义，DSH已确认开始实施 |
-| Xcode 构建 / 测试 | Stage02尚未执行；Stage01源码6e8f449已有31项测试通过证据 |
-| 可运行版本 | 当前仅有已批准Stage01包；Stage02没有运行产物 |
-| 下一步 | 执行 [Stage02 IMPLEMENT01](.ai/tasks/STAGE-02-IMPLEMENT-01.md)，交付至READY_FOR_ARCHITECT_REVIEW |
+| Stage 状态 | `READY_FOR_ARCHITECT_REVIEW`（DSH 已交付实现与报告，等待 Architect Review；Stage02验收 PENDING，Stage03 未开始） |
+| 实现 | Stage01 已完成并获所有者批准；Stage02 已实现：多图导入、应用自有 original 副本、ImageIO 缩略图/预览、项目包持久化与恢复、导入/网格/只读预览/移除 UI |
+| Xcode 构建 / 测试 | **Stage02 尚未执行**：本机（Windows）无 Xcode，59 单元 + 4 UI 测试从未运行；仅完成结构/语法/契约静态校验。Stage01 源码 `6e8f449` 的 31 项测试通过证据**不属于** Stage02 |
+| 可运行版本 | 当前仅有已批准 Stage01 包；Stage02 没有运行产物 |
+| 下一步 | Architect Review（[STAGE-02-REVIEW-PACKET.md](.ai/reviews/STAGE-02-REVIEW-PACKET.md)）→ macOS 云端构建与测试 → 所有者亲自验收 |
 
 Stage 01 的详细任务见 [.ai/tasks/STAGE-01-TASKS.md](.ai/tasks/STAGE-01-TASKS.md)，验收清单见 [.ai/acceptance/STAGE-01.md](.ai/acceptance/STAGE-01.md)。
 

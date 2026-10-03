@@ -76,6 +76,21 @@ KNOWN_ISA = {
 }
 UID_PATTERN = re.compile(r"^[0-9A-F]{24}$")
 
+# Control labels owned by the system rather than by this app. UI tests may need
+# to press them (for example the Photos picker's Cancel button), so they are
+# exempt from the app-identifier check by name here instead of being hidden
+# from the check inside the test.
+SYSTEM_CONTROL_LABELS = {
+    "Cancel",
+    "Done",
+    "Delete",
+    "Save",
+    "Photo Library",
+    "Continue",
+    # The system photo picker's own navigation bar title.
+    "Photos",
+}
+
 
 class Failure(Exception):
     pass
@@ -693,15 +708,24 @@ def check_accessibility_identifiers(files: dict[str, str]) -> list[str]:
     if not queried:
         raise Failure("UI tests do not query any accessibility identifier")
 
-    unresolved = sorted(identifier for identifier in queried if identifier not in declared)
+    unresolved = sorted(
+        identifier
+        for identifier in queried
+        if identifier not in declared and identifier not in SYSTEM_CONTROL_LABELS
+    )
     if unresolved:
         raise Failure(
             "UI tests query identifiers the app never declares: " + ", ".join(unresolved)
         )
-    return [
+
+    notes = [
         f"{len(queried)} UI-test identifiers resolve ({', '.join(sorted(queried))}); "
         f"{len(declared)} identifiers declared in the app"
     ]
+    exempt = sorted(queried & SYSTEM_CONTROL_LABELS)
+    if exempt:
+        notes.append(f"system-owned control labels exempt from that check: {', '.join(exempt)}")
+    return notes
 
 
 def main() -> int:

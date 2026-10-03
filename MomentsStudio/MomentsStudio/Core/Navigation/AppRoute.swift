@@ -12,11 +12,14 @@ enum AppRoute: Hashable {
 
 /// Modal destinations.
 ///
-/// Stage 01 presents one sheet to prove the seam works before later stages add
-/// real sheets (photo import, templates, export). Screen-local presentation
-/// flags are deliberately avoided so modal state stays inspectable in one place.
+/// Stage 01 presented one sheet to prove the seam works; Stage 02 adds the
+/// read-only photo preview. `RootView` handles every case, so modal state stays
+/// inspectable in one place and no screen invents presentation flags. The one
+/// deliberate exception is the system photo picker's own selection binding,
+/// which is import UI state rather than app navigation.
 enum SheetRoute: Identifiable, Hashable {
     case about
+    case photoPreview(projectID: UUID, assetID: UUID)
 
     var id: Self { self }
 }
