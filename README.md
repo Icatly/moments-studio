@@ -7,10 +7,10 @@
 | 项 | 值 |
 | --- | --- |
 | Stage | Stage 01 — Project Foundation and iOS Application Skeleton |
-| 状态 | `READY_FOR_ARCHITECT_REVIEW`（等待 ChatGPT 架构 Review；DSH 不得自行转为 `WAITING_FOR_USER`） |
+| 状态 | `WAITING_FOR_USER`（Architect Review 完成；所有者尚未批准） |
 | 代码 | 已实现 iOS 应用骨架，见 [MomentsStudio/](MomentsStudio/README.md) |
-| 可运行版本 | **尚未产出**：开发机为 Windows，无 Xcode，工程从未被实际编译或运行 |
-| 下一步 | ChatGPT Review → 在 macOS 上构建 → 项目所有者亲自验收 |
+| 可运行版本 | 源码 `6e8f449` 已在macOS构建并通过31项测试；[浏览器模拟器运行](https://appetize.io/app/ios/com.example.MomentsStudio?device=iphone14pro&osVersion=17.2&toolbar=true) |
+| 下一步 | [亲自操作验收](.ai/acceptance/STAGE-01-操作说明.md)；[Review与限制](.ai/reviews/STAGE-01-ARCHITECT-ROUND-04.md) |
 
 ## 快速导航
 

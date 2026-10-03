@@ -7,7 +7,7 @@ Stage 01 的 iOS 应用工程（Swift / SwiftUI，iPhone 优先，可扩展到 i
 | 项 | 要求 |
 | --- | --- |
 | macOS | 必需（Xcode 只能在 macOS 上运行） |
-| Xcode | 15.4 或更高（工程使用 iOS 17 SDK API；已在 Xcode 15 格式下生成，向上兼容 Xcode 16/26） |
+| Xcode | 最低设计基线15.4（使用iOS17 API）；实际验证16.4；15.4与26尚未验证 |
 | iOS Deployment Target | 17.0（依据见下表） |
 | 第三方依赖 | 无（只使用 Apple 原生框架） |
 | 设备 | iPhone 模拟器或真机；UI 测试需要模拟器 |
@@ -87,7 +87,7 @@ python tools/verify_project.py       # 校验工程引用完整性、构建设�
 
 ## 当前限制
 
-- 本仓库尚未在 macOS/Xcode 上执行过构建与测试（开发机为 Windows）。首次在 Mac 上打开时请先跑一次 `xcodebuild build` 与 `xcodebuild test`，并把结果反馈用于验收。
+- Windows本机没有Xcode；Architect已在macOS云端对源码 `6e8f449` 实际编译并执行31项测试，零失败，生成可运行模拟器包。运行入口、摘要与警告见 [Round04](../.ai/reviews/STAGE-01-ARCHITECT-ROUND-04.md)。精确最低环境和真机性能尚未验证，所有者验收待完成。
 - 工程内所有界面文案为英文占位，显示语言待定。
 - 项目数据仅存在于内存，退出应用即丢失（界面已明确标注）。
 - 未实现：照片导入、画布、拼贴、抠图、贴纸、AI、滤镜、动画、导出、云、账户、付费。

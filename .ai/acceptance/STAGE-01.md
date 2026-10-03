@@ -1,17 +1,14 @@
 # Stage 01 验收
 
-Stage:
-01
+Stage: 01
 
-Name:
-Project Foundation and iOS Application Skeleton
+Name: Project Foundation and iOS Application Skeleton
 
-Status:
-READY_FOR_ARCHITECT_REVIEW
+Status: WAITING_FOR_USER
 
-> 状态取值说明：项目所有者原始 Prompt（`docs/Stage-01-用户原始Prompt.txt`，本 Stage 唯一任务来源）要求此文件写 `WAITING_FOR_USER`；`docs/产品与架构基线.md` v0.2 则规定 DSH 完成代码与测试后「只可报告 `READY_FOR_ARCHITECT_REVIEW`」，由 ChatGPT Review 确认存在可运行版本后再转为 `WAITING_FOR_USER`；`docs/Stage-01-Architect-Review备忘.md` 明确该差异属「Prompt 状态定义问题」，两种写法都不算 DSH 越权，但**任何情况下此文件状态都不得被当作阶段已通过**。
->
-> 本文件取 `READY_FOR_ARCHITECT_REVIEW`：这是两者中更保守的取值，因为**当前不存在可运行版本**（开发机为 Windows，无 Xcode），不具备进入用户验收的条件。本文件中的用户判断题不得由 DSH 勾选。
+User Decision: PENDING
+
+Architect 于2026-10-03完成 Round 04 Review，并确认当前源码已有可运行模拟器包，按 AGENTS.md 转入用户验收。DSH的交付止于 READY_FOR_ARCHITECT_REVIEW；本次状态推进由 Architect 完成。以下判断必须由项目所有者亲自作出，均保持未勾选。
 
 ## 验收清单
 
@@ -25,25 +22,24 @@ READY_FOR_ARCHITECT_REVIEW
 - [ ] Project models compile and tests pass
 - [ ] User has reviewed the Stage 01 build
 
-User Decision:
+## 当前版本与证据
 
-PENDING
+- 构建源码：6e8f449e83141f209051081451613a3f22ca0cbb。
+- [macOS实际构建及测试](https://github.com/Icatly/moments-studio/actions/runs/37110049889)：Xcode16.4 / iOS18.5，29个单元测试 + 2个UI测试零失败；模拟器安装、启动、截图成功。
+- [亲自运行](https://appetize.io/app/ios/com.example.MomentsStudio?device=iphone14pro&osVersion=17.2&toolbar=true)：Appetize iPhone14Pro / iOS17.2；现有应用已更新为本包，需登录所有者账户。
+- [操作说明](STAGE-01-操作说明.md)；完整技术结论、SHA-256与限制见 [Round 04](../reviews/STAGE-01-ARCHITECT-ROUND-04.md)。
+- Architect 已实查最新包浅/深色按钮与两处footer，并检查深色XXXL下Home、创建/返回、Editor、Settings、About/Done，未观察到关键遮挡或崩溃。首次构建的两个项目/重开路径证据仅作历史，不冒充本次逐项实查。
+- 本机Windows未运行Xcode；云端检查由Architect执行。所有者体验、判断与批准仍待本人完成。
 
-## 每项由谁验证、当前证据
+## 待验收与已知限制
 
-| 清单项 | 验证者 | 当前状态与证据 |
-| --- | --- | --- |
-| App launches successfully | 项目所有者 | **已有运行证据（FIX-02 之前的源码）**：云端 commit `49dc9f3` 在模拟器安装/启动/截图成功；Appetize（iPhone 14 Pro / iOS 17.2）手动启动正常。**FIX-02 新源码尚未运行。** 所有者判断项仍未勾选 |
-| Home screen loads | 项目所有者 | **已有运行证据（旧源码）**：云端 `launch.png` 与 Appetize 手动查看均显示 Home；新源码待重新运行 |
-| Create Project works | 项目所有者 + UI 测试 | **已有证据（旧源码）**：云端 UI 测试通过；Appetize 手动创建两个项目正常；新源码待重跑 |
-| Editor placeholder opens | 项目所有者 + UI 测试 | **已有证据（旧源码）**：云端 `testCreateProjectOpensEditorPlaceholder` 通过；新源码待重跑 |
-| Back navigation works | 项目所有者 + UI 测试 | **已有证据（旧源码）**：云端 `testBackNavigationReturnsToHome` 通过；Appetize 手动返回正常；新源码待重跑 |
-| Basic UI interaction feels responsive | 项目所有者 | **未评估**：Appetize 有网络延迟，手感结论必须由所有者亲自体验给出 |
-| No visible critical UI errors | 项目所有者 | **已发现缺陷并退回（旧源码）**：Round 03 发现深色模式按钮内容对比度缺陷与两处 footer 偏淡；已按 FIX-02 修正，修正后的新源码尚未运行确认 |
-| Project models compile and tests pass | 自动测试（macOS） | **旧源码已通过**：云端 `49dc9f3` 实际执行 29 个单元测试 + 2 个 UI 测试，零失败（日志含 `** TEST SUCCEEDED **`）。**FIX-02 新源码尚未编译或测试**；本机（Windows）仅结构校验与静态语法检查（22 个 Swift 文件，1378 行） |
-| User has reviewed the Stage 01 build | 项目所有者 | **未开始**：需先由 Architect 完成新源码的构建/运行与 Review，再交所有者验收 |
+唯一当前闸门是所有者亲自验收。Appetize运行模拟器，不能直接安装到iPhone，不能证明真机性能；免费会话3分钟，到时可重开但内存项目清空。本阶段仅应用外壳，没有导入、编辑、AI或导出。当前英文占位、图标/产品身份待后续批准阶段决定。精确iOS17.0/Xcode15.4、Xcode26、iPad、VoiceOver及更大辅助功能字号未验证。非零警告及判断见Round04。
 
-## Round 01 修正记录（2026-10-03）
+## 历史记录说明
+
+以下记录保留当时的执行结果与状态；“尚未构建”等仅描述当时，不代表当前版本。当前结论以本文上方与Round04为准。
+
+## 历史：Round 01 修正记录（2026-10-03）
 
 按 Architect 的 `.ai/reviews/STAGE-01-ARCHITECT-ROUND-01.md` 与 `.ai/tasks/STAGE-01-ARCHITECT-FIX-01.md` 完成 5 项修正，未改变任何序列化字段名或编码形状，未开始 Stage 02：
 
@@ -57,7 +53,7 @@ PENDING
 
 本轮只重跑 Windows 侧已有校验（未安装新依赖、未改 build/test 结论）。状态：`READY_FOR_ARCHITECT_REVIEW`，等待 Architect 复审。
 
-## Round 03 / 云端运行与 FIX-02 记录（2026-10-03）
+## 历史：Round 03 / 云端运行与 FIX-02 记录（2026-10-03）
 
 - **云端证据（Architect 执行，非 DSH；DSH 未上传源码、未操作账户、未运行云服务）**：私有仓库 `Icatly/moments-studio`，commit `49dc9f3467df41422d4894b5a1d6f36b899ade09`，run 37108580699 成功（5m41s）；Xcode 16.4、iOS 18.5 / iPhone 16 Pro 模拟器；`xcodebuild test` 实际执行 **29 个单元测试 + 2 个 UI 测试全部通过**；应用包 5,292,103 字节，SHA-256 `90796bf89f32988bd4f2bc0b84e7aa87ca99cccd9cbf10826171b435cf18084d`；随后在 Appetize（iPhone 14 Pro / iOS 17.2）手动检查 Home、创建两个项目、返回、最近顺序、重开旧项目不新增、Settings、About/Done 均正常。非零警告构建：arm64/x86_64 目的地方案提示、3 条 AppIntents metadata skip、模拟器 `eligibility.plist` 缺失与一次 XPC interrupted —— Architect 判定不阻塞本阶段。
 - 最低 iOS 17 / Xcode 15.4 环境**尚未执行**，不能由 iOS 18.5 结果推断。
@@ -67,11 +63,6 @@ PENDING
 - **FIX-02 之后的新源码尚未经过任何 Xcode 编译或测试**；旧 commit `49dc9f3` 的结果不得当作新源码结果。待 Architect 重跑同一批 31 项测试，并在模拟器检查两种主题下的按钮与 footer 可读性。**Dynamic Type 最大常规字号仍未检查，不能记为通过。**
 - 状态：`READY_FOR_ARCHITECT_REVIEW`；新源码尚无运行证据，不得写 `WAITING_FOR_USER`。
 
-## 阻塞项
+## 批准规则
 
-1. **无可运行版本**：当前开发机为 Windows，无 Xcode。需要一台 macOS 设备（或 Xcode Cloud / macOS CI）执行 `xcodebuild build` 与 `xcodebuild test`，并生成可安装到模拟器/真机的构建。
-2. **首次构建结果未知**：工程文件由脚本生成并经结构校验，但从未被 Xcode 实际打开与编译。首次在 Mac 上构建可能需要修正工程设置（见 `MomentsStudio/README.md` 的维护规则）。
-
-## 批准规则提醒
-
-测试通过、构建成功、实现完成、ChatGPT Review 通过、无已知 Bug、DSH 自身判断，**都不构成**批准。只有项目所有者明确表示 Stage 01 通过，才可把 `User Decision` 改为 `APPROVED`。
+只有项目所有者亲自检查并明确表示“Stage 01 通过”，才可标记 APPROVED。测试、构建、实现或Architect Review完成都不构成批准。提出修改意见即 CHANGES_REQUESTED，只修当前Stage；Stage02–15未批准。

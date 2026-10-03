@@ -5,11 +5,11 @@
 | 项 | 值 |
 | --- | --- |
 | 当前 Stage | **Stage 01 — Project Foundation and iOS Application Skeleton** |
-| Stage 状态 | `READY_FOR_ARCHITECT_REVIEW`（Round 01 的 R1–R5 与 FIX-02 局部修正均已实施，等待复审；DSH 不得自行转为 `WAITING_FOR_USER`） |
+| Stage 状态 | `WAITING_FOR_USER`（Architect Round04完成；所有者尚未批准） |
 | 实现 | 源码与工程已完成（应用外壳、导航、基础模型、内存状态、测试、文档）；两轮修正记录见 [.ai/acceptance/STAGE-01.md](.ai/acceptance/STAGE-01.md) |
-| Xcode 构建 / 测试 | **本机未执行**（Windows，无 Xcode）。Architect 已在云端对 **FIX-02 之前**的 commit `49dc9f3` 完成构建与 31 项测试（零失败）；**当前源码尚未构建或测试** |
-| 可运行版本 | 旧源码已有云端模拟器产物（Appetize 可运行）；**当前源码需重新构建** |
-| 下一步 | Architect 对新源码重跑构建/测试并检查两种主题的按钮与 footer → 项目所有者亲自验收 |
+| Xcode 构建 / 测试 | 当前源码 `6e8f449` 在macOS云端实际编译及31项测试通过；Windows本机未执行 |
+| 可运行版本 | 当前包已上传Appetize，见 [操作说明](.ai/acceptance/STAGE-01-操作说明.md) |
+| 下一步 | 所有者亲自验收；提出修改即退回当前Stage；未批准不得进入Stage02 |
 
 Stage 01 的详细任务见 [.ai/tasks/STAGE-01-TASKS.md](.ai/tasks/STAGE-01-TASKS.md)，验收清单见 [.ai/acceptance/STAGE-01.md](.ai/acceptance/STAGE-01.md)。
 
@@ -19,7 +19,7 @@ Stage 01 的详细任务见 [.ai/tasks/STAGE-01-TASKS.md](.ai/tasks/STAGE-01-TAS
 
 | Stage | 名称 | 说明 | 状态 |
 | --- | --- | --- | --- |
-| 01 | Project Foundation | 工程骨架、导航、基础模型、测试 | 实现完成，待 Review 与验收 |
+| 01 | Project Foundation | 工程骨架、导航、基础模型、测试 | 等待所有者亲自验收 |
 | 02 | Photo Import and Asset Pipeline | 多图导入、沙盒素材存储、缩略图与预览素材 | 未批准 |
 | 03 | Editable Canvas and Layer System | 可编辑画布、图层模型扩展、手势与变换 | 未批准 |
 | 04 | Deterministic Collage Layout Engine | 确定性布局引擎（同一文档 → 可复现结果） | 未批准 |
@@ -44,5 +44,5 @@ Stage 01 的详细任务见 [.ai/tasks/STAGE-01-TASKS.md](.ai/tasks/STAGE-01-TAS
 
 - 应用显示语言（当前所有界面文案为英文占位）。
 - 产品名称、Bundle ID、App 图标占位替换（提审前必须完成）。
-- 仓库是否使用 Git 管理（当前目录未初始化 Git）。
+- 已按所有者授权初始化根目录Git，并上传私有仓库；嵌套空仓库保持独立，不纳入提交。
 - `tools/` 生成式 Xcode 工程与 Xcode 直接管理工程之间的取舍。

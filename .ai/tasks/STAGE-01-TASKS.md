@@ -33,3 +33,11 @@
 | 2026-10-03 | `READY_FOR_ARCHITECT_REVIEW` | R1–R5 已实施并重跑 Windows 侧校验；等待 Architect 复审（用户仍未批准） |
 | 2026-10-03 | `CHANGES_REQUESTED` → `IMPLEMENTING`（Runtime visual corrections） | Architect 云端运行 commit `49dc9f3`：31 项测试零失败，但深色模式对比度退回（V1/V2，Round 03） |
 | 2026-10-03 | `READY_FOR_ARCHITECT_REVIEW` | FIX-02 局部修正已实施并重跑 Windows 侧校验；**新源码的 Xcode 构建/测试仍待 Architect**，用户仍未批准 |
+
+## Architect 当前交付补充（2026-10-03）
+
+当前以Round04为准：任务1/7/8已有macOS实际编译、31项测试及可运行包证据；任务5已实查浅/深色及深色最大常规字号，但VoiceOver与完整辅助功能矩阵尚未验证。上述表格的未运行/阻塞描述为DSH交付时记录。
+
+| 时间 | 状态 | 触发 |
+| --- | --- | --- |
+| 2026-10-03 | `WAITING_FOR_USER` | Architect完成Round04、当前包可运行、验收说明已就绪；所有者PENDING |

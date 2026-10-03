@@ -2,7 +2,11 @@
 
 本文件只列出**需要审查的问题**与**对应证据位置**，不下结论。DSH 未执行的部分已明确标注。
 
-## 0. 请优先确认的前提
+## 最新 Architect 交付补充（2026-10-03）
+
+此节优先于下方历史执行记录。Architect 已完成 Round04 Review：当前源码 `6e8f449` 在macOS云端编译并通过29个单元测试及2个UI测试，包已上传Appetize且实查浅/深色与深色XXXL。阶段由Architect转为 `WAITING_FOR_USER`，User Decision保持PENDING，所有者9项判断不代勾。DSH本机仍未运行Xcode，继续停止开发；Stage02–15未批准。详见 [.ai/reviews/STAGE-01-ARCHITECT-ROUND-04.md](../reviews/STAGE-01-ARCHITECT-ROUND-04.md)。下方“未构建”等表述仅为当时记录。
+
+## 0. 历史：交付时请优先确认的前提
 
 1. **状态流程（Round 01 已裁定）**：Architect 明确 `READY_FOR_ARCHITECT_REVIEW` 合适；修复期间记 `IMPLEMENTING`，交付后回到 `READY_FOR_ARCHITECT_REVIEW`；用户未批准且无可运行版本，不得写 `WAITING_FOR_USER` 或 `APPROVED`。`.ai/acceptance/STAGE-01.md` 按此取值，复选框与 `User Decision` 仍未勾选/PENDING。
 2. **构建状态（分两层）**：DSH 本机为 Windows，无 Xcode，只做结构校验与静态语法检查；Architect 已在云端对 commit `49dc9f3` 完成真实构建与 31 项测试（见第 10 节）。但那是 **FIX-02 之前**的源码——**当前源码仍没有任何构建或测试结果**，不得当作「已可运行」。

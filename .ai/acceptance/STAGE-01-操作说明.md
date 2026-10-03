@@ -1,6 +1,14 @@
 # Stage 01 用户操作验收
 
-当前：构建与运行检查中，尚未进入用户验收。可运行链接将在 Architect 完成检查后补充。
+当前：WAITING_FOR_USER。Architect Review 已完成，等待你亲自检查。
+
+## 打开可运行版本
+
+1. 在已登录 Appetize 的浏览器打开 [Stage 01 运行入口](https://appetize.io/app/ios/com.example.MomentsStudio?device=iphone14pro&osVersion=17.2&toolbar=true)，点击“点击开始”。
+2. 若看到会话结束，重新点击开始；每次免费会话限3分钟。账户免费剩余额度有限，请仅在检查时开启会话。
+3. 在模拟器画面内点击操作；先按下方步骤检查，结束后回复“Stage 01 通过”或具体修改意见。
+
+版本源码：6e8f449。最新 [云端构建与31项测试](https://github.com/Icatly/moments-studio/actions/runs/37110049889) 均成功；浅/深色和深色最大常规字号已由Architect检查。完整证据见 [Round04](../reviews/STAGE-01-ARCHITECT-ROUND-04.md)。这仍是Stage01外壳，不是完整照片应用。
 
 ## 本阶段目标
 
