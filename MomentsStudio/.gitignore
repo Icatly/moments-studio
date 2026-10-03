@@ -1,0 +1,25 @@
+# macOS
+.DS_Store
+
+# Xcode: per-user state
+xcuserdata/
+*.xcuserstate
+*.xcuserdatad/
+MomentsStudio.xcodeproj/project.xcworkspace/xcuserdata/
+MomentsStudio.xcodeproj/xcuserdata/
+
+# Xcode: build products and derived data
+build/
+DerivedData/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager (unused in Stage 01, ignored for safety)
+.build/
+.swiftpm/
+
+# Stage 01 verification tooling output
+tools/__pycache__/

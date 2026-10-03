@@ -1,0 +1,19 @@
+# Local tools and generated evidence
+__pycache__/
+*.pyc
+stage01-artifacts/
+.ai/build/derived-data/
+.ai/build/downloads/
+
+# Separate empty workspace created by the desktop app; not part of this repo
+/One-click generation for Moments/
+
+# Local secrets and machine state
+.env
+.env.*
+.DS_Store
+xcuserdata/
+*.xcuserstate
+DerivedData/
+*.ipa
+*.xcresult/
