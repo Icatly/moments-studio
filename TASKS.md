@@ -6,10 +6,10 @@
 | --- | --- |
 | 当前 Stage | **Stage02 — Photo Import and Asset Pipeline** |
 | Stage 状态 | `READY_FOR_ARCHITECT_REVIEW`（DSH 已交付实现与报告，等待 Architect Review；Stage02验收 PENDING，Stage03 未开始） |
-| 实现 | Stage01 已完成并获所有者批准；Stage02 已实现，并完成 Architect 实现中检查 13 项、FIX-01 六项、FIX-02 三项、FIX-03 调用标签修正：多图导入、应用自有 original 副本、ImageIO 缩略图/预览、项目包持久化与恢复、导入/网格/只读预览/移除 UI |
-| Xcode 构建 / 测试 | **Stage02 仍未编译通过**（两次 macOS 运行都在编译阶段失败，0 个测试执行、无运行包）：① run 37131111464（source `dcfacd0f489b5fe517e07a5f2c283773d2eb37c6`，Xcode 16.4，3m50s）= `PhotoImportModel.swift` 缺公开 `SwiftUI` 交叉导入致 `PhotosPickerItem` 不在作用域（含 1 条级联）；② run 37132895287（source `20e9d5f4b12be4010862a46d61b7e745aeccbd7e`，4m25s）= 首轮诊断已消失，改为 5 处 `extraneous argument label 'projectID:'`（`assetDirectoryReference` 首参无标签）→ FIX-03 已修正全部 10 处 App/测试调用，等待重跑。本机（Windows）无 Xcode，**当前 78 单元 + 4 UI（82 项）测试从未运行**；仅完成结构/语法/契约静态校验。Stage01 源码 `6e8f449` 的 31 项测试通过证据**不属于** Stage02 |
+| 实现 | Stage01 已完成并获所有者批准；Stage02 已实现，并完成 Architect 实现中检查 13 项、FIX-01 六项、FIX-02 三项、FIX-03 调用标签、FIX-04 测试字面量显式类型：多图导入、应用自有 original 副本、ImageIO 缩略图/预览、项目包持久化与恢复、导入/网格/只读预览/移除 UI |
+| Xcode 构建 / 测试 | **Stage02 仍未编译通过**（三次 macOS 运行都失败，0 个测试执行、无运行包）：① run 37131111464（source `dcfacd0f489b5fe517e07a5f2c283773d2eb37c6`，Xcode 16.4，3m50s）= `PhotoImportModel.swift` 缺公开 `SwiftUI` 交叉导入致 `PhotosPickerItem` 不在作用域（含 1 条级联）；② run 37132895287（source `20e9d5f4b12be4010862a46d61b7e745aeccbd7e`，4m25s）= 首轮诊断消失，改为 5 处 `extraneous argument label 'projectID:'` → FIX-03 修正 10 处调用标签；③ run 37133937308（source `70721cf13362475bfea5648b26241b4ea1df2c66`）= 无普通诊断，Swift 6.1.2 前端在 `ProjectPackageTests.testDecodingRejectsInvalidDimensionsOrientationAndContentType` 崩溃（`ActorIsolationChecker::walkToExprPre`，2 failures，App target 已链接但整体未成功）→ FIX-04 已把该校验的混合 Int/String 元组字面量改为显式 `[(key: String, value: Any)]`，等待重跑。本机（Windows）无 Xcode，**当前 78 单元 + 4 UI（82 项）测试从未运行**；仅完成结构/语法/契约静态校验。Stage01 源码 `6e8f449` 的 31 项测试通过证据**不属于** Stage02 |
 | 可运行版本 | 当前仅有已批准 Stage01 包；Stage02 没有运行产物 |
-| 下一步 | Architect 复审 FIX-03（[STAGE-02-FIX-03-REPORT.md](.ai/reports/STAGE-02-FIX-03-REPORT.md)）→ 对当前源码重跑 macOS 云端构建与 78 单元 + 4 UI 测试（含 12 MP 批次耗时/内存记录）→ 所有者亲自验收 |
+| 下一步 | Architect 复审 FIX-04（[STAGE-02-FIX-04-REPORT.md](.ai/reports/STAGE-02-FIX-04-REPORT.md)）→ 对当前源码重跑 macOS 云端构建与 78 单元 + 4 UI 测试（含 12 MP 批次耗时/内存记录）→ 所有者亲自验收 |
 
 Stage 01 的详细任务见 [.ai/tasks/STAGE-01-TASKS.md](.ai/tasks/STAGE-01-TASKS.md)，验收清单见 [.ai/acceptance/STAGE-01.md](.ai/acceptance/STAGE-01.md)。
 

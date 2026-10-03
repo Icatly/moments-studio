@@ -165,7 +165,17 @@ final class ProjectPackageTests: XCTestCase {
     func testDecodingRejectsInvalidDimensionsOrientationAndContentType() throws {
         let (package, _) = makePackage(photoCount: 1)
 
-        for (key, value) in [("pixelWidth", 0), ("pixelHeight", -5), ("orientation", 9), ("contentType", "")] {
+        // Explicit context for mixed Int/String values. Swift 6.1.2 crashed while
+        // typechecking this test in run 37133937308; whether inference was the
+        // trigger remains unverified until the next actual build.
+        let cases: [(key: String, value: Any)] = [
+            ("pixelWidth", 0),
+            ("pixelHeight", -5),
+            ("orientation", 9),
+            ("contentType", ""),
+        ]
+
+        for (key, value) in cases {
             var root = try json(of: package)
             var photos = try XCTUnwrap(root["photos"] as? [[String: Any]])
             photos[0][key] = value
