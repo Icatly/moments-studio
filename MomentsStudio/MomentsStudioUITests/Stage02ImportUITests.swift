@@ -47,34 +47,47 @@ final class Stage02ImportUITests: XCTestCase {
         XCTAssertTrue(importEntry.waitUntilEnabled(), "The import entry never became tappable.")
         importEntry.tap()
 
-        // The picker is system UI. Its own Cancel control is the concrete proof
-        // that it opened, so this test cannot pass by doing nothing.
-        let pickerCancel = app.buttons["Cancel"]
-        let pickerNavigationBar = app.navigationBars["Photos"]
+        // Readiness is the native `Photos` navigation bar — not the mere existence
+        // of any Cancel control. Run 37149876593's screen recording shows the
+        // picker's initialization screen first: a Cancel is on screen for several
+        // seconds before the Photos navigation, segmented control and grid appear,
+        // and tapping that early Cancel does not dismiss the picker. The observed
+        // native hierarchy (run 37147120379, iOS 18.5) places the real Cancel
+        // inside `NavigationBar identifier: 'Photos'`.
+        let photosNavigationBar = app.navigationBars["Photos"]
+        XCTAssertTrue(
+            photosNavigationBar.waitForExistence(timeout: 20),
+            "The native Photos navigation never appeared.\n\(app.debugDescription)"
+        )
 
-        let pickerAppeared = pickerCancel.waitForExistence(timeout: 20)
-            || pickerNavigationBar.waitForExistence(timeout: 5)
-        XCTAssertTrue(pickerAppeared, "The system photo picker did not appear.")
-        XCTAssertTrue(pickerCancel.exists, "The picker is open but exposes no Cancel control.")
-
+        // Query Cancel inside that observed native scope and press it once it can
+        // actually receive the tap.
+        let pickerCancel = photosNavigationBar.buttons["Cancel"]
+        XCTAssertTrue(
+            pickerCancel.waitUntilEnabledAndHittable(),
+            "The picker's Cancel control never became usable.\n\(app.debugDescription)"
+        )
         pickerCancel.tap()
 
-        // A real bounded absence wait: `waitForExistence` returns immediately
-        // while the element still exists, so it cannot be used to assert that
-        // the picker went away.
+        // Dismissal is proven by the control *and* the native navigation going
+        // away — this is a synchronization correction, not a longer timeout.
         XCTAssertTrue(
             pickerCancel.waitForDisappearance(),
-            "Cancel must dismiss the picker instead of leaving it on screen."
+            "The picker's Cancel control did not go away.\n\(app.debugDescription)"
+        )
+        XCTAssertTrue(
+            photosNavigationBar.waitForDisappearance(),
+            "The native Photos navigation did not go away.\n\(app.debugDescription)"
         )
 
         let importEntryAfterDismissal = element("editor.importPhotos", in: app)
         XCTAssertTrue(
             importEntryAfterDismissal.waitUntilEnabled(),
-            "The editor must be interactive again after the picker is dismissed."
+            "The editor must be interactive again after the picker is dismissed.\n\(app.debugDescription)"
         )
         XCTAssertTrue(
             importEntryAfterDismissal.isHittable,
-            "The import entry must be hittable again after the picker is dismissed."
+            "The import entry must be hittable again after the picker is dismissed.\n\(app.debugDescription)"
         )
     }
 

@@ -1,0 +1,13 @@
+# Stage02 Architect FIX09 — wait for the real native picker before Cancel
+
+Read Round18 and raw run37149876593. OwnerPENDING; Stage02 only, Stage03 forbidden. Sourceb9cf5a7 compiled:80unit+4UI pass, only existing Cancel smoke fails at line65. The new complete import/preview/removal/reimport flow PASS54.357sec and its actual screenshot was visually reviewed. Preserve every85 method and every full-flow assertion.
+
+## Authorized minimal correction
+
+1. Modify ONLY testImportPickerCanBeDismissedBackToTheEditor in Stage02ImportUITests.swift. Current broad app.buttons["Cancel"].exists can match the native initialization screen: actual video shows Loading with Cancel before Photos navigation/grid exists. Wait positively for app.navigationBars["Photos"] within a finite timeout (existing20seconds appropriate); no fallback treating early Cancel alone as ready.
+2. Within that observed native Photos navigation bar, use typed buttons["Cancel"]. Require bounded enabled+hittable readiness before ONE tap. Existing UITestSupport waitUntilEnabled can be combined with waitUntilHittable; check helpers first. Preserve actual Photos/navigation scope; do not select a photo merely to cancel, require nonempty library, use coordinates, inject controls, sleep, retry taps/relaunch, skip or soften assertions.
+3. After tapping keep the bounded wait for real Cancel disappearance AND require Photos navigation disappearance, followed by the existing Editor import entry enabled+hittable proof. If readiness or dismissal fails, include app.debugDescription in assertion messages to retain actual native state. This is a synchronization correction, not a longer dismissal timeout alone.
+4. Change NO production Swift, serialized fields, dependencies, navigation, processing/storage, full-flow test or retained preview screenshot logic, workflow/project/tools. Do not make assumptions about Apple internal enabled states. Run8 proves a readiness window but does not prove a production callback bug.
+5. Run actual Windows structural/tree-sitter/diff checks; report exact checks and85names retained. macOS tests and 17.2 runtime for FIX09 remain UNVERIFIED on Windows. Write .ai/reports/STAGE-02-FIX-09-REPORT.md and update handoff truthfully; preserve earlier raw evidence/history. Latest run8 totals85/84/1/0, complete flow passed; no valid new delivery app package yet.
+
+Architect owns push, existing free cloud workflow and Appetize path. Do not push/dispatch/upload/change accounts/consumeAppetize or begin nextStage. Stop at READY_FOR_ARCHITECT_REVIEW and report actual checks. Anything beyond this requires Architect decision.
