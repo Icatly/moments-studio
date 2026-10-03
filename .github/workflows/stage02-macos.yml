@@ -1,0 +1,77 @@
+# Owner authorized private cloud build on 2026-10-03.
+# Stage02 tests and runtime are unverified until this workflow is actually executed.
+name: Stage 02 macOS verification
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Record environment and select an available iPhone simulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p stage02-artifacts
+          test "$(uname -m)" = arm64
+          xcodebuild -version | tee stage02-artifacts/xcode-version.txt
+          git rev-parse HEAD > stage02-artifacts/source-commit.txt
+          xcrun simctl list devices available --json > stage02-artifacts/devices.json
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          data = json.loads(Path('stage02-artifacts/devices.json').read_text())
+          phones = [(runtime, d) for runtime, devices in data['devices'].items()
+                    if '.iOS-' in runtime for d in devices
+                    if d.get('isAvailable') and d['name'].startswith('iPhone')]
+          if not phones:
+              raise SystemExit('No available iPhone simulator; inspect devices.json')
+          runtime, device = phones[0]
+          Path('stage02-artifacts/destination.txt').write_text(f"{runtime}: {device['name']} ({device['udid']})\n")
+          with open(os.environ['GITHUB_ENV'], 'a') as out:
+              out.write(f"STAGE02_SIMULATOR_ID={device['udid']}\n")
+          PY
+      - name: Seed synthetic Photos library fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/generate_stage02_photo_fixtures.py stage02-artifacts/photo-fixtures
+          xcrun simctl bootstatus "$STAGE02_SIMULATOR_ID" -b
+          xcrun simctl addmedia "$STAGE02_SIMULATOR_ID" stage02-artifacts/photo-fixtures/*.png
+      - name: Build and execute unit and UI tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild test -project MomentsStudio/MomentsStudio.xcodeproj \
+            -scheme MomentsStudio -configuration Debug \
+            -destination "platform=iOS Simulator,arch=arm64,id=$STAGE02_SIMULATOR_ID" \
+            -derivedDataPath "$RUNNER_TEMP/Stage02DerivedData" \
+            -resultBundlePath stage02-artifacts/Stage02.xcresult \
+            -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee stage02-artifacts/xcodebuild.log
+      - name: Package simulator app and capture launch
+        shell: bash
+        run: |
+          set -euo pipefail
+          stage02_app="$RUNNER_TEMP/Stage02DerivedData/Build/Products/Debug-iphonesimulator/MomentsStudio.app"
+          test -d "$stage02_app"
+          ditto -c -k --sequesterRsrc --keepParent "$stage02_app" stage02-artifacts/MomentsStudio-simulator.zip
+          shasum -a 256 stage02-artifacts/MomentsStudio-simulator.zip > stage02-artifacts/app-sha256.txt
+          xcrun simctl bootstatus "$STAGE02_SIMULATOR_ID" -b
+          xcrun simctl install "$STAGE02_SIMULATOR_ID" "$stage02_app"
+          xcrun simctl launch "$STAGE02_SIMULATOR_ID" com.example.MomentsStudio
+          sleep 2
+          xcrun simctl io "$STAGE02_SIMULATOR_ID" screenshot stage02-artifacts/launch.png
+      - name: Preserve build evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: stage02-build-and-evidence
+          path: stage02-artifacts/
+          retention-days: 2
+          if-no-files-found: error
