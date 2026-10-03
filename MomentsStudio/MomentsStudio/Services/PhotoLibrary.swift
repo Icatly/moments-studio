@@ -203,7 +203,7 @@ actor PhotoLibrary {
 
         let projectID = package.project.id
         let assetID = UUID()
-        let assetReference = PhotoLibraryPath.assetDirectoryReference(projectID: projectID, assetID: assetID)
+        let assetReference = PhotoLibraryPath.assetDirectoryReference(projectID, assetID: assetID)
         var warnings: [String] = []
 
         do {
@@ -244,7 +244,7 @@ actor PhotoLibrary {
             try checkCancellation()
 
             let originalReference = PhotoLibraryPath.originalReference(
-                projectID: projectID,
+                projectID,
                 assetID: assetID,
                 fileExtension: inspection.fileExtension
             )
@@ -335,7 +335,7 @@ actor PhotoLibrary {
 
         var warnings: [String] = []
         let assetReference = PhotoLibraryPath.assetDirectoryReference(
-            projectID: package.project.id,
+            package.project.id,
             assetID: assetID
         )
         if let target = try? resolvedLibraryPath(assetReference, label: assetReference),

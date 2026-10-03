@@ -106,7 +106,7 @@ enum PhotoLibraryPath {
 
     /// `Projects/<projectID>/assets/<assetID>/original.<ext>`
     static func originalReference(_ projectID: UUID, assetID: UUID, fileExtension: String) -> String {
-        "\(assetDirectoryReference(projectID: projectID, assetID: assetID))/\(FileKind.original.rawValue).\(fileExtension.lowercased())"
+        "\(assetDirectoryReference(projectID, assetID: assetID))/\(FileKind.original.rawValue).\(fileExtension.lowercased())"
     }
 
     /// `Projects/<projectID>/assets/<assetID>/<kind>.<ext>`
@@ -116,7 +116,7 @@ enum PhotoLibraryPath {
         assetID: UUID,
         fileExtension: String
     ) -> String {
-        "\(assetDirectoryReference(projectID: projectID, assetID: assetID))/\(kind.rawValue).\(fileExtension.lowercased())"
+        "\(assetDirectoryReference(projectID, assetID: assetID))/\(kind.rawValue).\(fileExtension.lowercased())"
     }
 
     /// Parses a reference into identity plus file kind, rejecting anything that

@@ -170,7 +170,7 @@ final class ProjectStoreTests: XCTestCase {
                 id: assetID,
                 kind: .photo,
                 localReference: PhotoLibraryPath.originalReference(
-                    projectID: projectID,
+                    projectID,
                     assetID: assetID,
                     fileExtension: "jpg"
                 )

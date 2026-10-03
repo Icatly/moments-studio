@@ -50,7 +50,7 @@ final class PhotoLibraryTests: XCTestCase {
 
     private func assetDirectory(_ projectID: UUID, _ assetID: UUID) -> URL {
         rootURL.appendingPathComponent(
-            PhotoLibraryPath.assetDirectoryReference(projectID: projectID, assetID: assetID),
+            PhotoLibraryPath.assetDirectoryReference(projectID, assetID: assetID),
             isDirectory: true
         )
     }

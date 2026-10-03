@@ -16,7 +16,7 @@ final class ProjectPackageTests: XCTestCase {
                 id: assetID,
                 kind: .photo,
                 localReference: PhotoLibraryPath.originalReference(
-                    projectID: projectID,
+                    projectID,
                     assetID: assetID,
                     fileExtension: "jpg"
                 )
@@ -209,7 +209,7 @@ final class ProjectPackageTests: XCTestCase {
             // A different file kind than the field promises.
             (
                 "thumbnail",
-                PhotoLibraryPath.originalReference(projectID: projectID, assetID: assetID, fileExtension: "jpg")
+                PhotoLibraryPath.originalReference(projectID, assetID: assetID, fileExtension: "jpg")
             ),
             // Missing extension.
             ("preview", "Projects/\(projectID.uuidString)/assets/\(assetID.uuidString)/preview"),
@@ -237,7 +237,7 @@ final class ProjectPackageTests: XCTestCase {
         let projectID = UUID()
         let assetID = UUID()
 
-        let original = PhotoLibraryPath.originalReference(projectID: projectID, assetID: assetID, fileExtension: "HEIC")
+        let original = PhotoLibraryPath.originalReference(projectID, assetID: assetID, fileExtension: "HEIC")
         let parsed = try PhotoLibraryPath.parse(original)
         XCTAssertEqual(parsed.projectID, projectID)
         XCTAssertEqual(parsed.assetID, assetID)

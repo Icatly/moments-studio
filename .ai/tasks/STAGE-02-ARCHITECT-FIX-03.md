@@ -1,0 +1,7 @@
+# DSH Task — Stage 02 Architect Fix 03
+
+2026-10-03 Architect, current Stage02 only. Source20e9d5f4b12be4010862a46d61b7e745aeccbd7e macOS run https://github.com/Icatly/moments-studio/actions/runs/37132895287 failed compilation. Actual log .ai/build/downloads/run-37132895287/evidence/xcodebuild.log; no tests executed, no runnable Stage02 package.
+
+Actual diagnostics at PhotoLibraryPath.swift:109/119 and PhotoLibrary.swift:206/246/337: extraneous argument label 'projectID:' in call. Internal assetDirectoryReference signature has an unlabeled first argument (_ projectID: UUID), but callers use projectID:. Preserve the existing helper declarations and generated path strings; remove the extra first-argument label at every production AND test caller. Audit related manifestReference/originalReference/projectReference unlabeled declarations and calls as well, including multiline calls. Do not rename helper signatures, persisted fields, path structure or rewrite unrelated code.
+
+Preserve all tests, contracts and previous fixes. Do not add mirrored argument-label tests: only actual Xcode compilation validates this issue. Run structure/static syntax and diff whitespace checks once after the correction. Brief report .ai/reports/STAGE-02-FIX-03-REPORT.md with exact files/checks and previous real failed-run source/result; Windows Xcode remains unavailable. Update current handoff/status truthfully, then stop READY_FOR_ARCHITECT_REVIEW. No Stage03, cloud/workflow/account/push/upload actions.
