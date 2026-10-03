@@ -1,6 +1,6 @@
 # Stage 01 用户操作验收
 
-当前：WAITING_FOR_USER。Architect Review 已完成，等待你亲自检查。
+当前：Stage01已于2026-10-03由所有者明确确认验收，状态APPROVED。本页保留已批准版本的操作步骤；此包不是Stage02，新阶段需独立构建与验收。
 
 ## 打开可运行版本
 

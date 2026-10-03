@@ -4,23 +4,23 @@ Stage: 01
 
 Name: Project Foundation and iOS Application Skeleton
 
-Status: WAITING_FOR_USER
+Status: APPROVED
 
-User Decision: PENDING
+User Decision: APPROVED
 
-Architect 于2026-10-03完成 Round 04 Review，并确认当前源码已有可运行模拟器包，按 AGENTS.md 转入用户验收。DSH的交付止于 READY_FOR_ARCHITECT_REVIEW；本次状态推进由 Architect 完成。以下判断必须由项目所有者亲自作出，均保持未勾选。
+所有者于2026-10-03明确回复：“确认验收 继续下一阶段任务”。据此将Stage01记为APPROVED，以下9项记录所有者的整体验收确认，不是DSH或Architect代替判断。认可范围为Stage01基础框架和功能外壳，不包含最终UI设计、后续照片能力或未执行的设备/辅助功能技术验证。批准包源码为6e8f449e83141f209051081451613a3f22ca0cbb；Stage02实现已获授权，仍须独立验收。
 
 ## 验收清单
 
-- [ ] App launches successfully
-- [ ] Home screen loads
-- [ ] Create Project works
-- [ ] Editor placeholder opens
-- [ ] Back navigation works
-- [ ] Basic UI interaction feels responsive
-- [ ] No visible critical UI errors
-- [ ] Project models compile and tests pass
-- [ ] User has reviewed the Stage 01 build
+- [x] App launches successfully
+- [x] Home screen loads
+- [x] Create Project works
+- [x] Editor placeholder opens
+- [x] Back navigation works
+- [x] Basic UI interaction feels responsive
+- [x] No visible critical UI errors
+- [x] Project models compile and tests pass
+- [x] User has reviewed the Stage 01 build
 
 ## 当前版本与证据
 
@@ -29,11 +29,11 @@ Architect 于2026-10-03完成 Round 04 Review，并确认当前源码已有可�
 - [亲自运行](https://appetize.io/app/ios/com.example.MomentsStudio?device=iphone14pro&osVersion=17.2&toolbar=true)：Appetize iPhone14Pro / iOS17.2；现有应用已更新为本包，需登录所有者账户。
 - [操作说明](STAGE-01-操作说明.md)；完整技术结论、SHA-256与限制见 [Round 04](../reviews/STAGE-01-ARCHITECT-ROUND-04.md)。
 - Architect 已实查最新包浅/深色按钮与两处footer，并检查深色XXXL下Home、创建/返回、Editor、Settings、About/Done，未观察到关键遮挡或崩溃。首次构建的两个项目/重开路径证据仅作历史，不冒充本次逐项实查。
-- 本机Windows未运行Xcode；云端检查由Architect执行。所有者体验、判断与批准仍待本人完成。
+- 本机Windows未运行Xcode；云端检查由Architect执行。所有者已明确确认验收，依据为上方原话。
 
 ## 待验收与已知限制
 
-唯一当前闸门是所有者亲自验收。Appetize运行模拟器，不能直接安装到iPhone，不能证明真机性能；免费会话3分钟，到时可重开但内存项目清空。本阶段仅应用外壳，没有导入、编辑、AI或导出。当前英文占位、图标/产品身份待后续批准阶段决定。精确iOS17.0/Xcode15.4、Xcode26、iPad、VoiceOver及更大辅助功能字号未验证。非零警告及判断见Round04。
+Stage01闸门已由所有者明确确认。以下限制在批准时仍存在，不扩张已批准范围。Appetize运行模拟器，不能直接安装到iPhone，不能证明真机性能；免费会话3分钟，到时可重开但内存项目清空。本阶段仅应用外壳，没有导入、编辑、AI或导出。当前英文占位、图标/产品身份待后续批准阶段决定。精确iOS17.0/Xcode15.4、Xcode26、iPad、VoiceOver及更大辅助功能字号未验证。非零警告及判断见Round04。
 
 ## 历史记录说明
 
@@ -66,3 +66,9 @@ Architect 于2026-10-03完成 Round 04 Review，并确认当前源码已有可�
 ## 批准规则
 
 只有项目所有者亲自检查并明确表示“Stage 01 通过”，才可标记 APPROVED。测试、构建、实现或Architect Review完成都不构成批准。提出修改意见即 CHANGES_REQUESTED，只修当前Stage；Stage02–15未批准。
+
+## 所有者批准记录
+
+| 日期 | 决定者 | 原话 | 结果 |
+| --- | --- | --- | --- |
+| 2026-10-03 | 项目所有者 | 确认验收 继续下一阶段任务 | Stage01 APPROVED；允许定义并执行Stage02；不批准Stage02或Stage03验收 |

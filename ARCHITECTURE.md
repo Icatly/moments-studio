@@ -1,11 +1,11 @@
 # ARCHITECTURE.md
 
-Stage 01 架构基线。描述**现存代码**的结构与**预留的扩展位置**；未实现的能力明确标注为未实现。
+现存代码仍为Stage01基础框架（所有者2026-10-03已批准）。Stage02照片导入/素材管线执行已授权，设计见 [Stage02架构](docs/architecture/STAGE-02-PHOTO-ASSET-PIPELINE.md)，尚未实现；下文现存结构与字段仍适用于Stage01。新增包模型、文件actor、编排状态和只读预览路由严格按Stage02设计实施，不提前改现有编码契约。
 
 ## 1. 当前范围
 
 已实现（源码与工程）：SwiftUI 应用外壳（Home / 编辑器占位页 / 设置占位页）、导航、最小可序列化模型、内存项目状态、测试源码与工程文档。
-**运行已验证的范围**：Architect 在macOS云端对源码 `6e8f449` 使用Xcode16.4 / iOS18.5执行编译及29个单元、2个UI测试（零失败），安装启动成功；并在Appetize iPhone14Pro / iOS17.2检查外壳交互、浅/深色与深色XXXL。Windows本机仍无Xcode；精确iOS17.0 / Xcode15.4、Xcode26和真机性能未验证。证据见 [.ai/reviews/STAGE-01-ARCHITECT-ROUND-04.md](.ai/reviews/STAGE-01-ARCHITECT-ROUND-04.md)。当前WAITING_FOR_USER，所有者尚未批准。
+**运行已验证的范围**：Architect 在macOS云端对源码 `6e8f449` 使用Xcode16.4 / iOS18.5执行编译及29个单元、2个UI测试（零失败），安装启动成功；并在Appetize iPhone14Pro / iOS17.2检查外壳交互、浅/深色与深色XXXL。Windows本机仍无Xcode；精确iOS17.0 / Xcode15.4、Xcode26和真机性能未验证。证据见 [.ai/reviews/STAGE-01-ARCHITECT-ROUND-04.md](.ai/reviews/STAGE-01-ARCHITECT-ROUND-04.md)。Stage01已由所有者明确批准；Stage02当前SPEC_READY，尚无构建结果。
 未实现：照片导入、图像处理、拼贴、抠图/剪影/贴纸、AI 分析、滤镜/调色、动画、视频、导出、云、账户、付费、最终视觉。
 
 ## 2. 应用分层与目录

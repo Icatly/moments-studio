@@ -4,23 +4,23 @@
 
 | 项 | 值 |
 | --- | --- |
-| 当前 Stage | **Stage 01 — Project Foundation and iOS Application Skeleton** |
-| Stage 状态 | `WAITING_FOR_USER`（Architect Round04完成；所有者尚未批准） |
-| 实现 | 源码与工程已完成（应用外壳、导航、基础模型、内存状态、测试、文档）；两轮修正记录见 [.ai/acceptance/STAGE-01.md](.ai/acceptance/STAGE-01.md) |
-| Xcode 构建 / 测试 | 当前源码 `6e8f449` 在macOS云端实际编译及31项测试通过；Windows本机未执行 |
-| 可运行版本 | 当前包已上传Appetize，见 [操作说明](.ai/acceptance/STAGE-01-操作说明.md) |
-| 下一步 | 所有者亲自验收；提出修改即退回当前Stage；未批准不得进入Stage02 |
+| 当前 Stage | **Stage02 — Photo Import and Asset Pipeline** |
+| Stage 状态 | `IMPLEMENTING`；DSH已开始，Stage02验收PENDING |
+| 实现 | Stage01已完成；Stage02范围与接口已定义，DSH已确认开始实施 |
+| Xcode 构建 / 测试 | Stage02尚未执行；Stage01源码6e8f449已有31项测试通过证据 |
+| 可运行版本 | 当前仅有已批准Stage01包；Stage02没有运行产物 |
+| 下一步 | 执行 [Stage02 IMPLEMENT01](.ai/tasks/STAGE-02-IMPLEMENT-01.md)，交付至READY_FOR_ARCHITECT_REVIEW |
 
 Stage 01 的详细任务见 [.ai/tasks/STAGE-01-TASKS.md](.ai/tasks/STAGE-01-TASKS.md)，验收清单见 [.ai/acceptance/STAGE-01.md](.ai/acceptance/STAGE-01.md)。
 
-## 路线图（草案，未批准，可调整）
+## 路线图（Stage01已批准；Stage02实现已授权；后续为草案）
 
-以下阶段来自项目所有者 Prompt，**不是**已批准的工作队列。任何阶段都不得在项目所有者批准当前 Stage 之前开始。
+以下路线图来自原始Prompt。Stage01已通过，所有者明确要求继续Stage02；Stage02细化范围见执行任务和架构。Stage03–15仍未批准，不是自动执行队列。
 
 | Stage | 名称 | 说明 | 状态 |
 | --- | --- | --- | --- |
-| 01 | Project Foundation | 工程骨架、导航、基础模型、测试 | 等待所有者亲自验收 |
-| 02 | Photo Import and Asset Pipeline | 多图导入、沙盒素材存储、缩略图与预览素材 | 未批准 |
+| 01 | Project Foundation | 工程骨架、导航、基础模型、测试 | APPROVED（所有者2026-10-03明确确认） |
+| 02 | Photo Import and Asset Pipeline | 多图导入、原始副本/派生图、关联包与导入项目恢复 | IMPLEMENTING（DSH已开始，验收PENDING） |
 | 03 | Editable Canvas and Layer System | 可编辑画布、图层模型扩展、手势与变换 | 未批准 |
 | 04 | Deterministic Collage Layout Engine | 确定性布局引擎（同一文档 → 可复现结果） | 未批准 |
 | 05 | Photo Analysis Foundation | 每图测量、置信度、失败原因 | 未批准 |

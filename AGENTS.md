@@ -55,8 +55,9 @@
 ## 6. 阶段（Stage）规则
 
 - 一次只推进一个 Stage。未获批准不得开始新功能、新 Stage，也不得开始 `TASKS.md` 路线图中的下一步。
-- 当前 Stage：**Stage 01 — Project Foundation and iOS Application Skeleton**。
-- `TASKS.md` 中的 Stage 02–15 是**未批准、可调整的路线图草案**，不是待执行队列。
+- Stage01已于2026-10-03由项目所有者明确确认验收（原话：“确认验收 继续下一阶段任务”），状态APPROVED。
+- 当前 Stage：**Stage 02 — Photo Import and Asset Pipeline**；执行范围以 `docs/architecture/STAGE-02-PHOTO-ASSET-PIPELINE.md` 和 `.ai/tasks/STAGE-02-IMPLEMENT-01.md` 为准。Stage02尚未验收批准。
+- `TASKS.md` 中的 Stage03–15是**未批准、可调整的路线图草案**，不是待执行队列。
 
 ## 7. 性能原则
 
@@ -68,12 +69,14 @@
 ## 8. 视觉设计权威
 
 - 最终视觉由项目所有者批准；ChatGPT 作为 Design Reviewer 提供评审意见；DSH 不发明品牌风格。
-- Stage 01 只交付中性、系统原生、功能优先的外壳；临时 token 见 `MomentsStudio/MomentsStudio/DesignSystem/DesignTokens.swift`。
+- Stage01已验收基础外壳；Stage02延续中性、系统原生、功能优先的临时样式，仅增加照片导入与素材查看，不定义最终品牌；临时token见 `MomentsStudio/MomentsStudio/DesignSystem/DesignTokens.swift`。
 - 设计系统与视觉规范见 `docs/design/UI_DESIGN_SYSTEM.md`（当前状态：未定义）。
 - 用户照片在未来产品中始终是第一视觉焦点；禁止霓虹、紫蓝 AI 渐变、过量玻璃材质、满屏卡片、无意义动画、Web 控制台式布局。
 
 ## 9. 文档与仓库纪律
 
+- 新上下文或新协作者接续时，先读根目录 `项目要求与上下文交接.md`，再核对当前验收状态、最新 Review 与原始证据。
+- 按项目所有者要求，每次关键需求、决策、数据、实现/Review/构建进展或验收状态变化，及时更新该文件的当前快照与关键日志；不得通过更新文档代替所有者批准或扩大执行权限。
 - 文档保持简短、真实、可执行；不得把未实现的功能写成已实现。
 - 目录按实际代码出现；不为填充目录树而创建文件。
 - 每个 Stage 必须产出：有内容时的 `.ai/tasks/`、`.ai/reports/`、`.ai/reviews/`、`.ai/acceptance/` 文档。
@@ -83,3 +86,5 @@
 | 日期 | 变更 | 说明 |
 | --- | --- | --- |
 | 2026-10-02 | 初版 | Stage 01 由 DSH 建立治理基线；规则内容来自项目所有者 Prompt（唯一任务来源）与 `docs/产品与架构基线.md`。同日 Architect 以 `docs/Stage-01-Architect-Review备忘.md` 取代了先前的执行任务书 |
+| 2026-10-03 | 上下文交接入口 | 按项目所有者要求新增 `项目要求与上下文交接.md`，规定接续先读及关键事实持续更新；原有权限与验收闸门不变 |
+| 2026-10-03 | Stage01所有者批准 / Stage02启动 | 所有者明确确认验收并要求继续；Architect定义照片导入和素材管线范围，Stage03仍未批准 |
