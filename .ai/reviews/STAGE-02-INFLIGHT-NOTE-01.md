@@ -19,3 +19,11 @@ DSH继续IMPLEMENT01，并在交付前处理以下已观察到的问题：
 
 8. `DerivedImageView` 仅 image=nil 时一直展示 ProgressView，缺失/解码失败会永久转圈。需最小 loading/loaded/failed 状态，明确不可读取照片占位（可重试），并保证旧 reference 的 late result 不覆盖新 reference。`PhotoPreviewSheet` 当前显示原始 UTI（public.jpeg 等）；用户界面用 JPEG/PNG/HEIC 或合适的人类可读文本。这些不是最终视觉设计。
 9. 测试当前有 JPEG/PNG，但尚未见 HEIC 行为覆盖；按既有任务加入实际 ImageIO HEIC 合成与导入断言，不用格式常量镜像或无条件 skip 代替。
+
+10. `PhotoImportSection` 的 PhotosPicker 目前未传 `selectionBehavior: .ordered`，需落实架构规定的点击选择顺序（Apple API： https://developer.apple.com/documentation/swiftui/view/photospicker(ispresented:selection:maxselectioncount:selectionbehavior:matching:preferreditemencoding:photolibrary:) ）。Home Create 与 Import 不能仅在 loading 禁用，还应在 restore idle/failed 时禁用，直至 ready；保留原生 Retry。统一使用协调器就绪与 mutation 状态。
+
+11. `Stage02ImportUITests.testImportPickerCanBeDismissedBackToTheEditor` 当前在没有 Cancel 时仍然通过，只检查底层 editor 元素 exists，并不能证明 picker 曾打开/关闭。必须断言真实 picker 控件存在、执行 Cancel，再确认 editor 可操作；如跨进程需要 springboard/system app 查询，用真实系统 UI 查询，不加生产测试入口。保留 Stage01 smoke；新 Home loading 会导致 create exists 但尚未 enabled，测试应等待可操作就绪，避免偶发点击被禁用。
+
+12. `PhotoFileTransfer.stageCopy` 目前同步直接做 FileManager copy；需明确异步非 MainActor 文件边界，而不是以框架回调线程假设保证 UI 不阻塞。允许把该内部 helper 改为 nonisolated async 并在 importing 闭包 try await（当前 Swift5 模式/无 MainActor 默认隔离），不新增第二个 actor/队列/协议。100MiB regular-file 验证与取消检查应在 staging 复制之前；复制失败/取消清理自有新副本，不改源文件。清理调用也保持非 MainActor。现有模型编码、PhotoLibrary 核心公开方法不变。Apple FileRepresentation 官方 importing 闭包为 async throws，参考 https://developer.apple.com/documentation/CoreTransferable/FileRepresentation 。
+
+13. 路径修正实现中 `ensureLibraryDirectories -> createDirectory(rootURL) -> validatedInsideLibrary` 目前只接受 `root + "/"` 前缀，不接受 root 自身，因此所有恢复/导入在 ensure root 时即 invalidReference。仅根目录创建允许等于根，文件/asset删除仍需严格子路径。另，仅 root containment 不够：A/assets 的 symlink 指向库内 B/assets 会通过，并污染/清理 B。请最小地拒绝库根以下的 symlink alias（或验证每一目标与 canonical root+生成式相对路径完全一致），而不是 resolved 在库里就视为归属正确；合法 root 本身规范化可保留。加入首次空根恢复、root 内跨项目 symlink 与 UUID 命名普通文件不被清理的测试。

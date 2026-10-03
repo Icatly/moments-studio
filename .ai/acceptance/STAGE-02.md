@@ -4,11 +4,11 @@ Stage: 02
 
 Name: Photo Import and Asset Pipeline
 
-Status: IMPLEMENTING
+Status: READY_FOR_ARCHITECT_REVIEW
 
 User Decision: PENDING
 
-Stage01于2026-10-03由所有者明确批准，并授权继续下一阶段。Stage02需求、架构、执行任务已定义；实现/测试/Review/可运行版本尚未完成。本文件不表示Stage02已获验收批准。
+Stage01于2026-10-03由所有者明确批准，并授权继续下一阶段。Stage02 需求、架构与执行任务已定义；DSH 已完成实现，并处理完 Architect 实现中检查 `.ai/reviews/STAGE-02-INFLIGHT-NOTE-01.md` 的**全部 13 项**（该记录最初为 10 项，随后扩展），交付到 `.ai/reports/STAGE-02-REPORT.md`。**本机（Windows）无 Xcode：70 个单元测试 + 4 个 UI 测试从未执行，也没有 Stage 02 可运行版本。** 本文件不表示 Stage02 已获验收批准。
 
 ## 所有者验收清单
 
@@ -28,11 +28,40 @@ Stage01于2026-10-03由所有者明确批准，并授权继续下一阶段。Sta
 
 需求/完成标准：[Stage02架构](../../docs/architecture/STAGE-02-PHOTO-ASSET-PIPELINE.md)。执行任务：[IMPLEMENT01](../tasks/STAGE-02-IMPLEMENT-01.md)。当前没有Stage02运行包；Stage01 Appetize链接不能冒充新阶段版本。用户操作说明在真实构建与Review完成后提供。
 
+## 每项当前证据（DSH 交付，未验收）
+
+| 清单项 | 当前状态与证据 |
+| --- | --- |
+| 多选导入、顺序与数量 | **代码已实现，未运行**：`PhotoImportSection` 使用 ordered `PhotosPicker`；`PhotoImportModel` 串行逐项导入、`photos` 数组即顺序；单元测试覆盖顺序与追加（未执行） |
+| 不申请完整图库权限、原图不被修改 | **代码符合，未运行**：Info.plist 未声明任何照片权限键；导入为字节复制（单测断言 original 与源文件字节相等、源文件未被改动；未执行） |
+| 原始文件、缩略图与预览图正确保存，方向、比例与透明图显示正确 | **代码已实现，未运行**：ImageIO 派生 320/2048（与源长边取 min，不上采样）、两个派生图重绘为 8-bit sRGB、EXIF 1...8（含镜像半图取色断言）、透明 PNG 保留 alpha、original 字节不变；JPEG/PNG/HEIC 合成导入测试已写（未执行） |
+| 追加、只读预览、移除、跨项目隔离 | **代码已实现，未运行**：`SheetRoute.photoPreview` 只读预览（人类可读格式名）、确认移除；单测覆盖“移除只删本项目文件”“移除失败不改盘”（未执行） |
+| 进度、取消、失败提示 | **代码已实现，未运行**：进度+取消按钮、错误摘要、取消回滚与 manifest 失败回滚单测；并发 mutation 被串行化；每项成功/失败/取消都清理应用自有 staging 副本（均未执行） |
+| 重启恢复、未保存空项目限制明确 | **代码已实现，未运行**：启动异步恢复 + Home loading/重试/警告；文案区分未保存空项目与已保存项目；恢复测试已写（未执行） |
+| 导入时导航可操作、浅深色与大字号 | **未验证**：需模拟器实查 |
+| 自动测试与 macOS 构建实际执行、Architect Review | **未执行**：需 Architect 云端构建/测试；Windows 侧只完成结构、语法与契约静态校验 |
+| 所有者亲自检查并决定 | **未开始** |
+
+## 已披露限制（详见 `.ai/reports/STAGE-02-REPORT.md` 第 7、10 节）
+
+- 未编译、未运行任何测试；首次 Xcode 构建可能出现 API 标签类修正（不影响语义）。
+- 未验证真实选择器多选、真实照片、terminate/relaunch 恢复、相册原图不变、大图批次耗时/内存与取消反应、iPad/VoiceOver。
+- 仅静态图（JPEG/PNG/HEIC/HEIF）；拒绝 RAW、动画 GIF、视频；不承诺 HDR 保真。
+- 上限 20 张/项目、100 MiB/图、80 MP/图、320/2048 为本阶段工程策略，未做真机测量；无内容去重。
+- 恢复时文件缺失的照片仍列出并给出 warning；清理失败只告警、后续启动重试。
+
 ## 状态记录
 
 | 日期 | 状态 | 触发 |
 | --- | --- | --- |
 | 2026-10-03 | SPEC_READY | 所有者批准Stage01并要求继续；Architect完成Stage02需求、架构与执行任务 |
 | 2026-10-03 | IMPLEMENTING | 执行任务已实际发送，DSH回复“Stage 01 approved — starting Stage 02”并开始读取/实现 |
+| 2026-10-03 | READY_FOR_ARCHITECT_REVIEW | DSH 完成实现与 Windows 侧校验（工程 126 对象/37 Swift 文件语法 0 错误/契约一致性 PASS），交付 `.ai/reports/STAGE-02-REPORT.md` 与 `.ai/reviews/STAGE-02-REVIEW-PACKET.md`；**测试与构建仍未执行** |
+| 2026-10-03 | READY_FOR_ARCHITECT_REVIEW（含实现中修正） | 处理 Architect `.ai/reviews/STAGE-02-INFLIGHT-NOTE-01.md` 的实现中检查（该记录当时 10 项）：派生图遮蔽/8-bit sRGB/受限解码/路径与 symlink 校验/单 mutation 串行/提交后仍 apply/staging 清理/图片三态/HEIC 测试/ordered 选择与 ready 门控，新增 8 个单元测试；本机静态校验通过，仍未编译未运行 |
+| 2026-10-03 | READY_FOR_ARCHITECT_REVIEW（13 项完成） | Architect 将同一记录扩展为 **13 项**；DSH 补做第 11–13 项（picker smoke 非空洞 + 等待 enabled；`nonisolated async` staging 且字节/取消前置、失败只清自有副本；库根可创建 + 解析结果必须等于 canonical root+生成式相对路径、UUID 命名普通文件不被清理）并新增 3 个回归测试。本机：128 对象/38 Swift 文件 5120 行语法 0 错误/`verify_project.py` PASS/`INFLIGHT_NOTE_01_CHECK_13` PASS/`STAGE02_CONFORMANCE` PASS；合计 **70 单元 + 4 UI**。**仍未编译未运行**，DSH 已停止开发 |
 
 只有所有者亲自检查并明确通过后可APPROVED。提出修改意见即CHANGES_REQUESTED，仅修当前阶段。DSH交付只到READY_FOR_ARCHITECT_REVIEW；Stage03–15未批准。
+
+2026-10-03 22:16 当前更新：初版交付文档生成后，Architect继续发现并记录13项范围内缺陷/风险，DSH正在修正，尚未停止开发。状态回到IMPLEMENTING，最终Review仍未完成；所有者判断保持全部未勾选。依据 `.ai/reviews/STAGE-02-INFLIGHT-NOTE-01.md`。
+
+2026-10-03 22:2x 续：上一条已被本轮完成取代——13 项实现中检查全部处理完毕（含扩展后的第 11–13 项），本机静态校验重跑通过，DSH 已停止开发并把本文件状态交回 `READY_FOR_ARCHITECT_REVIEW`。**测试与构建仍未执行**，最终 Review、可运行版本与所有者判断仍未完成。
