@@ -1,6 +1,6 @@
 # Stage 02 用户验收操作说明
 
-状态：暂停交付验收。2026-10-04已上传Stage02源码0121261运行包，84项macOS测试实际通过，但iOS17.2点预览退出（缺PhotoImportModel，Round12/FIX06）。等待修正新包；现有包不可批准Stage02。以下操作顺序仍为修正后的验收草案。
+状态：暂停交付验收。2026-10-04已上传Stage02源码0121261运行包，84项macOS测试实际通过，但iOS17.2点预览退出（缺PhotoImportModel，Round12/FIX06）。FIX06/source96dece5已编译，85项中84通过、新增UI在选择照片测试定位失败（Round14/FIX07），尚未验证修正后的预览。等待修正新包；现有包不可批准Stage02。以下操作顺序仍为修正后的验收草案。
 
 ## 本阶段检查什么
 
@@ -17,13 +17,13 @@ Architect已准备合成竖图、横图、透明PNG，位置 `.ai/build/download
 3. 再次Import Photos追加一张（允许再次选相同照片，独立副本）。检查原有照片仍在、总数增加。
 4. 打开一张预览 → Remove → Cancel，照片保持；再次Remove并确认，只有本项目这一副本移除，相册照片仍在。
 5. 返回Home，再打开同一项目，照片与数量保持。
-6. 在同一个模拟器会话内使用工具栏 Restart App重新启动应用，再检查原项目与照片恢复。不要用结束会话/刷新网页代替重新启动。
+6. 在同一个模拟器会话内通过 iOS 应用切换器关闭 Moments Studio，再点应用图标重新启动，核对项目与照片恢复。当前 Appetize 工具栏已观察到 Home 等按钮，但未观察到 Restart App；不要假定有该按钮。也不要用结束会话/刷新网页代替应用重启。
 7. 新一批导入中Cancel或返回Home：已保存项保留，剩余项停止；取消不显示为失败。小测试图处理可能太快，需要较大的测试图才能观察到取消。
 8. 检查浅/深色和大字号下的导入、数量、预览、移除确认与返回能看清/点击。
 
 ## 模拟器边界
 
-Appetize每个新会话是全新安装，结束会话后的数据消失不等于应用本地保存失败；恢复验收必须在同一设备会话内Restart App。[官方会话说明](https://support.appetize.io/how-do-i-maintain-app-state-between-sessions)。[官方媒体说明](https://docs.appetize.io/features/media)目前列出iOS支持PNG/JPEG/JPG/GIF/MP4、单文件50MB，不列HEIC；Stage02的HEIC支持由macOS测试补证，不声称Appetize可直接上传HEIC。免费会话额度用完按所有者要求暂停，等重置；不付费。
+Appetize每个新会话是全新安装，结束会话后的数据消失不等于应用本地保存失败；恢复验收必须在同一设备会话内关闭应用再启动。[官方会话说明](https://support.appetize.io/how-do-i-maintain-app-state-between-sessions)。[官方媒体说明](https://docs.appetize.io/features/media)目前列出iOS支持PNG/JPEG/JPG/GIF/MP4、单文件50MB，不列HEIC；Stage02的HEIC支持由macOS测试补证，不声称Appetize可直接上传HEIC。免费会话额度用完按所有者要求暂停，等重置；不付费。
 
 ## 验收决定
 

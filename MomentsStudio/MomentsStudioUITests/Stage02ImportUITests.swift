@@ -248,24 +248,43 @@ final class Stage02ImportUITests: XCTestCase {
         let diagnostic: String
     }
 
-    /// Taps the first native photo cell **in the picker's own grid**.
+    /// Taps the first real photo in the picker's grid.
     ///
-    /// Reported assumption: the picker exposes its grid as collection-view cells
-    /// and/or images. The queries stay scoped to collection views on purpose — the
-    /// previous unscoped `app.images` fallback could match unrelated app icons, so
-    /// it was removed rather than kept as a blind fallback.
+    /// Locators recorded from the native hierarchy dump of run 37147120379
+    /// (macOS 15.7.9 / Xcode 16.4 / iPhone 16 Pro / iOS 18.5): the system picker's
+    /// grid is a `ScrollView` with identifier "content_scroll_view", each real
+    /// photo is an `Image` with identifier "PXGGridLayout-Info" and a label such
+    /// as "Photo, October 03, 7:14 PM", and the confirm control is a button
+    /// labelled "Add" (Disabled until something is selected). That hierarchy has
+    /// **no collection views**, which is exactly why the earlier
+    /// `collectionViews.cells`/`collectionViews.images` assumption failed before
+    /// any import happened.
+    ///
+    /// These are native accessibility queries over system UI (not private APIs),
+    /// and the scope stays narrow on purpose: no unscoped `app.images`, no screen
+    /// coordinates and no blind fallback — if the scope or the photo identifier
+    /// changes on another OS, this fails loudly with the diagnostic below.
     private func selectFirstPhotoCell(in app: XCUIApplication) -> PickerInteraction {
-        var tried: [String] = []
-        for (name, query) in [("collectionViews.cells", app.collectionViews.cells),
-                             ("collectionViews.images", app.collectionViews.images)] {
-            let cell = query.element(boundBy: 0)
-            let exists = cell.waitForExistence(timeout: 10)
-            tried.append("\(name): exists=\(exists) hittable=\(exists ? String(describing: cell.isHittable) : "n/a")")
-            guard exists, cell.isHittable else { continue }
-            cell.tap()
-            return PickerInteraction(succeeded: true, diagnostic: "")
+        let scope = app.scrollViews["content_scroll_view"]
+        guard scope.waitForExistence(timeout: 20) else {
+            return PickerInteraction(
+                succeeded: false,
+                diagnostic: "picker scroll view 'content_scroll_view' not found"
+            )
         }
-        return PickerInteraction(succeeded: false, diagnostic: tried.joined(separator: "; "))
+
+        let photos = scope.images.matching(identifier: "PXGGridLayout-Info")
+        let photo = photos.element(boundBy: 0)
+        guard photo.waitUntilHittable(timeout: 20) else {
+            return PickerInteraction(
+                succeeded: false,
+                diagnostic: "no hittable 'PXGGridLayout-Info' photo in 'content_scroll_view' "
+                    + "(exists=\(photo.exists) hittable=\(photo.isHittable) count=\(photos.count))"
+            )
+        }
+
+        photo.tap()
+        return PickerInteraction(succeeded: true, diagnostic: "")
     }
 
     /// Presses the picker's Add control once it is **enabled and hittable**: the

@@ -59,7 +59,7 @@ A View.environmentObject(_:) for PhotoImportModel may be missing as an ancestor 
 约定与假设（**需真实运行确认**，已在测试注释中写明）：
 
 - 选择器为系统 UI；`Cancel` 与 `Photos` 导航栏此前真实运行已验证可匹配。
-- 网格单元按 `app.collectionViews.cells` → `app.collectionViews.images` → `app.images` 的**原生查询**顺序取第一个可点元素；确认控件为 `Add`（系统标签）。
+- 网格单元定位：**已被 FIX-07 取代**。FIX-06 曾按 `app.collectionViews.cells` → `app.collectionViews.images` 猜测；实际 macOS 运行（run 37147120379，iOS 18.5）证明选择器里**没有 collection view**，该假设在导入之前即失败。现按原生层级改为 `app.scrollViews["content_scroll_view"]` + `scope.images.matching(identifier: "PXGGridLayout-Info")`（详见 `.ai/reports/STAGE-02-FIX-07-REPORT.md`）。确认控件为 `Add`（系统标签，未选中时为 Disabled）。
 - 确认框按 action sheet 优先（`app.sheets.buttons[...]`，回退 `app.alerts.buttons[...]`），避免匹配到工具栏自身的 "Remove"。
 - 缩略图 id 含运行时 UUID，故用 `identifier BEGINSWITH "editor.photo."` 前缀匹配，不猜测 UUID。
 - 全部等待均为有界 `waitForExistence` / `XCTNSPredicateExpectation`（新增 `XCUIElement.waitUntilHittable`），**无任意 sleep**、无 skip、无删除既有断言。
@@ -112,11 +112,11 @@ A View.environmentObject(_:) for PhotoImportModel may be missing as an ancestor 
 Architect 在同一 FIX-06 范围内追加澄清，DSH 全部落实（**生产 UI 未改动，未新增加载状态 API**）：
 
 1. **Add 必须 enabled 且 hittable**：新增 `XCUIElement.waitUntilEnabledAndHittable(timeout:)`（`exists == true AND isEnabled == true AND isHittable == true`）；`tapPickerAddButton` 用它等待——选择状态是异步更新的，"存在"甚至"可点"都不代表已启用。失败时诊断串给出 `exists/enabled/hittable` 三个值。
-2. **移除未限定范围的 `app.images` 回退**：照片单元只在 `app.collectionViews.cells` 与 `app.collectionViews.images` 内查找（原生网格范围），不再回退到全应用 `app.images`（可能匹配到无关图标）。失败时记录**试过哪些限定查询及其 exists/hittable 结果**。
+2. **移除未限定范围的 `app.images` 回退**：照片单元只在选择器**自己的网格范围**内查找，不再回退到全应用 `app.images`（可能匹配到无关图标）。失败时记录可核验的定位证据。（此处的 collectionViews 范围判断**已被 FIX-07 依据真实原生层级取代**，见 `.ai/reports/STAGE-02-FIX-07-REPORT.md`。）
 3. **预览"已加载"的判定**：`preview.image` 包装层在加载期间同样存在，不能作为已加载证据。现在改为：有界（60 秒）等待其**加载进度指示器消失**（`ProgressView` → XCTest 的 activity indicator；先查 `app.sheets` 内、再回退全应用，属已披露假设），**之后**才断言 `photo.unavailable` 不存在，并断言图像区域可交互、`preview.info` 存在。
 4. **定位失败保留原生证据**：所有选择器/缩略图/预览/移除定位断言的消息都带上 `app.debugDescription`（XCTest 的 `@autoclosure` 消息，仅失败时求值），失败即失败，不扩大盲回退、不 skip。
 
-本机追加验证：`STAGE02_FIX06_CLARIFICATION_CHECK` **11/11 PASS**（Add 同时等待 enabled+hittable、无未限定 `app.images`、网格查询限定在 collection view、加载等待先于 unavailable 断言、加载后有可见性/信息断言、≥15 处保留 `app.debugDescription`、诊断包含试过的查询与 Add 三态、生产视图未被改动、无 sleep/skip、UI 方法数仍为 3）。FIX-06 主检查 15/15 仍 PASS（其"来源可再次选择"子检查的字符串期望已随澄清后的消息文本更新）。
+本机追加验证：`STAGE02_FIX06_CLARIFICATION_CHECK` **11/11 PASS**（Add 同时等待 enabled+hittable、无未限定 `app.images`、网格查询限定在选择器自身范围内（FIX-07 后为原生观测范围）、加载等待先于 unavailable 断言、加载后有可见性/信息断言、≥15 处保留 `app.debugDescription`、诊断含定位证据与 Add 三态、生产视图未被改动、无 sleep/skip、UI 方法数仍为 3）。FIX-06 主检查 **16/16** 仍 PASS（其"来源可再次选择"子检查的字符串期望已随澄清后的消息文本更新；两个与 collectionViews 有关的子检查已按 FIX-07 的观测定位同步）。
 
 ## 9. 下一步
 

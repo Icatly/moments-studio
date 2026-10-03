@@ -5,11 +5,11 @@
 | 项 | 值 |
 | --- | --- |
 | 当前 Stage | **Stage02 — Photo Import and Asset Pipeline** |
-| Stage 状态 | CHANGES_REQUESTED（Architect Round12 判定，待复审）；iOS17.2真实预览退出，FIX06 两项已交付；所有者PENDING，Stage03禁止 |
-| 实现 | Stage01 已完成并获所有者批准；Stage02 已实现，并完成 Architect 实现中检查 13 项、FIX-01 六项、FIX-02 三项、FIX-03 调用标签、FIX-04 测试字面量显式类型、FIX-05 四项运行期修正 + 三项复审澄清、FIX-06 模态环境注入与导入预览 UI 回归：多图导入、应用自有 original 副本、ImageIO 缩略图/预览、项目包持久化与恢复、导入/网格/只读预览/移除 UI |
-| Xcode 构建 / 测试 | 第五次run37138644682/source0121261实际80单元+4UI全部PASS，0失败0跳过；但既有UI测试不含真实导入后预览，Appetize iOS17.2 点缩略图因缺 PhotoImportModel 退出。FIX06 已交付（RootView `.sheet` 同实例注入 + 1 个真实选择器→导入→预览回归，现 **80 单元 + 5 UI = 85 项**），需 Architect 重跑；本机 Windows 无 Xcode，85 项全部未执行 |
-| 可运行版本 | Stage02源码0121261已上传Appetize，真实多选3张成功；预览退出，当前版本阻塞验收；FIX06 修正版尚未打包。原Stage01批准保持 |
-| 下一步 | Architect 复审 FIX06 → 实际 macOS 重跑（80 单元 + 5 UI）→ 新包/运行 Review（预览、移除、追加、重启、大字号）→ 所有者验收 |
+| Stage 状态 | CHANGES_REQUESTED（Architect Round14）；原生选择器测试定位需FIX07，预览修复尚未实测；所有者PENDING，Stage03禁止 |
+| 实现 | Stage01 已完成并获所有者批准；Stage02 已实现，并完成 Architect 实现中检查 13 项、FIX-01 六项、FIX-02 三项、FIX-03 调用标签、FIX-04 测试字面量显式类型、FIX-05 四项运行期修正 + 三项复审澄清、FIX-06 模态环境注入与导入预览 UI 回归、FIX-07 系统选择器原生定位修正：多图导入、应用自有 original 副本、ImageIO 缩略图/预览、项目包持久化与恢复、导入/网格/只读预览/移除 UI |
+| Xcode 构建 / 测试 | 第六次run37147120379/source96dece5真实编译成功，80单元+4UI通过、新增第5个UI在照片选择步骤失败，85总数/84通过/1失败/0跳过；原生dump明确PhotosPicker为content_scroll_view内的PXGGridLayout-Info图片。**FIX07 已按该原生层级只修正测试 helper**（`selectFirstPhotoCell`），85 个方法与全部端到端断言保留，需 Architect 重跑；不能声称预览已验证。本机 Windows 无 Xcode，85 项全部未执行 |
+| 可运行版本 | Stage02源码0121261已上传Appetize，真实多选3张成功；预览退出，当前版本阻塞验收；FIX06/FIX07 修正版尚未打包。Appetize 额度 27/30、剩 3 分钟、无活跃会话；原Stage01批准保持 |
+| 下一步 | Architect 复审 FIX07 → macOS 重跑 85 项（重点确认选照片与导入→预览）→ 生成新包/必要运行 Review → 所有者验收 |
 
 Stage 01 的详细任务见 [.ai/tasks/STAGE-01-TASKS.md](.ai/tasks/STAGE-01-TASKS.md)，验收清单见 [.ai/acceptance/STAGE-01.md](.ai/acceptance/STAGE-01.md)。
 

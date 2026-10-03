@@ -76,10 +76,11 @@ KNOWN_ISA = {
 }
 UID_PATTERN = re.compile(r"^[0-9A-F]{24}$")
 
-# Control labels owned by the system rather than by this app. UI tests may need
-# to press them (for example the Photos picker's Cancel button), so they are
-# exempt from the app-identifier check by name here instead of being hidden
-# from the check inside the test.
+# Identifiers and control labels owned by the system rather than by this app. UI
+# tests may need to press or locate them (for example the Photos picker's Cancel
+# and Add buttons, or its grid scroll view), so they are exempt from the
+# app-identifier check by name here instead of being hidden from the check inside
+# the test.
 SYSTEM_CONTROL_LABELS = {
     "Cancel",
     "Done",
@@ -90,6 +91,11 @@ SYSTEM_CONTROL_LABELS = {
     # The system photo picker's confirm control, pressed by the Stage 02
     # import→preview regression after selecting a seeded photo.
     "Add",
+    # The system photo picker's grid scroll view, taken from the native
+    # hierarchy dump of run 37147120379 (iOS 18.5): a ScrollView with identifier
+    # "content_scroll_view" whose real photos are Images with identifier
+    # "PXGGridLayout-Info".
+    "content_scroll_view",
     # The system photo picker's own navigation bar title.
     "Photos",
 }
