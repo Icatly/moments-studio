@@ -5,11 +5,11 @@
 | 项 | 值 |
 | --- | --- |
 | 当前 Stage | **Stage02 — Photo Import and Asset Pipeline** |
-| Stage 状态 | `READY_FOR_ARCHITECT_REVIEW`（DSH 已交付实现与报告，等待 Architect Review；Stage02验收 PENDING，Stage03 未开始） |
-| 实现 | Stage01 已完成并获所有者批准；Stage02 已实现，并完成 Architect 实现中检查 13 项、FIX-01 六项、FIX-02 三项、FIX-03 调用标签、FIX-04 测试字面量显式类型、FIX-05 四项运行期修正：多图导入、应用自有 original 副本、ImageIO 缩略图/预览、项目包持久化与恢复、导入/网格/只读预览/移除 UI |
-| Xcode 构建 / 测试 | **第四次 macOS 运行已全部编译并真正执行测试**（run 37135113445，source `0c905a3f038b770169a930e8c16d27572fb639ca`）：78 单元 + 4 UI 执行，**3 个单元方法 + 1 个 UI 方法失败、共 6 条断言**（symlink 别名越权写、PNG 半透明 fixture、`original.gif` 被接受、UI 用 `waitForExistence` 断言消失）→ FIX-05 四项修正已交付。此前三次为编译阶段失败、0 测试执行：① run 37131111464（`dcfacd0`）= 缺 `SwiftUI` 交叉导入；② run 37132895287（`20e9d5f`）= 5 处调用标签；③ run 37133937308（`70721cf`）= Swift 前端崩溃。同次运行中：合成 HEIC 导入 **PASS（未 skip）**、12 MP 批次取消 PASS、3×4000×3000 串行导入实测 0.430 秒（内存为两次快照，非峰值）。本机（Windows）无 Xcode，**修正后 80 单元 + 4 UI（84 项）本机未执行**；仅完成结构/语法/契约静态校验。Stage01 源码 `6e8f449` 的 31 项测试通过证据**不属于** Stage02 |
-| 可运行版本 | 当前仅有已批准 Stage01 包；Stage02 没有运行产物 |
-| 下一步 | Architect 复审 FIX-05（[STAGE-02-FIX-05-REPORT.md](.ai/reports/STAGE-02-FIX-05-REPORT.md)）→ 第五次 macOS 云端构建与 80 单元 + 4 UI 测试 → 运行包/Appetize 检查 → 所有者亲自验收 |
+| Stage 状态 | CHANGES_REQUESTED（Architect Round12 判定，待复审）；iOS17.2真实预览退出，FIX06 两项已交付；所有者PENDING，Stage03禁止 |
+| 实现 | Stage01 已完成并获所有者批准；Stage02 已实现，并完成 Architect 实现中检查 13 项、FIX-01 六项、FIX-02 三项、FIX-03 调用标签、FIX-04 测试字面量显式类型、FIX-05 四项运行期修正 + 三项复审澄清、FIX-06 模态环境注入与导入预览 UI 回归：多图导入、应用自有 original 副本、ImageIO 缩略图/预览、项目包持久化与恢复、导入/网格/只读预览/移除 UI |
+| Xcode 构建 / 测试 | 第五次run37138644682/source0121261实际80单元+4UI全部PASS，0失败0跳过；但既有UI测试不含真实导入后预览，Appetize iOS17.2 点缩略图因缺 PhotoImportModel 退出。FIX06 已交付（RootView `.sheet` 同实例注入 + 1 个真实选择器→导入→预览回归，现 **80 单元 + 5 UI = 85 项**），需 Architect 重跑；本机 Windows 无 Xcode，85 项全部未执行 |
+| 可运行版本 | Stage02源码0121261已上传Appetize，真实多选3张成功；预览退出，当前版本阻塞验收；FIX06 修正版尚未打包。原Stage01批准保持 |
+| 下一步 | Architect 复审 FIX06 → 实际 macOS 重跑（80 单元 + 5 UI）→ 新包/运行 Review（预览、移除、追加、重启、大字号）→ 所有者验收 |
 
 Stage 01 的详细任务见 [.ai/tasks/STAGE-01-TASKS.md](.ai/tasks/STAGE-01-TASKS.md)，验收清单见 [.ai/acceptance/STAGE-01.md](.ai/acceptance/STAGE-01.md)。
 

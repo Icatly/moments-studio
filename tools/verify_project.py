@@ -87,6 +87,9 @@ SYSTEM_CONTROL_LABELS = {
     "Save",
     "Photo Library",
     "Continue",
+    # The system photo picker's confirm control, pressed by the Stage 02
+    # import→preview regression after selecting a seeded photo.
+    "Add",
     # The system photo picker's own navigation bar title.
     "Photos",
 }

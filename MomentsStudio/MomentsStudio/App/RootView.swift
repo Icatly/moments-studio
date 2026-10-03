@@ -39,7 +39,23 @@ struct RootView: View {
         .environment(projectStore)
         .environment(photoImport)
         .sheet(item: $navigation.sheet) { route in
+            // Attach the same root-owned instances to the presented content.
+            //
+            // The observed runtime failure (run 37138644682, Appetize
+            // iPhone 14 Pro / iOS 17.2) was: opening an imported photo's preview
+            // exited the app with
+            // "SwiftUI/Environment+Objects.swift:32: Fatal error: No Observable
+            // object of type PhotoImportModel found". The three environments were
+            // attached before this `.sheet`, and the presented content did not
+            // receive them on that path, so the preview's required
+            // `PhotoImportModel`/`ProjectStore` were missing. This is a modal
+            // dependency wiring defect — not an image-decoding or storage defect —
+            // and the repair is to hand the modal the *same* instances explicitly.
+            // No new state, store or coordinator is introduced.
             sheet(for: route)
+                .environment(navigation)
+                .environment(projectStore)
+                .environment(photoImport)
         }
         .task {
             // Startup restoration is asynchronous: Home shows loading until the

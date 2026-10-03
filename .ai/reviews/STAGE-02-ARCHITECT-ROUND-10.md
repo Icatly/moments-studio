@@ -9,3 +9,5 @@ Actual Windows checks after DSH stopped: verify_project.py PASS, 132 objects /41
 Architect clarified FIX05 report wording: failure methods and assertion failures are distinct; exact Foundation internal mechanics are not proven. Diagnostic-only workflow export uses installed xcresulttool help, readable summary and failure attachments after test execution; raw result bundle always retained, test gate unchanged.
 
 Proceed with stable commit and fifth real macOS verification. Must actually pass the ownership/alpha/path/cancellation/HEIC/serialization/UI gates and inspect warnings/source before packaging, runtime review and owner handoff. Free Appetize Apps page actually checked 00:50:19/30 minutes used,11 left,Nov1 reset; no new session started. Reserve owner acceptance time; no paid operation.
+
+Fifth actual macOS run started 2026-10-04 00:55: https://github.com/Icatly/moments-studio/actions/runs/37138644682 ; stable source012126165c0a00203a71b491fb7f632f4875d84c. Observed in_progress, no result claimed yet.

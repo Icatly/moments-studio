@@ -1,6 +1,6 @@
 # Stage 02 用户验收操作说明
 
-状态：草稿，尚无 Stage02 可运行版本。当前旧 Appetize 版本为 Stage01，不可用来验收 Stage02。待实际构建、Architect Review与照片导入检查完成后更新此文件。
+状态：暂停交付验收。2026-10-04已上传Stage02源码0121261运行包，84项macOS测试实际通过，但iOS17.2点预览退出（缺PhotoImportModel，Round12/FIX06）。等待修正新包；现有包不可批准Stage02。以下操作顺序仍为修正后的验收草案。
 
 ## 本阶段检查什么
 

@@ -1,0 +1,13 @@
+# Stage02 Architect Review Round13 — FIX06 static re-review
+
+2026-10-04 03:10 Beijing. DSH completed FIX06 and03:03 clarifications, visibly idle/READY_FOR_ARCHITECT_REVIEW. Verdict: implementation accepted for actual macOS verification; Stage02 owner PENDING, runtime acceptance still blocked until verified corrected build. Stage03 prohibited.
+
+Production diff:RootView only explicitly supplies the SAME root-owned navigation,ProjectStore,PhotoImportModel to sheet(for:) in existing sheet closure. No new instances/state,Observation migration,model/serialization/navigation contract change,image/storage modification,dependency/SDK/workflow/design-token change.
+
+One new real-PhotosPicker UI regression uses seeded native grid selection and bounded enabled+hittable Add wait; waits imported thumbnail/count; opens preview (previous fatal path), waits loading indicator disappearance, asserts no unavailable/missing photo and visible area/info,Done,remove confirmation/Cancel keeps count,confirmed removal empties gallery,reselect/import source. Native grid/activity-indicator/confirmation query assumptions remain unverified until actual run. Locator failures preserve app.debugDescription; no production shortcuts/launch injection/skip/arbitrary sleep. All84 existing test method names retained,80 unit+5 UI now85. Test helpers remain local to existing3 UI files; no new app interface. verify_project.py only adds legitimate system-owned Add label beside Cancel/Photos.
+
+Architect actually executed after DSH stopped:python tools/verify_project.py PASS132objects/41refs/40Swift6493lines,targets26/11/3,scheme/settings/assets valid; tree-sitter40files0errors; method count80+5 and all84 old names retained;git diff --check clean. Frozen Stage01 prompt SHA2567d73e49676040b678292f7f5982b95784aedb8b2e1fbe2e308a04ea2e8fcaa1b unchanged. These are static/structure checks, not Swift compilation or behavioral tests. DSH consistency scripts are not independent runtime evidence.
+
+Actual fatal log retained599bytes/SHA25633faea5d582817d1bfd31505dd45f99297d9adc85450ed480c56ee913e688caf. Previous source0121261 run37138644682 truly84PASS but never exercised imported preview; cannot represent FIX06 result. Current build/test/runtime all UNVERIFIED until next run. Upload from02:48 remains blocked acceptance. Appetize quota27/30,3minutes left,all sessions closed; no paid service/account/security change.
+
+Next:commit only reviewed changes,push authorized private repo,manual macOS workflow85tests→inspect native results/source/hash→corrected package→minimumiOS17.2 reproduction/runtime checks using available free quota→owner handoff only when gates complete. Owner approval not inferred from any result.
