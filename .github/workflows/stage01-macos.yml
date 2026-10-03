@@ -1,5 +1,5 @@
 # Owner authorized private cloud build on 2026-10-03.
-# Not yet run or validated by Xcode. Requires root containing MomentsStudio/.
+# First run succeeded on Xcode 16.4; later source revisions require their own run.
 name: Stage 01 macOS verification
 on:
   workflow_dispatch:
@@ -42,7 +42,7 @@ jobs:
           set -euo pipefail
           xcodebuild test -project MomentsStudio/MomentsStudio.xcodeproj \
             -scheme MomentsStudio -configuration Debug \
-            -destination "platform=iOS Simulator,id=$STAGE01_SIMULATOR_ID" \
+            -destination "platform=iOS Simulator,arch=arm64,id=$STAGE01_SIMULATOR_ID" \
             -derivedDataPath "$RUNNER_TEMP/Stage01DerivedData" \
             -resultBundlePath stage01-artifacts/Stage01.xcresult \
             -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO \

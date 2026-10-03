@@ -10,6 +10,7 @@ import SwiftUI
 struct HomeView: View {
     @Environment(ProjectStore.self) private var projectStore
     @Environment(AppNavigationModel.self) private var navigation
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         List {
@@ -23,9 +24,12 @@ struct HomeView: View {
                 Text("Recent Projects")
                     .font(Typography.sectionTitle)
             } footer: {
+                // Explicit `Color.secondary` rather than the hierarchical
+                // `.secondary` style, which renders too faint inside a list
+                // footer in both colour schemes.
                 Text("Stage 01 keeps this list in memory for the current session only. Projects are not saved to the device yet.")
                     .font(Typography.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.secondary)
             }
         }
         .listStyle(.insetGrouped)
@@ -50,12 +54,24 @@ struct HomeView: View {
         } label: {
             Label("Create Project", systemImage: "plus")
                 .font(Typography.body.weight(.semibold))
+                .foregroundStyle(createProjectLabelColor)
                 .frame(maxWidth: .infinity, minHeight: Layout.minimumTapTarget)
         }
         .buttonStyle(.borderedProminent)
         .tint(Palette.accent)
         .accessibilityIdentifier("home.createProject")
         .accessibilityHint("Creates an empty project and opens the editor placeholder")
+    }
+
+    /// Content colour for the prominent Create Project button.
+    ///
+    /// `AccentColor` is a neutral near-black in light mode and near-white in dark
+    /// mode, and this button uses it as its background. A custom tint does not
+    /// guarantee that the button style inverts the content for it, so the label
+    /// sets its own colour: white on the light-mode dark background, black on the
+    /// dark-mode light background.
+    private var createProjectLabelColor: Color {
+        colorScheme == .dark ? .black : .white
     }
 
     @ViewBuilder

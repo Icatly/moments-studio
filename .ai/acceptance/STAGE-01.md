@@ -33,15 +33,15 @@ PENDING
 
 | 清单项 | 验证者 | 当前状态与证据 |
 | --- | --- | --- |
-| App launches successfully | 项目所有者（真机/模拟器） | **未验证**：本机无 Xcode。已提供工程与源码，构建命令见 `MomentsStudio/README.md` |
-| Home screen loads | 项目所有者 | **未验证**：同上；代码见 `Features/Home/HomeView.swift` |
-| Create Project works | 项目所有者 + UI 测试 | **未运行**：UI 测试 `testCreateProjectOpensEditorPlaceholder` 已编写，等待在 macOS 执行 |
-| Editor placeholder opens | 项目所有者 + UI 测试 | **未运行**：同上；代码见 `Features/Editor/EditorPlaceholderView.swift` |
-| Back navigation works | 项目所有者 + UI 测试 | **未运行**：UI 测试 `testBackNavigationReturnsToHome` 已编写 |
-| Basic UI interaction feels responsive | 项目所有者 | **未验证**：需真机/模拟器手感确认 |
-| No visible critical UI errors | 项目所有者 | **未验证**：需运行确认 |
-| Project models compile and tests pass | 自动测试（macOS） | **未执行**：29 个单元测试 + 2 个 UI 测试已编写（Round 01 新增 6 个透明度边界测试）；Windows 侧只完成结构校验与静态语法检查（22 个 Swift 文件语法解析通过），不能替代 Xcode 编译与测试 |
-| User has reviewed the Stage 01 build | 项目所有者 | **未开始**：需先产出可运行版本 |
+| App launches successfully | 项目所有者 | **已有运行证据（FIX-02 之前的源码）**：云端 commit `49dc9f3` 在模拟器安装/启动/截图成功；Appetize（iPhone 14 Pro / iOS 17.2）手动启动正常。**FIX-02 新源码尚未运行。** 所有者判断项仍未勾选 |
+| Home screen loads | 项目所有者 | **已有运行证据（旧源码）**：云端 `launch.png` 与 Appetize 手动查看均显示 Home；新源码待重新运行 |
+| Create Project works | 项目所有者 + UI 测试 | **已有证据（旧源码）**：云端 UI 测试通过；Appetize 手动创建两个项目正常；新源码待重跑 |
+| Editor placeholder opens | 项目所有者 + UI 测试 | **已有证据（旧源码）**：云端 `testCreateProjectOpensEditorPlaceholder` 通过；新源码待重跑 |
+| Back navigation works | 项目所有者 + UI 测试 | **已有证据（旧源码）**：云端 `testBackNavigationReturnsToHome` 通过；Appetize 手动返回正常；新源码待重跑 |
+| Basic UI interaction feels responsive | 项目所有者 | **未评估**：Appetize 有网络延迟，手感结论必须由所有者亲自体验给出 |
+| No visible critical UI errors | 项目所有者 | **已发现缺陷并退回（旧源码）**：Round 03 发现深色模式按钮内容对比度缺陷与两处 footer 偏淡；已按 FIX-02 修正，修正后的新源码尚未运行确认 |
+| Project models compile and tests pass | 自动测试（macOS） | **旧源码已通过**：云端 `49dc9f3` 实际执行 29 个单元测试 + 2 个 UI 测试，零失败（日志含 `** TEST SUCCEEDED **`）。**FIX-02 新源码尚未编译或测试**；本机（Windows）仅结构校验与静态语法检查（22 个 Swift 文件，1378 行） |
+| User has reviewed the Stage 01 build | 项目所有者 | **未开始**：需先由 Architect 完成新源码的构建/运行与 Review，再交所有者验收 |
 
 ## Round 01 修正记录（2026-10-03）
 
@@ -56,6 +56,16 @@ PENDING
 | R5 | 去掉「以后无需模型迁移」的承诺 | 已改为「受 Review 控制的 Stage 01 契约，持久化与迁移未实现、未决定」 |
 
 本轮只重跑 Windows 侧已有校验（未安装新依赖、未改 build/test 结论）。状态：`READY_FOR_ARCHITECT_REVIEW`，等待 Architect 复审。
+
+## Round 03 / 云端运行与 FIX-02 记录（2026-10-03）
+
+- **云端证据（Architect 执行，非 DSH；DSH 未上传源码、未操作账户、未运行云服务）**：私有仓库 `Icatly/moments-studio`，commit `49dc9f3467df41422d4894b5a1d6f36b899ade09`，run 37108580699 成功（5m41s）；Xcode 16.4、iOS 18.5 / iPhone 16 Pro 模拟器；`xcodebuild test` 实际执行 **29 个单元测试 + 2 个 UI 测试全部通过**；应用包 5,292,103 字节，SHA-256 `90796bf89f32988bd4f2bc0b84e7aa87ca99cccd9cbf10826171b435cf18084d`；随后在 Appetize（iPhone 14 Pro / iOS 17.2）手动检查 Home、创建两个项目、返回、最近顺序、重开旧项目不新增、Settings、About/Done 均正常。非零警告构建：arm64/x86_64 目的地方案提示、3 条 AppIntents metadata skip、模拟器 `eligibility.plist` 缺失与一次 XPC interrupted —— Architect 判定不阻塞本阶段。
+- 最低 iOS 17 / Xcode 15.4 环境**尚未执行**，不能由 iOS 18.5 结果推断。
+- 上述结果**不能代替所有者验收**，9 项判断仍未勾选。
+- Round 03 判定 `CHANGES_REQUESTED`：**V1** 深色模式 Create Project 文字几乎不可读；**V2** Home 内存说明与 Settings 无选项说明两处 footer 偏淡。
+- DSH 已完成 FIX-02 局部修正（严格限于授权范围）：V1 仅 Create Project 的 Label 按原生 `colorScheme` 显式取色（浅色白 / 深色黑），保留 `borderedProminent`、tint、动作与 identifier；V2 仅两处 footer 改用明确 `Color.secondary`。**未改**公开契约、导航、工程设置、依赖、资源颜色、架构与测试（仍 29 单元 + 2 UI）。
+- **FIX-02 之后的新源码尚未经过任何 Xcode 编译或测试**；旧 commit `49dc9f3` 的结果不得当作新源码结果。待 Architect 重跑同一批 31 项测试，并在模拟器检查两种主题下的按钮与 footer 可读性。**Dynamic Type 最大常规字号仍未检查，不能记为通过。**
+- 状态：`READY_FOR_ARCHITECT_REVIEW`；新源码尚无运行证据，不得写 `WAITING_FOR_USER`。
 
 ## 阻塞项
 

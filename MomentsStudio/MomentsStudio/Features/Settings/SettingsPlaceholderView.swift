@@ -33,9 +33,12 @@ struct SettingsPlaceholderView: View {
                 Text("Status")
                     .font(Typography.sectionTitle)
             } footer: {
+                // Explicit `Color.secondary` rather than the hierarchical
+                // `.secondary` style, which renders too faint inside a list
+                // footer in both colour schemes.
                 Text("Settings has no user-adjustable options in Stage 01.")
                     .font(Typography.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.secondary)
             }
 
             Section {

@@ -17,6 +17,8 @@
 | 9 | 交付 `.ai/reports/STAGE-01-REPORT.md` | DONE | `.ai/reports/STAGE-01-REPORT.md` |
 | 10 | Architect Round 01 修正 R1–R5（`.ai/tasks/STAGE-01-ARCHITECT-FIX-01.md`），含主 actor 调用处补充要求（`.ai/reviews/STAGE-01-R3-CALLSITE-NOTE.md`） | DONE_WITH_CAVEAT | 透明度不变量、叠放语义、`@MainActor`（状态类 + 全部相关视图 + App 入口显式标注）、真实文案、迁移承诺；未改序列化字段。详见 `.ai/reports/STAGE-01-REPORT.md` 第 0 节与 `.ai/acceptance/STAGE-01.md` 的 Round 01 记录。**编译与测试仍未执行** |
 
+| 11 | Architect FIX-02 局部视觉修正（`.ai/tasks/STAGE-01-ARCHITECT-FIX-02.md`：V1 按钮内容对比度、V2 两处 footer 对比度） | DONE_WITH_CAVEAT | 仅改 `HomeView`（原生 `colorScheme` + Create Project Label 显式白/黑）与两处 List footer（明确 `Color.secondary`）；未改公开契约、测试、资源、工程设置。**新源码的 Xcode 编译/测试与两种主题实机观感仍未执行**，详见 `.ai/reports/STAGE-01-REPORT.md` 第 0.1 节 |
+
 ## 未做（按指令明确不做）
 
 照片导入、拼贴/布局、滤镜/LUT、抠图、剪影、贴纸、文字工具、动画、视频导出、订阅、账户、云后端、模板市场、最终 UI 品牌视觉。占位页文案明确写「未实现」，界面不展示假照片或假草稿。
@@ -29,3 +31,5 @@
 | 2026-10-02 | `READY_FOR_ARCHITECT_REVIEW` | 编码、自动校验与自查结束；等待 ChatGPT 架构 Review |
 | 2026-10-03 | `CHANGES_REQUESTED` → `IMPLEMENTING`（Architect corrections） | Architect Round 01 判定需要修复（R1–R5） |
 | 2026-10-03 | `READY_FOR_ARCHITECT_REVIEW` | R1–R5 已实施并重跑 Windows 侧校验；等待 Architect 复审（用户仍未批准） |
+| 2026-10-03 | `CHANGES_REQUESTED` → `IMPLEMENTING`（Runtime visual corrections） | Architect 云端运行 commit `49dc9f3`：31 项测试零失败，但深色模式对比度退回（V1/V2，Round 03） |
+| 2026-10-03 | `READY_FOR_ARCHITECT_REVIEW` | FIX-02 局部修正已实施并重跑 Windows 侧校验；**新源码的 Xcode 构建/测试仍待 Architect**，用户仍未批准 |

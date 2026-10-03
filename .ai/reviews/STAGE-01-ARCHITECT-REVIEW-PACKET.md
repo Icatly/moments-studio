@@ -5,7 +5,7 @@
 ## 0. 请优先确认的前提
 
 1. **状态流程（Round 01 已裁定）**：Architect 明确 `READY_FOR_ARCHITECT_REVIEW` 合适；修复期间记 `IMPLEMENTING`，交付后回到 `READY_FOR_ARCHITECT_REVIEW`；用户未批准且无可运行版本，不得写 `WAITING_FOR_USER` 或 `APPROVED`。`.ai/acceptance/STAGE-01.md` 按此取值，复选框与 `User Decision` 仍未勾选/PENDING。
-2. **未运行构建**：开发机为 Windows，无 Xcode。工程文件由脚本生成，只做过结构与静态语法校验。**不存在已验证可启动的构建。** 请勿把本 Stage 当作「已可运行」。
+2. **构建状态（分两层）**：DSH 本机为 Windows，无 Xcode，只做结构校验与静态语法检查；Architect 已在云端对 commit `49dc9f3` 完成真实构建与 31 项测试（见第 10 节）。但那是 **FIX-02 之前**的源码——**当前源码仍没有任何构建或测试结果**，不得当作「已可运行」。
 3. **UI 文案语言**：所有界面文案为英文占位，显示语言尚未决定。
 
 ## 1. 架构边界
@@ -54,7 +54,7 @@
 
 - [ ] 29 个单元测试 + 2 个 UI 测试是否覆盖了要求的四类目标（项目创建、重命名、模型编解码、导航核心状态）？是否有多余的镜像测试（对常量断言）？Round 01 新增的 6 个测试只针对透明度不变量，未增加与常量镜像相关的用例。
 - [ ] UI 测试依赖 accessibility identifier 而非可见文案，是否会因为英文占位文案改动而脆弱？
-- [ ] **这些测试从未执行过。** 请检查断言逻辑本身是否正确（尤其是 `Layer` 透明度不变量与非法解码路径、`recentProjects` 顺序、golden JSON fixture 与模型字段是否一致）。Round 01 修正的正是「旧测试只验证了钳制、没有验证非法解码」这一缺口。
+- [ ] **这 31 项测试已由 Architect 在云端对 FIX-02 之前的源码实际执行并通过**（见第 10 节）；**当前源码尚未执行**。仍请检查断言逻辑本身是否正确（尤其是 `Layer` 透明度不变量与非法解码路径、`recentProjects` 顺序、golden JSON fixture 与模型字段是否一致）。Round 01 修正的正是「旧测试只验证了钳制、没有验证非法解码」这一缺口。
 
 证据：`MomentsStudioTests/*.swift`、`MomentsStudioUITests/Stage01SmokeUITests.swift`。
 
@@ -66,7 +66,9 @@
 
 证据：`Features/**/*.swift`、`DesignSystem/*.swift`。
 
-## 8. DSH 无法验证的事项（请勿视为已通过）
+## 8. DSH 无法验证的事项（针对**当前源码**；请勿视为已通过）
+
+对 **FIX-02 之前**的 commit `49dc9f3`，Architect 已在云端完成编译与 31 项测试并通过（第 10 节）；**该结果不适用于当前源码**。下表针对当前（FIX-02 之后）源码：
 
 | 事项 | 原因 |
 | --- | --- |
@@ -95,8 +97,44 @@ Windows 侧实际执行的检查与结果见 `.ai/reports/STAGE-01-REPORT.md` �
 | 写入口闭合 | 搜索 `\.opacity\s*=` | 仅出现在 `Layer.swift` 的 `init` 与 `init(from:)` 内部 |
 | 测试数量 | 统计 `func test` | 29 个单元测试 + 2 个 UI 测试 |
 
-### 9.1 与构建路径草案的静态一致性（供 Architect 参考）
+### 9.1 与已安装构建工作流的静态一致性（供 Architect 参考）
 
-按 `.ai/build/stage01-macos.yml` 的假设与本工程逐项静态核对（**未执行**）：工作区根含 `MomentsStudio/` ✓；工程路径 `MomentsStudio/MomentsStudio.xcodeproj` ✓；共享 scheme 名 `MomentsStudio` ✓；产物名 `MomentsStudio.app` ✓；启动用的 bundle id `com.example.MomentsStudio` 与工程设置一致 ✓；`-configuration Debug` 走 scheme 的 Test Action（已包含单元测试与 UI 测试两个 target）✓；`-parallel-testing-enabled NO` 与 `CODE_SIGNING_ALLOWED=NO` 对模拟器构建无冲突 ✓。**未核对**：`actions/checkout@v7`、`actions/upload-artifact@v7`、`macos-15` runner 标签在首次运行时是否可用（DSH 无网络验证，不猜测）。
+Architect 已把草案从 `.ai/build/stage01-macos.yml` 安装到 `.github/workflows/stage01-macos.yml`（DSH 未创建、未修改、未运行该文件；草案路径现已不存在）。按当前安装版本逐项静态核对本工程（**未执行**）：`macos-15` runner ✓；`actions/checkout@v7`；`xcodebuild test -project MomentsStudio/MomentsStudio.xcodeproj -scheme MomentsStudio -configuration Debug` 与工程路径、共享 scheme 名、Debug 配置一致 ✓；`-destination "platform=iOS Simulator,arch=arm64,id=…"` 已把架构固定为 arm64（对应云端 Review 中 arm64/x86_64 二义性提示）✓；测试产物路径 `Debug-iphonesimulator/MomentsStudio.app` ✓；`xcrun simctl launch … com.example.MomentsStudio` 与工程 bundle id 一致 ✓；`-parallel-testing-enabled NO`、`CODE_SIGNING_ALLOWED=NO` 对模拟器构建无冲突 ✓。**未核对**：`actions/checkout@v7` / `actions/upload-artifact@v7` / `macos-15` 标签在运行时是否可用（DSH 无网络验证，不猜测）。
 
-**仍未验证**：编译、类型检查、actor 隔离诊断、XCTest、UI 测试、真实界面。上述检查不能替代它们。
+**仍未验证（针对**当前源码**）**：编译、类型检查、actor 隔离诊断、XCTest、UI 测试、真实界面。上述检查不能替代它们。
+
+## 10. Round 03 / 云端运行证据与 FIX-02（2026-10-03）
+
+### 10.1 云端证据（Architect 执行；DSH 未上传源码、未操作账户、未运行云服务）
+
+| 项 | 值 |
+| --- | --- |
+| 仓库 / commit | `Icatly/moments-studio` / `49dc9f3467df41422d4894b5a1d6f36b899ade09` |
+| 运行 | 37108580699，成功，5m41s |
+| 工具链 | Xcode 16.4 (16F6)，ARM macOS runner，iOS 18.5 / iPhone 16 Pro |
+| 测试 | `xcodebuild test`：**29 单元 + 2 UI 全部通过**，`** TEST SUCCEEDED **` |
+| 产物 | 5,292,103 字节；SHA-256 `90796bf89f32988bd4f2bc0b84e7aa87ca99cccd9cbf10826171b435cf18084d` |
+| 手动运行 | 模拟器安装/启动/截图；Appetize（iPhone 14 Pro / iOS 17.2）：Home、创建两个项目、返回、最近顺序、重开旧项目不新增、Settings、About/Done 均正常 |
+| 警告（非零警告构建） | arm64/x86_64 destination 提示（选中 arm64）；3 条 AppIntents metadata extraction skipped；模拟器 `eligibility.plist` 缺失与一次 XPC interrupted —— 判定不阻塞本阶段；DSH 未加依赖/未关警告 |
+| 未覆盖 | 最低 iOS 17 / Xcode 15.4；Dynamic Type 最大常规字号 |
+
+### 10.2 Round 03 裁定与 FIX-02 落地
+
+- **CHANGES_REQUESTED**：V1 深色模式 Create Project 文字几乎不可读（证据 `.ai/build/downloads/dark-button-before.png`）；V2 两处 List footer 说明偏淡。根因见 `.ai/reviews/STAGE-01-ARCHITECT-ROUND-03.md`。
+- DSH 改动（仅授权范围）：`HomeView` 新增原生 `@Environment(\.colorScheme)`，**仅** Create Project 的 Label 显式取色（浅色 `Color.white` / 深色 `Color.black`），保留 `borderedProminent`、`tint(Palette.accent)`、动作与 identifier；**仅** Home 与 Settings 的 footer 由 `.foregroundStyle(.secondary)` 改为 `.foregroundStyle(Color.secondary)`。
+- **未改**：公开模型/序列化字段、导航契约、工程设置、目录边界、依赖、资源颜色、品牌设计、测试数量（29 单元 + 2 UI，未加颜色镜像测试）。
+
+### 10.3 本轮本机（Windows）实际执行的检查
+
+| 检查 | 结果 |
+| --- | --- |
+| `python tools/verify_project.py` | PASS：95 对象引用完整；Sources 恰好覆盖 22 个 `.swift`（16/5/1）；scheme/target/构建设置/资源 JSON/括号与编码检查通过；22 个文件解析干净（**1378 行**） |
+| tree-sitter Swift 解析（已装开发机工具） | `TREE_SITTER_PARSED=22 WITH_ERRORS=0` |
+| V1 定向检查（一次性脚本） | `@Environment(\.colorScheme)` 恰好 1 处；Label 覆盖存在；`dark ? .black : .white` 映射正确；`borderedProminent`/`tint`/identifier/`Label` 文案全部保留 |
+| V2 定向检查（一次性脚本） | 全 App target 中 `.foregroundStyle(Color.secondary)` **恰好 2 处**：`HomeView.swift:32`、`SettingsPlaceholderView.swift:41`（即两处 footer）；其余 7 处层级 `.secondary` 未改动 |
+| 变更范围核对 | 本轮仅 `Features/Home/HomeView.swift`、`Features/Settings/SettingsPlaceholderView.swift` 两个源码文件被修改；测试、资源、模型、工程设置均未触碰 |
+| 测试数量 | 29 个单元测试 + 2 个 UI 测试（与 Round 01 后一致，无新增/删除） |
+
+### 10.4 关键诚实声明
+
+上表云端结果对应 **FIX-02 之前的源码**。**FIX-02 之后的新源码尚未经过任何 Xcode 编译或测试**，不得把 `49dc9f3` 的通过结果当作新源码结果。请对新源码重跑同一批 31 项测试，并在模拟器比较两种主题下的按钮与 footer 以及 Dynamic Type 最大常规字号。

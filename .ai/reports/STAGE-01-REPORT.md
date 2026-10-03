@@ -22,6 +22,39 @@ Architect 第一轮 Review（`.ai/reviews/STAGE-01-ARCHITECT-ROUND-01.md`）判�
 **未改变**：任何序列化字段名与编码形状、现有契约测试、依赖、工程结构、Stage 范围。
 **仍未执行**：Xcode 构建、XCTest、UI 测试（本机无 macOS/Xcode）——第 7–9 节的结论不变，本轮不产生任何构建或测试通过声明。
 
+## 0.1 Round 03：云端运行证据与 FIX-02（2026-10-03）
+
+### 云端证据（由 Architect 执行，非 DSH；DSH 未运行任何云服务）
+
+| 项 | 值 |
+| --- | --- |
+| 私有仓库 / commit | `Icatly/moments-studio` / `49dc9f3467df41422d4894b5a1d6f36b899ade09` |
+| 运行 | run 37108580699，成功；总时长 5m41s |
+| 工具链 | Xcode 16.4 (16F6)，ARM macOS runner，iOS 18.5 / iPhone 16 Pro 模拟器 |
+| 测试 | `xcodebuild test` 实际执行：**29 个单元测试 + 2 个 UI 测试全部通过**，日志含 `** TEST SUCCEEDED **` |
+| 应用包 | 5,292,103 字节；SHA-256 `90796bf89f32988bd4f2bc0b84e7aa87ca99cccd9cbf10826171b435cf18084d` |
+| 手动运行 | 模拟器安装/启动/截图成功；随后在 Appetize（iPhone 14 Pro / iOS 17.2）手动检查 Home、创建两个项目、返回、最近顺序、重开旧项目不新增、Settings、About/Done —— 均正常，无崩溃或严重遮挡 |
+| 非零警告构建（已记录，未掩盖） | 模拟器同时匹配 arm64/x86_64（选中 arm64）；3 条 AppIntents metadata extraction skipped；模拟器 `eligibility.plist` 缺失与一次 XPC connection interrupted。Architect 判定不阻塞本阶段；DSH 未通过增加依赖或关闭警告来消除 |
+| 未覆盖 | 最低 iOS 17 / Xcode 15.4 环境尚未执行，不能由 iOS 18.5 结果推断 |
+
+### Round 03 结论：CHANGES_REQUESTED
+
+- **V1**：深色模式下 Create Project 文字几乎不可读（同一构建，证据 `.ai/build/downloads/dark-button-before.png`）。
+- **V2**：Home 的内存说明与 Settings 的无选项说明两处 List footer 在两种主题下都偏淡，Home 深色尤其难读。
+
+### DSH 的 FIX-02 局部修正（仅授权范围）
+
+| 编号 | 改动 | 文件 |
+| --- | --- | --- |
+| V1 | `HomeView` 读取原生 `@Environment(\.colorScheme)`；**仅** Create Project 的 Label 内容按主题显式取色（浅色 `Color.white`、深色 `Color.black`）。`borderedProminent`、`tint(Palette.accent)`、按钮动作与 accessibility identifier 全部保留；未替换 AccentColor、未新增 ButtonStyle / 颜色 token / 协议 | `Features/Home/HomeView.swift` |
+| V2 | **仅** Home 与 Settings 的 List footer 由层级 `.foregroundStyle(.secondary)` 改为明确 `.foregroundStyle(Color.secondary)`；字体、文案、布局不变 | `Features/Home/HomeView.swift`、`Features/Settings/SettingsPlaceholderView.swift` |
+
+**未改动**：公开模型与序列化字段、导航契约、工程设置、目录边界、依赖、资源颜色（`Assets.xcassets` 未触碰）、品牌设计、测试（仍为 29 单元 + 2 UI，未为颜色常量增加镜像测试）。
+
+**关键诚实声明**：上表云端结果对应的是 **FIX-02 之前的源码**（`49dc9f3`）。本轮修正后的**新源码尚未经过任何 Xcode 编译或测试**，不得把旧 commit 的通过结果当作新源码的结果。待 Architect 对新源码重新构建并运行同一批 31 项测试，再在模拟器检查两种主题下的按钮与 footer 可读性。**Dynamic Type 最大常规字号仍未检查，不能记为通过。**
+
+**构建路径状态**：Architect 已把工作流草案从 `.ai/build/stage01-macos.yml` 安装为 `.github/workflows/stage01-macos.yml`（DSH 未创建、未修改、未运行；原草案路径现已不存在），并把 destination 固定为 `arch=arm64`。DSH 对该安装版本做了只读静态核对：工程路径、共享 scheme 名、Debug 配置、测试产物名与启动 bundle id 均与本工程一致（详见 review packet 第 9.1 节）。
+
 ## 1. Summary
 
 按项目所有者原始 Prompt（`docs/Stage-01-用户原始Prompt.txt`，本 Stage 唯一任务来源）交付了 iOS 应用骨架：
@@ -237,11 +270,11 @@ multiline_call_unparenthesised     has_error=True
 
 ## 9. Build result
 
-**未构建。** 本机为 Windows（项目目录 `D:\朋友圈生成应用`），无 macOS、无 Xcode、无 Swift 工具链（已确认 `swift`、`swiftc`、`xcodebuild` 均不存在，仅有 Python 3.14 与 Node.js）。
+**DSH 本机未构建。** 本机为 Windows（项目目录 `D:\朋友圈生成应用`），无 macOS、无 Xcode、无 Swift 工具链（已确认 `swift`、`swiftc`、`xcodebuild` 均不存在，仅有 Python 3.14 与 Node.js）。Architect 已另行在云端完成一次真实构建与测试（FIX-02 之前的 commit `49dc9f3`，证据见第 0.1 节），那是本次交付之外执行的结果。
 
-- 不存在 `.app`、`.xcarchive`、`.ipa` 或任何构建产物。
-- 工程文件从未被 Xcode 打开，格式正确性仅由第 8.1 节的结构校验间接支持。
-- 因此**不满足「产出可运行版本」这一 Stage 01 交付要求**，这也是验收清单全部未勾选的原因。
+- 本机不存在 `.app`、`.xcarchive`、`.ipa` 或任何构建产物。
+- 工程文件在本机从未被 Xcode 打开，格式正确性仅由第 8.1 节的结构校验间接支持。
+- **FIX-02 之后的新源码尚无任何构建或测试结果**；旧 commit 的通过结果不能用于新源码。
 
 要得到构建结果，需要在 macOS 上执行：
 
@@ -257,7 +290,7 @@ xcodebuild test  -project MomentsStudio.xcodeproj -scheme MomentsStudio \
 
 ## 10. Known limitations
 
-1. **没有可运行版本，没有执行过任何编译或测试。** 这是本 Stage 最大的限制，且无法在 Windows 上消除。
+1. **DSH 本机（Windows）无法编译或测试**，且**FIX-02 之后的新源码尚无任何 Xcode 构建 / 测试结果**。可追溯的云端构建与 31 项测试通过记录（第 0.1 节）对应的是 FIX-02 之前的 commit `49dc9f3`，不能当作新源码的结果。
 2. **工程文件未经 Xcode 验证。** 生成格式为 `objectVersion 56` / `compatibilityVersion Xcode 14.0`；若首次打开报错，可用 `tools/generate_xcodeproj.py` 重生成，或直接用 Xcode 新建工程后加入 `MomentsStudio/` 下的源码。
 3. **无持久化。** 项目仅存于内存，退出即丢失；Home 已明确标注「仅本次运行」。`ProjectStore` 是未来接持久化的唯一接缝。
 4. **App 图标为空占位**（`AppIcon.appiconset` 无图像文件）。可运行，但提审前必须替换；不排除归档/校验阶段出现图标相关告警。
@@ -272,6 +305,7 @@ xcodebuild test  -project MomentsStudio.xcodeproj -scheme MomentsStudio \
 13. **并发写入者存在**：`docs/` 下多个文件在 DSH 工作期间被第三方修改/删除（见第 3 节）。若对方后续再次改动同一文件，可能覆盖本次更新。
 14. **可访问性只做了代码层保证**（系统文本样式、44pt 触控高度、label/hint/identifier），未在模拟器上跑 VoiceOver 实测。
 15. 未初始化 Git 仓库（项目根目录），因此本次交付没有提交历史可回溯。
+16. **FIX-02 的对比度修正只经过源码级检查**：浅色/深色两种主题下的按钮与 footer 实际观感、以及 Dynamic Type 最大常规字号，均未在本机验证（本机无模拟器），必须在 Architect 的新源码云端构建/运行中确认。
 
 ## 11. Technical debt
 
@@ -282,7 +316,7 @@ xcodebuild test  -project MomentsStudio.xcodeproj -scheme MomentsStudio \
 | 3 | `ProjectStore.recentProjects` 每次访问都做一次数组反转复制 | 数量增长后改为缓存或在写入时维护顺序 |
 | 4 | 无 CI：没有 `xcodebuild` 与 `verify_project.py` 的自动化流水线 | Stage 02 建议接入 macOS CI，并把 `verify_project.py` 作为快速前置检查 |
 | 5 | 文案内联在视图中，无字符串目录（`.xcstrings`） | 显示语言确定后统一迁移到 String Catalog |
-| 6 | 测试未执行，可能存在仅在编译期暴露的问题（类型推断、actor 隔离、API 可用性） | 首次在 Mac 上构建时优先修复编译问题，再跑测试 |
+| 6 | 测试未执行（本机），且 FIX-02 之后的新源码尚无任何 Xcode 构建/测试结果 | Architect 对新源码重新构建并运行同一批 31 项测试 |
 | 7 | 工程设置中无 `DEVELOPMENT_TEAM`，真机运行需手动选择签名 | 属正常占位，提审前配置 |
 | 8 | 无文档版本号/迁移机制 | Stage 02 定义 `schemaVersion` 与未知枚举容错 |
 

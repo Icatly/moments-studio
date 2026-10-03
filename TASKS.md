@@ -5,11 +5,11 @@
 | 项 | 值 |
 | --- | --- |
 | 当前 Stage | **Stage 01 — Project Foundation and iOS Application Skeleton** |
-| Stage 状态 | `READY_FOR_ARCHITECT_REVIEW`（Architect Round 01 的 R1–R5 修正已实施，等待复审；DSH 不得自行转为 `WAITING_FOR_USER`） |
-| 实现 | 源码与工程已完成（应用外壳、导航、基础模型、内存状态、测试、文档）；Round 01 修正见 [.ai/acceptance/STAGE-01.md](.ai/acceptance/STAGE-01.md) |
-| Xcode 构建 / 测试 | **未执行**：当前工作机为 Windows，无 Xcode。命令见 [MomentsStudio/README.md](MomentsStudio/README.md) |
-| 可运行版本 | 尚未产出，需在 macOS + Xcode 上构建 |
-| 下一步 | Architect 复审 → 生成可运行版本 → 项目所有者亲自验收 |
+| Stage 状态 | `READY_FOR_ARCHITECT_REVIEW`（Round 01 的 R1–R5 与 FIX-02 局部修正均已实施，等待复审；DSH 不得自行转为 `WAITING_FOR_USER`） |
+| 实现 | 源码与工程已完成（应用外壳、导航、基础模型、内存状态、测试、文档）；两轮修正记录见 [.ai/acceptance/STAGE-01.md](.ai/acceptance/STAGE-01.md) |
+| Xcode 构建 / 测试 | **本机未执行**（Windows，无 Xcode）。Architect 已在云端对 **FIX-02 之前**的 commit `49dc9f3` 完成构建与 31 项测试（零失败）；**当前源码尚未构建或测试** |
+| 可运行版本 | 旧源码已有云端模拟器产物（Appetize 可运行）；**当前源码需重新构建** |
+| 下一步 | Architect 对新源码重跑构建/测试并检查两种主题的按钮与 footer → 项目所有者亲自验收 |
 
 Stage 01 的详细任务见 [.ai/tasks/STAGE-01-TASKS.md](.ai/tasks/STAGE-01-TASKS.md)，验收清单见 [.ai/acceptance/STAGE-01.md](.ai/acceptance/STAGE-01.md)。
 
