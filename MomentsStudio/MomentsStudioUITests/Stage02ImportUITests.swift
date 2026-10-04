@@ -240,7 +240,12 @@ final class Stage02ImportUITests: XCTestCase {
             staticText(containing: "photo library is not changed", in: app).waitForExistence(timeout: 30),
             "The confirmation must say the photo library original is not changed.\n\(app.debugDescription)"
         )
-        confirmationButton(named: "Cancel", in: app).tap()
+        let cancellation = cancelRemovalConfirmation(in: app)
+        XCTAssertTrue(
+            cancellation.succeeded,
+            "INTERACTION-VERIFY[confirmation] the removal confirmation could not be cancelled: "
+                + "\(cancellation.diagnostic)\n\(app.debugDescription)"
+        )
         XCTAssertTrue(
             removeButton.waitUntilEnabledAndHittable(),
             "Cancel must return to a usable preview.\n\(app.debugDescription)"
@@ -821,6 +826,149 @@ final class Stage02ImportUITests: XCTestCase {
         let inSheet = app.sheets.buttons[label]
         if inSheet.waitForExistence(timeout: 15) { return inSheet }
         return app.alerts.buttons[label]
+    }
+
+    /// System-UI shape branch (iOS 26 changed several system containers).
+    private var usesModernSystemUI: Bool {
+        ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 26
+    }
+
+    /// Finite, non-empty and positive-size frame check shared by the confirmation
+    /// checks: an empty frame must never be treated as visible.
+    private func isFinitePositive(_ frame: CGRect) -> Bool {
+        frame.origin.x.isFinite && frame.origin.y.isFinite
+            && frame.size.width.isFinite && frame.size.height.isFinite
+            && !frame.isEmpty && frame.width > 0 && frame.height > 0
+    }
+
+    /// Cancels the removal confirmation.
+    ///
+    /// The recorded native hierarchies show two different shapes:
+    ///
+    /// * Older systems: a real sheet (or alert) with a `Cancel` button — the
+    ///   original path is kept unchanged.
+    /// * iOS 26.5 (run 37225749574, dump `9EC5723E-…`): the confirmation is a
+    ///   `Popover` `{{81, 72}, {240, 247.3}}` whose `Sheet` titled "Remove this
+    ///   photo from the project?" offers only `Remove`. There is no `Cancel`
+    ///   control at all, so the only cancellation affordance is the unique
+    ///   `Other` element `PopoverDismissRegion` (label "dismiss popup",
+    ///   `{{0, 0}, {402, 874}}`) reported outside the popover.
+    ///
+    /// On iOS 26 this helper verifies — in this order — that there is exactly one
+    /// `Popover`, that it contains exactly one `Sheet` whose label is exactly the
+    /// removal question, that the question and the "original is not changed"
+    /// explanation live inside that sheet (so an app-wide similar text can never
+    /// stand in for ownership), that there is exactly one `Other`
+    /// `PopoverDismissRegion` (whole-identifier match, not a first node of any
+    /// type), that both frames are finite/positive and inside the app window,
+    /// and that the region's relative centre is on screen and strictly outside the
+    /// popover. Only then does it perform exactly one public element-relative
+    /// centre tap. Any missing precondition is a hard failure: no substitute
+    /// point, no candidate search, no retry.
+    private func cancelRemovalConfirmation(in app: XCUIApplication) -> PickerInteraction {
+        guard usesModernSystemUI else {
+            let cancelButton = confirmationButton(named: "Cancel", in: app)
+            guard cancelButton.waitUntilEnabledAndHittable() else {
+                return PickerInteraction(
+                    succeeded: false,
+                    diagnostic: "the confirmation Cancel button exists=\(cancelButton.exists) "
+                        + "enabled=\(cancelButton.isEnabled) hittable=\(cancelButton.isHittable)"
+                )
+            }
+            cancelButton.tap()
+            return PickerInteraction(succeeded: true, diagnostic: "")
+        }
+
+        // Exactly one confirmation popover, addressed as a whole (count == 1 and
+        // `.element`), never a first match of any popover.
+        let popovers = app.popovers
+        guard popovers.count == 1 else {
+            return PickerInteraction(
+                succeeded: false,
+                diagnostic: "expected exactly one confirmation popover, found \(popovers.count)"
+            )
+        }
+        let popover = popovers.element
+        guard popover.waitForExistence(timeout: 20) else {
+            return PickerInteraction(succeeded: false, diagnostic: "the confirmation popover did not become ready")
+        }
+        let popoverFrame = popover.frame
+
+        // Inside that unique popover, the sheet must carry the exact removal
+        // question as its label and must itself be unique.
+        let questionTitle = "Remove this photo from the project?"
+        let sheets = popover.sheets.matching(NSPredicate(format: "label == %@", questionTitle))
+        guard sheets.count == 1 else {
+            return PickerInteraction(
+                succeeded: false,
+                diagnostic: "expected exactly one sheet labelled '\(questionTitle)' inside the popover, "
+                    + "found \(sheets.count)"
+            )
+        }
+        let sheet = sheets.element
+        guard sheet.waitForExistence(timeout: 20) else {
+            return PickerInteraction(succeeded: false, diagnostic: "the confirmation sheet did not become ready")
+        }
+
+        // The question and the "original is not changed" explanation must be inside
+        // that exact sheet — an app-wide similar text proves no ownership.
+        let question = sheet.staticTexts
+            .matching(NSPredicate(format: "label == %@", questionTitle)).firstMatch
+        let explanation = sheet.staticTexts
+            .matching(NSPredicate(format: "label CONTAINS %@", "photo library is not changed")).firstMatch
+        guard question.waitForExistence(timeout: 30), explanation.exists else {
+            return PickerInteraction(
+                succeeded: false,
+                diagnostic: "the confirmation sheet is missing its question/explanation "
+                    + "(question=\(question.exists) explanation=\(explanation.exists))"
+            )
+        }
+
+        let dismissRegions = app.otherElements.matching(identifier: "PopoverDismissRegion")
+        guard dismissRegions.count == 1 else {
+            return PickerInteraction(
+                succeeded: false,
+                diagnostic: "expected exactly one 'PopoverDismissRegion', found \(dismissRegions.count)"
+            )
+        }
+        let dismissRegion = dismissRegions.element
+        guard dismissRegion.waitForExistence(timeout: 20) else {
+            return PickerInteraction(succeeded: false, diagnostic: "'PopoverDismissRegion' did not become ready")
+        }
+
+        let regionFrame = dismissRegion.frame
+        guard isFinitePositive(regionFrame), isFinitePositive(popoverFrame),
+              app.frame.contains(regionFrame), app.frame.contains(popoverFrame) else {
+            return PickerInteraction(
+                succeeded: false,
+                diagnostic: "non-usable confirmation frames: dismissRegion=\(regionFrame) "
+                    + "popover=\(popoverFrame) app=\(app.frame)"
+            )
+        }
+
+        // Computed only to validate the authorised point; the tap below stays
+        // element-relative and never uses this absolute point.
+        let centre = CGPoint(x: regionFrame.midX, y: regionFrame.midY)
+        guard app.frame.contains(centre), !popoverFrame.contains(centre) else {
+            return PickerInteraction(
+                succeeded: false,
+                diagnostic: "the dismiss-region centre \(centre) is not on screen or not strictly outside "
+                    + "the popover \(popoverFrame)"
+            )
+        }
+
+        print("INTERACTION-VERIFY[confirmation] popover=\(popoverFrame) dismissRegion=\(regionFrame) "
+            + "centre=(\(centre.x), \(centre.y)) strategy=element-relative-centre-tap")
+        print("INTERACTION-VERIFY[confirmation] hierarchy before cancel: \(app.debugDescription)")
+        attachFullAppScreenshot(app, named: "INTERACTION-VERIFY[confirmation] before cancel")
+
+        dismissRegion.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+
+        attachFullAppScreenshot(app, named: "INTERACTION-VERIFY[confirmation] after cancel")
+        return PickerInteraction(
+            succeeded: true,
+            diagnostic: "popover=\(popoverFrame) dismissRegion=\(regionFrame) centre=(\(centre.x), \(centre.y))"
+        )
     }
 
     /// The identifier is applied to a `PhotosPicker`, whose element type is not

@@ -8,7 +8,13 @@ Status: CHANGES_REQUESTED（新版工具链实际失败，限定修复复审完�
 
 User Decision: 2026-10-05所有者豁免今天Stage02逐项审批，委托Architect持续推进技术验收；本人亲自操作未执行，技术通过尚未取得。
 
-## 当前工具链预检补充（2026-10-05，第三轮失败／FIX04实现中）
+## 当前工具链预检补充（2026-10-05，第四轮已失败，FIX05已送达）
+
+当前事实：第四轮run37225749574/source8d1f954于03:00:18结束failure，85/84/1/0/0。真实照片选择、导入、加载预览、Done返回Editor通过；243行Cancel失败，原生Popover内只有Remove及外部PopoverDismissRegion，见Round29。恢复/深色未执行到，最大字号尚未应用；无新模拟器ZIP。完整91,825,505bytes外层证据SHA f2f3ad9ed4693b89bb79084ba67752e00b1dbaf471f07cdd143e27acc538d7a1已匹配GitHub，实际PNG已目视。03:05 FIX05送达DSH并开始；尚未交付/运行。下面段落保留各时间点历史，不能作为当前通过结论。
+
+03:18当前更新：DSH FIX05及精确浮层归属补充03:16最终交付，Round30独立复审通过（原86断言全部保留、87现有，80+5方法，7148Swift行），仅UI测试改动；产品/契约/依赖/工程/workflow/tools不改。准备限定推送与单次第五轮；新取消/恢复/深色尚未执行，仍CHANGES_REQUESTED。今天免逐项审批不能写成本人操作过，Stage03禁止。
+
+最新：DSH FIX04及补充02:42完成，Round28复审通过；13文件实际推送，远端source `8d1f9541b8f1aaa83081d56472d297d441705d12`已核一致。第四轮[37225749574](https://github.com/Icatly/moments-studio/actions/runs/37225749574)/attempt1于02:46:56创建、job02:47:03开始，工具链选择进行中。原48行为断言保留、当前86条body断言，80单元+5UI=85方法不变；相对点击/重启/深色/字号帮助尚未有本轮实际结果，仍不能技术通过。以下按当时进展保留第二/三轮历史，不作为当前FIX04通过声明。
 
 所有者批准d5e3152的10文件上传后，已实际推送并核对私有仓库main。第二轮run[37220074605](https://github.com/Icatly/moments-studio/actions/runs/37220074605)，source `d5e31521f31ee9b67dbbeb655e02e1973a36fcdf`，attempt1，01:30:24结束failure。Xcode26.6/SDK26.5/iOS26.5 arm64设备Release构建/产物校验success；80单元通过、5UI中1失败，即84/85、0skip。正确照片scope找到9张但首个isHittable=false，选择前停止。诊断导出/guard/上传success，包装skipped；原始job.log已下载，84,427,159bytes外层artifact下载进行中，未核完SHA/像素。无新模拟器ZIP，不套用下方旧Xcode通过记录。
 
