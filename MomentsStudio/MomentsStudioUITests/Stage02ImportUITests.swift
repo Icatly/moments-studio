@@ -121,7 +121,7 @@ final class Stage02ImportUITests: XCTestCase {
             waitForPickerToOpen(in: app),
             "The system photo picker did not appear.\n\(app.debugDescription)"
         )
-        let selection = selectFirstPhotoCell(in: app)
+        let selection = selectFirstPhotoCell(in: app, session: "initial import")
         XCTAssertTrue(
             selection.succeeded,
             "No native photo-grid cell could be selected: \(selection.diagnostic)\n\(app.debugDescription)"
@@ -271,7 +271,7 @@ final class Stage02ImportUITests: XCTestCase {
             waitForPickerToOpen(in: app),
             "The system photo picker did not appear again.\n\(app.debugDescription)"
         )
-        let secondSelection = selectFirstPhotoCell(in: app)
+        let secondSelection = selectFirstPhotoCell(in: app, session: "reimport")
         XCTAssertTrue(
             secondSelection.succeeded,
             "The seeded photo was no longer selectable: \(secondSelection.diagnostic)\n\(app.debugDescription)"
@@ -342,7 +342,26 @@ final class Stage02ImportUITests: XCTestCase {
     /// scope. These are native accessibility queries over system UI (not private
     /// APIs) and deliberately narrow: no unscoped `app.images`, no coordinates and
     /// no blind fallback.
-    private func selectFirstPhotoCell(in app: XCUIApplication) -> PickerInteraction {
+    ///
+    /// The two recorded layouts answer "can this element be hit right now?"
+    /// differently:
+    ///
+    /// * iOS 18.5 (run 37147120379): the first `PXGGridLayout-Info` becomes
+    ///   hittable, so this branch keeps the existing bounded hittable wait.
+    /// * iOS 26.5 (run 37220074605): the correct scope and nine real photos were
+    ///   found, yet the first photo reported `exists == true` / `hittable == false`
+    ///   with frame `{{0.0, 346.0}, {132.9, 133.0}}`, so a hittable precondition
+    ///   returned before any real tap. Apple documents `isHittable` as whether a
+    ///   hit point can be computed for the element *now*, and `tap()` as
+    ///   attempting to scroll the target into a tappable position, so this branch
+    ///   requires existence plus a finite non-empty frame, records the native
+    ///   diagnostics, and calls `tap()` exactly once on that element so XCTest
+    ///   computes the hit point itself.
+    ///
+    /// A `tap()` call is **not** proof of selection: the caller still has to see
+    /// the real confirmation control become enabled and hittable and then the real
+    /// import/preview/removal path succeed, otherwise the test fails.
+    private func selectFirstPhotoCell(in app: XCUIApplication, session: String) -> PickerInteraction {
         let identifier = pickerGridIdentifier
         let scope = app.scrollViews[identifier]
         guard scope.waitForExistence(timeout: 20) else {
@@ -355,16 +374,71 @@ final class Stage02ImportUITests: XCTestCase {
 
         let photos = scope.images.matching(identifier: "PXGGridLayout-Info")
         let photo = photos.element(boundBy: 0)
-        guard photo.waitUntilHittable(timeout: 20) else {
+
+        guard usesModernPickerLayout else {
+            // iOS 18.5 layout: unchanged behaviour.
+            guard photo.waitUntilHittable(timeout: 20) else {
+                return PickerInteraction(
+                    succeeded: false,
+                    diagnostic: "no hittable 'PXGGridLayout-Info' photo in '\(identifier)' "
+                        + "(exists=\(photo.exists) hittable=\(photo.isHittable) count=\(photos.count))"
+                )
+            }
+            photo.tap()
+            return PickerInteraction(succeeded: true, diagnostic: "")
+        }
+
+        // iOS 26 layout: existence plus a finite non-empty frame is the
+        // precondition. `isHittable` is recorded for the report but does not block
+        // the native tap.
+        guard photo.waitForExistence(timeout: 20) else {
             return PickerInteraction(
                 succeeded: false,
-                diagnostic: "no hittable 'PXGGridLayout-Info' photo in '\(identifier)' "
-                    + "(exists=\(photo.exists) hittable=\(photo.isHittable) count=\(photos.count))"
+                diagnostic: "no 'PXGGridLayout-Info' photo in '\(identifier)' on iOS 26 "
+                    + "(exists=\(photo.exists) count=\(photos.count))"
+            )
+        }
+        let frame = photo.frame
+        let finiteFrame = frame.origin.x.isFinite && frame.origin.y.isFinite
+            && frame.size.width.isFinite && frame.size.height.isFinite
+        guard finiteFrame, !frame.isEmpty, frame.width > 0, frame.height > 0 else {
+            return PickerInteraction(
+                succeeded: false,
+                diagnostic: "the first 'PXGGridLayout-Info' photo has no finite non-empty frame: \(frame) "
+                    + "(exists=\(photo.exists) count=\(photos.count))"
             )
         }
 
+        let diagnostics = pickerElementDiagnostics(scope: scope, photos: photos)
+        print("Stage02 iOS 26 picker diagnostics (\(session)): \(diagnostics)")
+        attachFullAppScreenshot(app, named: "Stage02 iOS 26 picker before first photo tap (\(session))")
+
+        // Exactly one native tap on the real element; the framework computes the
+        // hit point and scrolls the grid if it needs to.
         photo.tap()
-        return PickerInteraction(succeeded: true, diagnostic: "")
+
+        attachFullAppScreenshot(app, named: "Stage02 iOS 26 picker after first photo tap (\(session))")
+        return PickerInteraction(succeeded: true, diagnostic: diagnostics)
+    }
+
+    /// Diagnostics only: the scope frame plus the first three real photo elements.
+    /// This records native state for the run report; it never picks a candidate.
+    private func pickerElementDiagnostics(scope: XCUIElement, photos: XCUIElementQuery) -> String {
+        var parts = ["scope=\(scope.frame)", "count=\(photos.count)"]
+        for index in 0..<min(3, photos.count) {
+            let element = photos.element(boundBy: index)
+            parts.append("#\(index) exists=\(element.exists) hittable=\(element.isHittable) "
+                + "frame=\(element.frame) label=\(element.label)")
+        }
+        return parts.joined(separator: " | ")
+    }
+
+    /// Test-only diagnosis kept for the run report; no product hooks are involved.
+    private func attachFullAppScreenshot(_ app: XCUIApplication, named name: String) {
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 
     /// Presses the picker's confirmation control once it is **enabled and

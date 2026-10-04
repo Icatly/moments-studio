@@ -4,11 +4,19 @@ Stage: 02
 
 Name: Photo Import and Asset Pipeline
 
-Status: CHANGES_REQUESTED（运行Review暂停，免费额度耗尽）
+Status: CHANGES_REQUESTED（新版工具链实际失败，限定修复复审完成，继续验证）
 
-User Decision: PENDING
+User Decision: 2026-10-05所有者豁免今天Stage02逐项审批，委托Architect持续推进技术验收；本人亲自操作未执行，技术通过尚未取得。
 
-## 最新Architect实际证据（2026-10-04 04:45，Round20）
+## 当前工具链预检补充（2026-10-05，第二轮失败／FIX03待实跑）
+
+所有者批准d5e3152的10文件上传后，已实际推送并核对私有仓库main。第二轮run[37220074605](https://github.com/Icatly/moments-studio/actions/runs/37220074605)，source `d5e31521f31ee9b67dbbeb655e02e1973a36fcdf`，attempt1，01:30:24结束failure。Xcode26.6/SDK26.5/iOS26.5 arm64设备Release构建/产物校验success；80单元通过、5UI中1失败，即84/85、0skip。正确照片scope找到9张但首个isHittable=false，选择前停止。诊断导出/guard/上传success，包装skipped；原始job.log已下载，84,427,159bytes外层artifact下载进行中，未核完SHA/像素。无新模拟器ZIP，不套用下方旧Xcode通过记录。
+
+DSH FIX03已01:52交付。Round26独立复审确认48条既有行为断言原文全部保留、80+5方法不变，只修改原生照片点击与截图诊断；Windows工程校验通过，但Xcode尚未实跑。所有者今天免逐项审批已写入AGENTS第5节；Stage02仍须取得真实证据才可能技术通过，Stage03禁止。Appetize仍0免费分钟，Apple账户暂停。
+
+首轮Xcode26预检run37216674264/source d4d4ee7实际84/85、1失败0skip，系统picker原生层级变化导致测试定位失败，诊断视频被guard误拦；只有原始job.log已取回。新定位按实见Photos网格及Done修改，尚待本轮验证。Appetize0分钟仍暂停，本人交互验收、同会话重启、深色/大字号未完成。Apple账户问题搁置，Stage03不执行，所有者清单不勾选。
+
+## 旧工具链已通过证据（2026-10-04 04:45，Round20）
 
 source728f435a48f3f3fec5f422ac5a0407b2ed7d45ea，run[37151573797](https://github.com/Icatly/moments-studio/actions/runs/37151573797)，macOS15.7.9/Xcode16.4/arm64 iPhone16Pro18.5：**真实编译成功，80单元+5UI=85全部通过，0失败0跳过0expectedFailures**。取消smoke19.652秒、完整真实导入→预览→Done→取消移除→确认移除→0计数→再次导入57.758秒。新原生1206×2622预览PNG实际目视通过：方向/比例/留白/按钮/信息正常。没有为通过删除测试或修改生产代码。
 

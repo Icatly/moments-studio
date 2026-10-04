@@ -45,6 +45,12 @@
 
 ## 5. 人工验收闸门（Human Acceptance Gate）
 
+### 2026-10-05所有者当日持续推进授权（优先于本节旧审批要求）
+
+所有者原话：“stage 02无需我审批 今天在你额度结束之前都保持一直推进项目”。今天Stage02内已定位修复、测试、Review、必要交付/文档推送及已确认包含额度内的构建，由Architect持续推进，不逐项停下来索取所有者审批；Stage02阶段结论由Architect在实际证据充分后完成技术验收。不得把这项免审批授权写成所有者已亲自操作验收，也不得把尚未执行的检查写成通过。
+
+该授权仅限今天与Stage02。Stage03禁止、Apple账户暂停、零新增费用边界、产品/公开契约/依赖边界均保持；DSH仍受Architect任务与Review控制，不自行开始后续阶段。实际构建/测试/交互Review仍须完成，下面旧流程的审批步骤在本次授权范围内不再阻塞持续推进。未取得新验证结果前不宣称Stage02通过。
+
 - 流程固定为：REQUIREMENTS → ARCHITECTURE → IMPLEMENTATION → AUTOMATED TESTING → ARCHITECTURE REVIEW → USER BUILD → USER ACCEPTANCE → APPROVAL。不得跳过 USER ACCEPTANCE。
 - 完成实现后必须**停止开发**、准备可运行版本与验收说明、如实报告已知限制。
 - 以下均**不构成**批准：测试通过、构建成功、实现完成、ChatGPT Review 通过、无已知 Bug、DSH 自身判断。
@@ -88,3 +94,4 @@
 | 2026-10-02 | 初版 | Stage 01 由 DSH 建立治理基线；规则内容来自项目所有者 Prompt（唯一任务来源）与 `docs/产品与架构基线.md`。同日 Architect 以 `docs/Stage-01-Architect-Review备忘.md` 取代了先前的执行任务书 |
 | 2026-10-03 | 上下文交接入口 | 按项目所有者要求新增 `项目要求与上下文交接.md`，规定接续先读及关键事实持续更新；原有权限与验收闸门不变 |
 | 2026-10-03 | Stage01所有者批准 / Stage02启动 | 所有者明确确认验收并要求继续；Architect定义照片导入和素材管线范围，Stage03仍未批准 |
+| 2026-10-05 | 所有者当日免逐项审批 / Stage02持续推进 | 原话及临时执行范围见第5节；技术结论仍基于实际证据，不伪称本人验收；Stage03和Apple暂停边界不变 |
