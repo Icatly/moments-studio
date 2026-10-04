@@ -62,6 +62,22 @@ xcodebuild test \
 
 UI 测试会启动一次真实 App，因此比单元测试慢；若模拟器环境异常，UI 测试可能失败，请先确认 `xcrun simctl` 能正常启动模拟器。
 
+## 无凭据的 Xcode 26+ 工具链预检（云工作流）
+
+从 2026-04-28 起，向 App Store Connect 上传需要 **Xcode 26+ 与对应的 iOS 26+ SDK**（[Apple 要求](https://developer.apple.com/news/upcoming-requirements/)）。本工程用一个**手动触发、完全不需要 Apple 账户或签名凭据**的 GitHub Actions 工作流提前验证工具链兼容性：
+
+- 工作流文件：`.github/workflows/stage02-testflight-preflight.yml`
+- 触发方式：GitHub → Actions → **Stage 02 Xcode 26 toolchain preflight** → Run workflow（仅 `workflow_dispatch`）
+- 它做什么：
+  1. 在 runner 上**实际枚举**已安装的 Xcode，选择一个正式版 **Xcode 26+ 且 iphoneos SDK 26+** 的安装，记录路径与完整版本（排除 beta；不从 runner 标签推断版本；找不到就**明确失败**）。
+  2. 用该工具链对现有 scheme 做**无签名 iphoneos Release 构建**，并校验产物确实是设备构建（`iPhoneOS`/`iphoneos`/arm64、`platform IOS` 而非 `IOSSIMULATOR`）。
+  3. 核对主机 arm64，按完整系统版本选择该 scheme 实际可用的 **arm64 iOS 26+ 模拟器**，运行**现有 80 单元 + 5 UI = 85 项测试**（找不到符合条件的 destination 就明确失败，不跳过、不重试、不改测试）。
+  4. 从原生 `test-summary.json` **断言 85/85 通过、0 失败、0 跳过、0 预期失败**；同时核对实际 iOS 26+、Simulator、arm64 和选中设备 UDID，保留实际设备证据。
+  5. 测试通过后打包模拟器 App（`MomentsStudio-simulator.zip`），附源码 SHA（`app-source-sha.txt`）与包 SHA256（`app-sha256.txt`），并抓一张启动截图。
+  6. 上传前检查证据清单，上传明确依赖守卫成功；遇到凭据类文件或照片类文件拒绝上传，安全的失败构建/测试日志仍可保留。产物目录只放日志、xcresult、报告与包。
+- 权限与配额：`permissions: contents: read`、`persist-credentials: false`、`timeout-minutes: 20`、产物保留 2 天；**不上传 Apple、不读取任何账户密钥、不消费 Appetize**。
+- 它会证明什么、不会证明什么：证明“现有工程在该 Xcode/SDK 与 iOS 26 模拟器上仍能编译并通过原有 85 项测试”。**不**证明真机、iPad、VoiceOver、最低 iOS 17 覆盖、最终视觉，也不替代所有者的交互验收。新 SDK 可能改变系统控件外观，须另做实际视觉检查。
+
 ## 真机运行
 
 1. Xcode → 选中 `MomentsStudio` target → Signing & Capabilities → 选择你的 Team。

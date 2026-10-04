@@ -1,0 +1,335 @@
+# Owner paused Apple-account troubleshooting on 2026-10-04 and asked to continue
+# the project with an account-free toolchain check.
+#
+# This workflow is MANUAL ONLY and CREDENTIAL FREE:
+#   * no signing identity, provisioning profile, App Store Connect key or account
+#     is read, configured or required;
+#   * nothing is uploaded to Apple; only a GitHub Actions artifact is produced;
+#   * it does not modify the project, its generator, the product code or tests.
+#
+# It answers one question for the upcoming App Store Connect requirement (from
+# 2026-04-28 an upload needs Xcode 26+ with the matching iOS 26+ SDK,
+# https://developer.apple.com/news/upcoming-requirements/ ): does the existing
+# project still build unsigned for iphoneos (Release) and do the existing
+# 80 unit + 5 UI tests still pass on an iOS 26+ simulator under an Xcode 26+
+# toolchain?
+#
+# The toolchain version is verified from the runner at run time and the job fails
+# explicitly when no official Xcode 26+ with an iphoneos SDK 26+ (or no iOS 26+
+# simulator runtime) is present. It never infers the toolchain from the runner
+# label, installs large software, retries tests or skips them.
+name: Stage 02 Xcode 26 toolchain preflight
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+env:
+  ARTIFACTS: stage02-preflight-artifacts
+  # The existing Stage 02 test contract: 80 unit + 5 UI methods.
+  EXPECTED_TEST_COUNT: "85"
+jobs:
+  preflight:
+    runs-on: macos-26
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Record source and select an Xcode 26+ toolchain with an iphoneos SDK 26+
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$ARTIFACTS"
+          git rev-parse HEAD > "$ARTIFACTS/source-commit.txt"
+          sw_vers > "$ARTIFACTS/runner-os.txt"
+          uname -m > "$ARTIFACTS/runner-architecture.txt"
+          test "$(cat "$ARTIFACTS/runner-architecture.txt")" = arm64
+          python3 - <<'PY'
+          import os, re, subprocess
+          from pathlib import Path
+
+          artifacts = Path(os.environ["ARTIFACTS"])
+
+          def capture(command, environment):
+              return subprocess.run(command, capture_output=True, text=True, check=False, env=environment)
+
+          def numbers(text):
+              return tuple(int(part) for part in re.findall(r"\d+", text)[:3])
+
+          candidate_lines = []
+          qualified = []
+          for app in sorted(Path("/Applications").glob("Xcode*.app")):
+              if not app.is_dir():
+                  continue
+              if "beta" in app.name.lower():
+                  candidate_lines.append(f"{app.name}: SKIPPED (beta toolchains are not allowed)")
+                  continue
+              environment = dict(os.environ, DEVELOPER_DIR=str(app))
+              version = capture(["/usr/bin/xcodebuild", "-version"], environment)
+              sdk = capture(["/usr/bin/xcrun", "--sdk", "iphoneos", "--show-sdk-version"], environment)
+              version_lines = version.stdout.strip().splitlines()
+              version_match = re.fullmatch(r"Xcode (\d+(?:\.\d+){0,2})", version_lines[0]) if version_lines else None
+              full_version = version_match.group(1) if version_match else ""
+              build_match = next((re.fullmatch(r"Build version (\S+)", line) for line in version_lines
+                                  if line.startswith("Build version")), None)
+              build = build_match.group(1) if build_match else ""
+              sdk_version = sdk.stdout.strip().splitlines()[0].strip() if sdk.stdout.strip() else ""
+              candidate_lines.append(
+                  f"{app.name}: xcode={full_version or '?'} build={build or '?'} iphoneos_sdk={sdk_version or '?'}"
+              )
+              if version.returncode != 0 or sdk.returncode != 0 or not full_version or not build:
+                  candidate_lines[-1] += " (inspection failed)"
+                  continue
+              xcode_numbers, sdk_numbers = numbers(full_version), numbers(sdk_version)
+              if xcode_numbers and sdk_numbers and xcode_numbers[0] >= 26 and sdk_numbers[0] >= 26:
+                  qualified.append((xcode_numbers, full_version, build, sdk_version, str(app)))
+
+          (artifacts / "xcode-candidates.txt").write_text("\n".join(candidate_lines) + "\n")
+          if not qualified:
+              print("\n".join(candidate_lines))
+              raise SystemExit(
+                  "No official Xcode 26+ installation with an iphoneos SDK 26+ is present on this runner; "
+                  "refusing to fake the preflight."
+              )
+
+          qualified.sort(key=lambda entry: entry[0])
+          _, full_version, build, sdk_version, path = qualified[-1]
+          selection = (
+              f"selected_xcode_path={path}\n"
+              f"selected_xcode_version={full_version}\n"
+              f"selected_xcode_build={build}\n"
+              f"selected_iphoneos_sdk={sdk_version}\n"
+              "requirement=App Store Connect uploads need Xcode 26+ and the iOS 26+ SDK from 2026-04-28\n"
+          )
+          (artifacts / "xcode-selection.txt").write_text(selection)
+          with open(os.environ["GITHUB_ENV"], "a") as handle:
+              handle.write(f"DEVELOPER_DIR={path}\n")
+              handle.write(f"SELECTED_XCODE_PATH={path}\n")
+          print(selection)
+          PY
+
+      - name: Select an available iOS 26+ iPhone simulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DEVELOPER_DIR="$SELECTED_XCODE_PATH"
+          xcrun simctl list runtimes > "$ARTIFACTS/simulator-runtimes.txt"
+          xcrun simctl list devices available --json > "$ARTIFACTS/devices.json"
+          xcodebuild -showdestinations -project MomentsStudio/MomentsStudio.xcodeproj \
+            -scheme MomentsStudio > "$ARTIFACTS/available-destinations.txt" 2>&1
+          python3 - <<'PY'
+          import json, os, re
+          from pathlib import Path
+
+          artifacts = Path(os.environ["ARTIFACTS"])
+          data = json.loads((artifacts / "devices.json").read_text())
+          destinations = (artifacts / "available-destinations.txt").read_text().split("Ineligible destinations", 1)[0]
+          available_ids = set()
+          for entry in re.findall(r"\{([^{}]+)\}", destinations):
+              fields = dict(pair.strip().split(":", 1) for pair in entry.split(",") if ":" in pair)
+              fields = {key.strip(): value.strip() for key, value in fields.items()}
+              if fields.get("platform") == "iOS Simulator" and fields.get("arch") == "arm64":
+                  available_ids.add(fields.get("id"))
+          candidates = []
+          for runtime, devices in data["devices"].items():
+              match = re.search(r"iOS-(\d+(?:-\d+)*)$", runtime)
+              version = tuple(int(part) for part in match.group(1).split("-")) if match else ()
+              if not version or version[0] < 26:
+                  continue
+              available = [d for d in devices if d.get("isAvailable") and d["name"].startswith("iPhone")
+                           and d["udid"] in available_ids]
+              if available:
+                  candidates.append((version, runtime, available[0]))
+
+          if not candidates:
+              raise SystemExit(
+                  "No arm64 iPhone destination on an iOS 26+ runtime was found; inspect devices.json and available-destinations.txt. "
+                  "Tests are not skipped or faked."
+              )
+
+          candidates.sort(key=lambda entry: entry[0])
+          _, runtime, device = candidates[-1]
+          (artifacts / "destination.txt").write_text(f"{runtime}: {device['name']} ({device['udid']})\n")
+          with open(os.environ["GITHUB_ENV"], "a") as handle:
+              handle.write(f"STAGE02_SIMULATOR_ID={device['udid']}\n")
+          print(f"selected {runtime}: {device['name']} ({device['udid']})")
+          PY
+
+      - name: Build the existing scheme for iphoneos Release without signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DEVELOPER_DIR="$SELECTED_XCODE_PATH"
+          xcodebuild -version | tee "$ARTIFACTS/xcodebuild-version.txt"
+          xcrun --sdk iphoneos --show-sdk-version > "$ARTIFACTS/device-sdk-version.txt"
+          xcodebuild build -project MomentsStudio/MomentsStudio.xcodeproj \
+            -scheme MomentsStudio -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/Stage02PreflightDeviceDerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee "$ARTIFACTS/xcodebuild-device.log"
+
+      - name: Validate the unsigned device product
+        shell: bash
+        run: |
+          set -euo pipefail
+          device_app="$RUNNER_TEMP/Stage02PreflightDeviceDerivedData/Build/Products/Release-iphoneos/MomentsStudio.app"
+          test -d "$device_app"
+          python3 - "$device_app/Info.plist" <<'PY'
+          import plistlib, sys
+          from pathlib import Path
+          data = plistlib.loads(Path(sys.argv[1]).read_bytes())
+          assert data["CFBundleIdentifier"] == "com.example.MomentsStudio", data
+          assert data["CFBundleExecutable"] == "MomentsStudio", data
+          assert data["CFBundleSupportedPlatforms"] == ["iPhoneOS"], data
+          assert data["DTPlatformName"] == "iphoneos", data
+          assert data["MinimumOSVersion"] == "17.0", data
+          Path("stage02-preflight-artifacts/device-Info.plist").write_bytes(Path(sys.argv[1]).read_bytes())
+          PY
+          lipo "$device_app/MomentsStudio" -verify_arch arm64
+          xcrun vtool -show-build "$device_app/MomentsStudio" > "$ARTIFACTS/macho-build-version.txt"
+          python3 - <<'PY'
+          from pathlib import Path
+          lines = Path("stage02-preflight-artifacts/macho-build-version.txt").read_text().splitlines()
+          assert any(line.split() == ["platform", "IOS"] for line in lines), lines
+          assert not any("IOSSIMULATOR" in line for line in lines), lines
+          PY
+
+      - name: Seed the synthetic Photos fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DEVELOPER_DIR="$SELECTED_XCODE_PATH"
+          # Reuses the existing Stage 02 fixture generator; the synthetic images
+          # stay in the runner's temporary directory and are not uploaded.
+          python3 tools/generate_stage02_photo_fixtures.py "$RUNNER_TEMP/stage02-photo-fixtures"
+          (cd "$RUNNER_TEMP/stage02-photo-fixtures" && shasum -a 256 ./*.png) > "$ARTIFACTS/photo-fixtures-sha256.txt"
+          xcrun simctl bootstatus "$STAGE02_SIMULATOR_ID" -b
+          xcrun simctl addmedia "$STAGE02_SIMULATOR_ID" "$RUNNER_TEMP"/stage02-photo-fixtures/*.png
+
+      - name: Run the existing unit and UI tests on the iOS 26+ simulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DEVELOPER_DIR="$SELECTED_XCODE_PATH"
+          xcodebuild test -project MomentsStudio/MomentsStudio.xcodeproj \
+            -scheme MomentsStudio -configuration Debug \
+            -destination "platform=iOS Simulator,arch=arm64,id=$STAGE02_SIMULATOR_ID" \
+            -derivedDataPath "$RUNNER_TEMP/Stage02PreflightDerivedData" \
+            -resultBundlePath "$ARTIFACTS/Stage02-Preflight.xcresult" \
+            -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee "$ARTIFACTS/xcodebuild-test.log"
+
+      - name: Export readable test results and retained attachments
+        if: always()
+        shell: bash
+        run: |
+          set -uo pipefail
+          export DEVELOPER_DIR="${SELECTED_XCODE_PATH:-/Applications/Xcode.app}"
+          if test -d "$ARTIFACTS/Stage02-Preflight.xcresult"; then
+            xcrun xcresulttool help export attachments > "$ARTIFACTS/attachment-export-help.txt" 2>&1
+            if ! xcrun xcresulttool get test-results summary --path "$ARTIFACTS/Stage02-Preflight.xcresult" --compact > "$ARTIFACTS/test-summary.json" 2> "$ARTIFACTS/test-summary-export.log"; then
+              echo '::warning::Readable test summary export failed; inspect the raw result bundle and export log.'
+            fi
+            if ! xcrun xcresulttool export attachments --path "$ARTIFACTS/Stage02-Preflight.xcresult" --output-path "$ARTIFACTS/failure-attachments" > "$ARTIFACTS/attachment-export.log" 2>&1; then
+              echo '::warning::Test attachment export failed; inspect the raw result bundle and export log.'
+            fi
+          else
+            echo '::warning::No result bundle was produced; the test command failed before writing results.'
+          fi
+
+      - name: Assert the existing 85 test contract
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, re
+          from pathlib import Path
+
+          expected = int(os.environ["EXPECTED_TEST_COUNT"])
+          artifacts = Path(os.environ["ARTIFACTS"])
+          summary_path = artifacts / "test-summary.json"
+          if not summary_path.exists():
+              raise SystemExit("No test summary was exported; the preflight cannot claim the contract.")
+
+          summary = json.loads(summary_path.read_text())
+          total = summary.get("totalTestCount")
+          passed = summary.get("passedTests")
+          failed = summary.get("failedTests")
+          skipped = summary.get("skippedTests")
+          expected_failures = summary.get("expectedFailures", 0)
+          print(f"total={total} passed={passed} failed={failed} skipped={skipped} expectedFailures={expected_failures}")
+
+          devices = summary.get("devicesAndConfigurations") or []
+          (artifacts / "test-device.txt").write_text(json.dumps(devices, indent=2) + "\n")
+          if len(devices) != 1:
+              raise SystemExit("Expected one actual device/configuration in the result summary.")
+          device = devices[0].get("device", {})
+          os_match = re.fullmatch(r"(\d+)(?:\.\d+)*", str(device.get("osVersion", "")))
+          if (not os_match or int(os_match.group(1)) < 26
+                  or device.get("platform") != "iOS Simulator"
+                  or device.get("architecture") != "arm64"
+                  or not os.environ.get("STAGE02_SIMULATOR_ID")
+                  or device.get("deviceId") != os.environ["STAGE02_SIMULATOR_ID"]):
+              raise SystemExit("Actual test device must match the selected arm64 iOS 26+ Simulator UDID.")
+
+          if (total, passed, failed, skipped, expected_failures) != (expected, expected, 0, 0, 0):
+              raise SystemExit(
+                  f"Expected exactly {expected} tests: {expected} passed, 0 failed, 0 skipped, 0 expected failures. "
+                  "A failing or skipped test is reported, never hidden by retries or skips."
+              )
+          PY
+
+      - name: Package the simulator app for later interactive acceptance
+        shell: bash
+        run: |
+          set -euo pipefail
+          simulator_app="$RUNNER_TEMP/Stage02PreflightDerivedData/Build/Products/Debug-iphonesimulator/MomentsStudio.app"
+          test -d "$simulator_app"
+          ditto -c -k --sequesterRsrc --keepParent "$simulator_app" "$ARTIFACTS/MomentsStudio-simulator.zip"
+          shasum -a 256 "$ARTIFACTS/MomentsStudio-simulator.zip" > "$ARTIFACTS/app-sha256.txt"
+          cp "$ARTIFACTS/source-commit.txt" "$ARTIFACTS/app-source-sha.txt"
+          xcrun simctl bootstatus "$STAGE02_SIMULATOR_ID" -b
+          xcrun simctl install "$STAGE02_SIMULATOR_ID" "$simulator_app"
+          xcrun simctl launch "$STAGE02_SIMULATOR_ID" com.example.MomentsStudio
+          sleep 2
+          xcrun simctl io "$STAGE02_SIMULATOR_ID" screenshot "$ARTIFACTS/launch.png"
+
+      - name: Check that only expected evidence will be uploaded
+        id: evidence_guard
+        if: always()
+        shell: bash
+        run: |
+          set -uo pipefail
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          artifacts = Path(os.environ["ARTIFACTS"])
+          files = sorted(path for path in artifacts.rglob("*") if path.is_file())
+          names = [path.relative_to(artifacts).as_posix() for path in files]
+          inventory = [f"{name}\t{path.stat().st_size}" for name, path in zip(names, files)]
+          (artifacts / "artifact-inventory.txt").write_text("\n".join(inventory) + "\n")
+          print("\n".join(inventory))
+
+          forbidden = (".p12", ".mobileprovision", ".pem", ".key", ".cer", ".env", ".p8", "id_rsa", "credentials")
+          offenders = [name for name in names if any(token in name.lower() for token in forbidden)]
+          if offenders:
+              raise SystemExit(f"Refusing to upload credential-like files: {offenders}")
+
+          # The synthetic fixtures stay outside the artifact directory on purpose.
+          photos = [name for name in names if name.lower().endswith((".heic", ".jpg", ".jpeg", ".mov", ".mp4"))]
+          if photos:
+              raise SystemExit(f"Refusing to upload photo-like files: {photos}")
+          PY
+
+      - name: Preserve preflight evidence even on failure
+        if: ${{ always() && steps.evidence_guard.outcome == 'success' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: stage02-xcode26-preflight-evidence
+          path: stage02-preflight-artifacts/
+          retention-days: 2
+          if-no-files-found: error
