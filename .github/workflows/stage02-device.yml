@@ -1,0 +1,81 @@
+# Owner requested the physical-device acceptance route on 2026-10-04.
+# This packages an UNSIGNED device build; local signing and installation remain unverified.
+name: Stage 02 physical-device package
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Record source and build environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p stage02-device-artifacts
+          git rev-parse HEAD > stage02-device-artifacts/source-commit.txt
+          xcodebuild -version > stage02-device-artifacts/xcode-version.txt
+          xcrun --sdk iphoneos --show-sdk-version > stage02-device-artifacts/device-sdk-version.txt
+          printf '%s\n' 'UNSIGNED device IPA. Requires local Apple-account signing before installation. Building is not device testing or owner acceptance.' > stage02-device-artifacts/INSTALLATION-STATUS.txt
+      - name: Build for physical iOS devices without account credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild build -project MomentsStudio/MomentsStudio.xcodeproj \
+            -scheme MomentsStudio -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/Stage02DeviceDerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee stage02-device-artifacts/xcodebuild-device.log
+      - name: Validate device product and package an unsigned IPA
+        shell: bash
+        run: |
+          set -euo pipefail
+          stage02_device_app="$RUNNER_TEMP/Stage02DeviceDerivedData/Build/Products/Release-iphoneos/MomentsStudio.app"
+          test -d "$stage02_device_app"
+          python3 - "$stage02_device_app/Info.plist" <<'PY'
+          import plistlib, sys
+          from pathlib import Path
+          data = plistlib.loads(Path(sys.argv[1]).read_bytes())
+          assert data['CFBundleIdentifier'] == 'com.example.MomentsStudio', data
+          assert data['CFBundleExecutable'] == 'MomentsStudio', data
+          assert data['CFBundleSupportedPlatforms'] == ['iPhoneOS'], data
+          assert data['DTPlatformName'] == 'iphoneos', data
+          assert data['MinimumOSVersion'] == '17.0', data
+          Path('stage02-device-artifacts/Info.plist').write_bytes(Path(sys.argv[1]).read_bytes())
+          PY
+          lipo -verify_arch arm64 "$stage02_device_app/MomentsStudio"
+          xcrun vtool -show-build "$stage02_device_app/MomentsStudio" > stage02-device-artifacts/macho-build-version.txt
+          python3 - <<'PY'
+          from pathlib import Path
+          lines = Path('stage02-device-artifacts/macho-build-version.txt').read_text().splitlines()
+          assert any(line.split() == ['platform', 'IOS'] for line in lines), lines
+          assert not any('IOSSIMULATOR' in line for line in lines), lines
+          PY
+          mkdir -p "$RUNNER_TEMP/Stage02DevicePayload/Payload"
+          ditto "$stage02_device_app" "$RUNNER_TEMP/Stage02DevicePayload/Payload/MomentsStudio.app"
+          ditto -c -k --keepParent "$RUNNER_TEMP/Stage02DevicePayload/Payload" stage02-device-artifacts/MomentsStudio-device-unsigned.ipa
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          package = Path('stage02-device-artifacts/MomentsStudio-device-unsigned.ipa')
+          with ZipFile(package) as archive:
+              names = archive.namelist()
+              assert 'Payload/MomentsStudio.app/MomentsStudio' in names, names
+              assert 'Payload/MomentsStudio.app/Info.plist' in names, names
+              assert not any(name.endswith('.xctest/') or '.xctest/' in name for name in names), names
+          PY
+          shasum -a 256 stage02-device-artifacts/MomentsStudio-device-unsigned.ipa > stage02-device-artifacts/ipa-sha256.txt
+      - name: Preserve device packaging evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: stage02-device-package-and-evidence
+          path: stage02-device-artifacts/
+          retention-days: 2
+          if-no-files-found: error
