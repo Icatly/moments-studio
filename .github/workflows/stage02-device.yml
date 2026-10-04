@@ -49,7 +49,7 @@ jobs:
           assert data['MinimumOSVersion'] == '17.0', data
           Path('stage02-device-artifacts/Info.plist').write_bytes(Path(sys.argv[1]).read_bytes())
           PY
-          lipo -verify_arch arm64 "$stage02_device_app/MomentsStudio"
+          lipo "$stage02_device_app/MomentsStudio" -verify_arch arm64
           xcrun vtool -show-build "$stage02_device_app/MomentsStudio" > stage02-device-artifacts/macho-build-version.txt
           python3 - <<'PY'
           from pathlib import Path

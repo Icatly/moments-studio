@@ -45,3 +45,6 @@
 
 - 2026-10-04：确认本项目最低iOS17.0；只读Windows卸载登记目前仅发现Apple Mobile Device Support 18.0.0.32，尚未据此排除Store版应用或便携版工具。
 - 2026-10-04：设备构建工作流与安装指南准备；设备构建/签名/安装/真机操作均尚未执行。
+
+- 2026-10-04：首轮设备run37179042406/sourceb4eba40的iphoneos Release编译通过，包校验因lipo命令输入位置错误失败；未生成有效IPA。工作流单行修正后需新一次实际构建。
+- 2026-10-04：Windows已实际识别Apple iPhone/USB设备为OK；官方iTunes/iCloud安装器签名Valid，AltServer官方安装器无Authenticode签名。自动审批拒绝iTunes安装启动，已等待所有者明确工具安装授权，未绕过。
