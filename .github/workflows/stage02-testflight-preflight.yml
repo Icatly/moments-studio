@@ -304,7 +304,7 @@ jobs:
         run: |
           set -uo pipefail
           python3 - <<'PY'
-          import os
+          import os, re
           from pathlib import Path
 
           artifacts = Path(os.environ["ARTIFACTS"])
@@ -319,10 +319,38 @@ jobs:
           if offenders:
               raise SystemExit(f"Refusing to upload credential-like files: {offenders}")
 
-          # The synthetic fixtures stay outside the artifact directory on purpose.
-          photos = [name for name in names if name.lower().endswith((".heic", ".jpg", ".jpeg", ".mov", ".mp4"))]
-          if photos:
-              raise SystemExit(f"Refusing to upload photo-like files: {photos}")
+          # XCTest exports its own failure diagnostics into failure-attachments/,
+          # including one UUID-named screen recording of the failed run. The
+          # runner produces that recording from the synthetic fixtures and system
+          # default media only - never from an owner photo library, desktop
+          # screenshot or device media. It is therefore allowed, but *only* when
+          # the xcresult export manifest and the original result bundle are both
+          # present, which pins it to that export instead of to any file that
+          # merely happens to sit in a folder.
+          diagnostic_recording = re.compile(
+              r"^failure-attachments/[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}"
+              r"-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\.mp4$"
+          )
+          export_manifest = artifacts / "failure-attachments/manifest.json"
+          result_bundle = artifacts / "Stage02-Preflight.xcresult"
+          diagnostic_export_verified = export_manifest.is_file() and result_bundle.is_dir()
+
+          media_suffixes = (".heic", ".jpg", ".jpeg", ".mov", ".mp4")
+          media = [name for name in names if name.lower().endswith(media_suffixes)]
+          allowed = [name for name in media
+                     if diagnostic_export_verified and diagnostic_recording.fullmatch(name)]
+          rejected = [name for name in media if name not in allowed]
+          if rejected:
+              raise SystemExit(
+                  "Refusing to upload media files that are not xcresult-exported XCTest diagnostic "
+                  f"recordings (manifest={export_manifest.is_file()}, bundle={result_bundle.is_dir()}): {rejected}"
+              )
+          if allowed:
+              print(
+                  f"Allowed {len(allowed)} XCTest diagnostic recording(s) exported from the xcresult: {allowed}. "
+                  "Provenance: synthetic fixtures and system default media only; no owner photo library, "
+                  "desktop screenshot or device media is included in this artifact."
+              )
           PY
 
       - name: Preserve preflight evidence even on failure

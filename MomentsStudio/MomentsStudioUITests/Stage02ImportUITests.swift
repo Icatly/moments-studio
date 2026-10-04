@@ -97,8 +97,9 @@ final class Stage02ImportUITests: XCTestCase {
     /// The cloud workflow seeds synthetic images into the simulator's photo
     /// library, so this drives the native picker rather than injecting anything:
     /// no production test buttons, no launch arguments, no mocked photo ids.
-    /// Locators for the picker grid and its Add control are reported assumptions
-    /// about system UI; only a real macOS run can confirm them.
+    /// Locators for the picker grid and its confirmation control are recorded from
+    /// real native hierarchy dumps of two different iOS versions (see the
+    /// version-branched helpers below); only a real macOS run can reconfirm them.
     func testImportPreviewShowsTheImageAndRemovalConfirmationKeepsOrRemovesTheCopy() {
         let app = XCUIApplication()
         app.launch()
@@ -128,7 +129,7 @@ final class Stage02ImportUITests: XCTestCase {
         let confirmation = tapPickerAddButton(in: app)
         XCTAssertTrue(
             confirmation.succeeded,
-            "The picker's Add control never became usable: \(confirmation.diagnostic)\n\(app.debugDescription)"
+            "The picker's confirmation control never became usable: \(confirmation.diagnostic)\n\(app.debugDescription)"
         )
 
         // 2. The import committed: a real thumbnail and a truthful count.
@@ -278,7 +279,7 @@ final class Stage02ImportUITests: XCTestCase {
         let secondConfirmation = tapPickerAddButton(in: app)
         XCTAssertTrue(
             secondConfirmation.succeeded,
-            "The picker's Add control never became usable: \(secondConfirmation.diagnostic)\n\(app.debugDescription)"
+            "The picker's confirmation control never became usable: \(secondConfirmation.diagnostic)\n\(app.debugDescription)"
         )
         XCTAssertTrue(
             importedThumbnail(in: app).waitForExistence(timeout: 90),
@@ -289,11 +290,13 @@ final class Stage02ImportUITests: XCTestCase {
 
     // MARK: - Pickers, gallery and confirmation helpers
 
-    /// The picker is system UI over the app; its own Cancel control is the
-    /// concrete proof that it opened (already observed to match in a real run).
+    /// The picker is system UI over the app. Readiness is the native `Photos`
+    /// navigation bar, which was observed in **both** recorded layouts
+    /// (iOS 18.5: run 37147120379, iOS 26.5: run 37216674264). The picker's early
+    /// initialization screen can show a Cancel control before that navigation and
+    /// its grid exist (see FIX-09), so Cancel alone is not treated as ready.
     private func waitForPickerToOpen(in app: XCUIApplication, timeout: TimeInterval = 30) -> Bool {
-        app.buttons["Cancel"].waitForExistence(timeout: timeout)
-            || app.navigationBars["Photos"].waitForExistence(timeout: 5)
+        app.navigationBars["Photos"].waitForExistence(timeout: timeout)
     }
 
     /// Outcome of one system-picker interaction, carrying a diagnostic for the
@@ -303,28 +306,50 @@ final class Stage02ImportUITests: XCTestCase {
         let diagnostic: String
     }
 
-    /// Taps the first real photo in the picker's grid.
+    /// The system picker's accessibility layout changed between the iOS versions
+    /// this project supports. Both layouts below come from real native hierarchy
+    /// dumps, not from guesswork:
     ///
-    /// Locators recorded from the native hierarchy dump of run 37147120379
-    /// (macOS 15.7.9 / Xcode 16.4 / iPhone 16 Pro / iOS 18.5): the system picker's
-    /// grid is a `ScrollView` with identifier "content_scroll_view", each real
-    /// photo is an `Image` with identifier "PXGGridLayout-Info" and a label such
-    /// as "Photo, October 03, 7:14 PM", and the confirm control is a button
-    /// labelled "Add" (Disabled until something is selected). That hierarchy has
-    /// **no collection views**, which is exactly why the earlier
-    /// `collectionViews.cells`/`collectionViews.images` assumption failed before
-    /// any import happened.
+    /// * iOS 18.5 (run 37147120379): the grid container is `ScrollView`
+    ///   `content_scroll_view`, photo cells are `Image` `PXGGridLayout-Info`
+    ///   (label like "Photo, October 03, 7:14 PM"), and the confirmation control
+    ///   is the `Add` button, Disabled until something is selected.
+    /// * iOS 26.5 (run 37216674264): the same `Image` `PXGGridLayout-Info` photo
+    ///   cells now live in `ScrollView` `photosView_content_scroll_view`, and the
+    ///   confirmation control is `Done` **inside the `Photos` navigation bar**,
+    ///   Disabled until something is selected.
     ///
-    /// These are native accessibility queries over system UI (not private APIs),
-    /// and the scope stays narrow on purpose: no unscoped `app.images`, no screen
-    /// coordinates and no blind fallback — if the scope or the photo identifier
-    /// changes on another OS, this fails loudly with the diagnostic below.
+    /// The branch is taken from the running system version, so each version keeps
+    /// exactly one explicit scope: a missing scope fails loudly with its own
+    /// diagnostic instead of falling back to an unscoped query, screen
+    /// coordinates or a second guess.
+    private var usesModernPickerLayout: Bool {
+        ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 26
+    }
+
+    private var pickerGridIdentifier: String {
+        usesModernPickerLayout ? "photosView_content_scroll_view" : "content_scroll_view"
+    }
+
+    private func pickerConfirmationControl(in app: XCUIApplication) -> XCUIElement {
+        if usesModernPickerLayout {
+            return app.navigationBars["Photos"].buttons["Done"]
+        }
+        return app.buttons["Add"]
+    }
+
+    /// Taps the first real photo in the picker's grid inside the version-specific
+    /// scope. These are native accessibility queries over system UI (not private
+    /// APIs) and deliberately narrow: no unscoped `app.images`, no coordinates and
+    /// no blind fallback.
     private func selectFirstPhotoCell(in app: XCUIApplication) -> PickerInteraction {
-        let scope = app.scrollViews["content_scroll_view"]
+        let identifier = pickerGridIdentifier
+        let scope = app.scrollViews[identifier]
         guard scope.waitForExistence(timeout: 20) else {
             return PickerInteraction(
                 succeeded: false,
-                diagnostic: "picker scroll view 'content_scroll_view' not found"
+                diagnostic: "picker scroll view '\(identifier)' not found on iOS "
+                    + "\(ProcessInfo.processInfo.operatingSystemVersion.majorVersion)"
             )
         }
 
@@ -333,7 +358,7 @@ final class Stage02ImportUITests: XCTestCase {
         guard photo.waitUntilHittable(timeout: 20) else {
             return PickerInteraction(
                 succeeded: false,
-                diagnostic: "no hittable 'PXGGridLayout-Info' photo in 'content_scroll_view' "
+                diagnostic: "no hittable 'PXGGridLayout-Info' photo in '\(identifier)' "
                     + "(exists=\(photo.exists) hittable=\(photo.isHittable) count=\(photos.count))"
             )
         }
@@ -342,17 +367,20 @@ final class Stage02ImportUITests: XCTestCase {
         return PickerInteraction(succeeded: true, diagnostic: "")
     }
 
-    /// Presses the picker's Add control once it is **enabled and hittable**: the
-    /// selection state updates asynchronously, so existing is not enough.
+    /// Presses the picker's confirmation control once it is **enabled and
+    /// hittable**: the selection state updates asynchronously, so existing is not
+    /// enough. iOS 26 confirms with `Done` inside the `Photos` navigation bar;
+    /// older versions keep the observed `Add` button.
     private func tapPickerAddButton(in app: XCUIApplication) -> PickerInteraction {
-        let add = app.buttons["Add"]
-        guard add.waitUntilEnabledAndHittable() else {
+        let control = pickerConfirmationControl(in: app)
+        guard control.waitUntilEnabledAndHittable() else {
             return PickerInteraction(
                 succeeded: false,
-                diagnostic: "Add button exists=\(add.exists) enabled=\(add.isEnabled) hittable=\(add.isHittable)"
+                diagnostic: "picker confirmation control exists=\(control.exists) "
+                    + "enabled=\(control.isEnabled) hittable=\(control.isHittable)"
             )
         }
-        add.tap()
+        control.tap()
         return PickerInteraction(succeeded: true, diagnostic: "")
     }
 
