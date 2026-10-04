@@ -4,11 +4,19 @@ Stage: 02
 
 Name: Photo Import and Asset Pipeline
 
-Status: CHANGES_REQUESTED（新版工具链实际失败，限定修复复审完成，继续验证）
+Status: CHANGES_REQUESTED（新版工具链85/85成功，深色像素与最大辅助字号仍需补验）
 
 User Decision: 2026-10-05所有者豁免今天Stage02逐项审批，委托Architect持续推进技术验收；本人亲自操作未执行，技术通过尚未取得。
 
-## 当前工具链预检补充（2026-10-05，第四轮已失败，FIX05已送达）
+## 当前真实证据更新（2026-10-05 03:50）
+
+**2026-10-05最新状态：**今天Stage02免逐项审批推进。第五轮run37227995563/source01bc584于03:38:58实际success，Xcode26.6/iOS26.5 arm64，85/85/0/0/0；原生选择/导入/加载预览/Done/取消保留/确认移除/再导入/精确同project与asset重启通过。完整artifact105,360,217bytes SHA已匹配；有效应用ZIP6,618,246bytes/SHA fd8c7e22265e977d8a2857434c012f549088f20a3672eb7f8603fcbc5772edb7/source01bc584已独立核验。但实际dark标签三张PNG仍浅色，Home/preview与restart PNG字节相同，深色未通过；最大辅助字号尚未native运行。DSH03:49实际收到原生simctl深色环境补验任务并开始；最大字号workflow已Round31接受，合并下一次缺口验证，尚未推送/运行。已知UIKitToolbar运行告警根因未确立，不能宣称零警告。Appetize0、Apple暂停、Stage03禁止；技术未通过，本人未操作。
+
+[第五轮完整Review](../reviews/STAGE-02-CLOUD-PREFLIGHT-05.md)。真实默认路径已完成，不重复默认构建；深色环境补验与最大辅助字号计划尚未运行。本节为当前状态，下文按时点保存历史。所有者个人操作清单继续不勾选。
+
+## 当前工具链预检补充（2026-10-05，第五轮实际运行中）
+
+最新：FIX05限定8文件实际推送01bc5845cb6d25a6bb027af5406305e2e683d213、私有main精确一致，唯一dispatch POST204。第五轮run37227995563/attempt1/source01bc584于03:21:59创建，job111511549220于03:22:08开始；暂无本轮85结果、取消/恢复/深色/新ZIP结论。03:24 DSH已收到最大字号独立配置准备任务，默认不改变字号，真实运行待当前结果与费用核对；最大字号未执行。以下按各时点保留历史，不代表目前通过。
 
 当前事实：第四轮run37225749574/source8d1f954于03:00:18结束failure，85/84/1/0/0。真实照片选择、导入、加载预览、Done返回Editor通过；243行Cancel失败，原生Popover内只有Remove及外部PopoverDismissRegion，见Round29。恢复/深色未执行到，最大字号尚未应用；无新模拟器ZIP。完整91,825,505bytes外层证据SHA f2f3ad9ed4693b89bb79084ba67752e00b1dbaf471f07cdd143e27acc538d7a1已匹配GitHub，实际PNG已目视。03:05 FIX05送达DSH并开始；尚未交付/运行。下面段落保留各时间点历史，不能作为当前通过结论。
 

@@ -21,6 +21,21 @@
 name: Stage 02 Xcode 26 toolchain preflight
 on:
   workflow_dispatch:
+    inputs:
+      # Optional one-off environment check for Stage 02. It only changes the
+      # simulator's content-size category for this run; it never adds a switch or
+      # any behaviour to the app itself, and the default keeps the normal size.
+      large_text:
+        description: "Run Stage 02 at the maximum accessibility text size (one-off simulator content size; default off)"
+        type: boolean
+        default: false
+      # Optional one-off environment check for Stage 02. It only switches the
+      # simulator's appearance for this run; the app itself has no colour-scheme
+      # override and the default keeps the normal appearance.
+      dark_appearance:
+        description: "Run Stage 02 in the native dark appearance (one-off simulator appearance; default off)"
+        type: boolean
+        default: false
 permissions:
   contents: read
 env:
@@ -221,6 +236,132 @@ jobs:
           echo "simctl help ui exit=$simctl_help_ui_status; content size read exit=$simctl_content_size_status"
           xcrun simctl addmedia "$STAGE02_SIMULATOR_ID" "$RUNNER_TEMP"/stage02-photo-fixtures/*.png
 
+      - name: Apply the maximum accessibility content size when requested
+        if: inputs.large_text
+        shell: bash
+        env:
+          STAGE02_TARGET_CONTENT_SIZE: accessibility-extra-extra-extra-large
+        run: |
+          set -euo pipefail
+          export DEVELOPER_DIR="$SELECTED_XCODE_PATH"
+          applied="$ARTIFACTS/content-size-applied.txt"
+          : > "$applied"
+
+          # Legal categories observed from the real `simctl help ui` captured by the
+          # read-only probe of the fixture step (Standard sizes: extra-small ..
+          # extra-extra-extra-large; Extended range: accessibility-medium ..
+          # accessibility-extra-extra-extra-large; plus the non-settable
+          # `unknown`/`unsupported`).
+          help_file="$ARTIFACTS/simctl-ui-help.txt"
+          test -f "$help_file"
+          # The captured help must itself have reported success; a non-zero capture is
+          # not capability evidence.
+          if ! grep -qx 'exit_status=0' "$help_file"; then
+            echo "::error::the captured simctl help did not report exit_status=0; refusing to treat it as capability evidence"
+            exit 1
+          fi
+          # Exact search for the legal maximum through a fixed string.
+          if ! grep -qF "$STAGE02_TARGET_CONTENT_SIZE" "$help_file"; then
+            echo "::error::the captured simctl help does not list $STAGE02_TARGET_CONTENT_SIZE; refusing to set a size that is not evidenced"
+            exit 1
+          fi
+
+          set +e
+          original=$(xcrun simctl ui "$STAGE02_SIMULATOR_ID" content_size)
+          original_exit=$?
+          set -e
+          printf 'previous_content_size=%s\nprevious_exit=%s\n' "$original" "$original_exit" >> "$applied"
+          printf '%s\n' "$original" > "$ARTIFACTS/content-size-original.txt"
+          if [ "$original_exit" -ne 0 ]; then
+            echo "::error::could not read the current content size (exit=$original_exit); nothing was changed"
+            exit 1
+          fi
+          # Exactly one legal category, matched as a whole value - a substring or
+          # multi-token value such as "small medium" must never be accepted.
+          case "$original" in
+            extra-small|small|medium|large|extra-large|extra-extra-large|extra-extra-extra-large|accessibility-medium|accessibility-large|accessibility-extra-large|accessibility-extra-extra-large|accessibility-extra-extra-extra-large) ;;
+            *)
+              echo "::error::current content size '$original' is not a single legal observed category (unknown/unsupported are rejected); refusing to change it"
+              exit 1
+              ;;
+          esac
+          echo "STAGE02_ORIGINAL_CONTENT_SIZE=$original" >> "$GITHUB_ENV"
+
+          set +e
+          xcrun simctl ui "$STAGE02_SIMULATOR_ID" content_size "$STAGE02_TARGET_CONTENT_SIZE"
+          set_exit=$?
+          readback=$(xcrun simctl ui "$STAGE02_SIMULATOR_ID" content_size)
+          readback_exit=$?
+          set -e
+          printf 'command=simctl ui content_size %s\nset_exit=%s\nreadback=%s\nreadback_exit=%s\n' \
+            "$STAGE02_TARGET_CONTENT_SIZE" "$set_exit" "$readback" "$readback_exit" >> "$applied"
+          if [ "$set_exit" -ne 0 ] || [ "$readback_exit" -ne 0 ] || [ "$readback" != "$STAGE02_TARGET_CONTENT_SIZE" ]; then
+            echo "::error::content size was not applied exactly (set_exit=$set_exit readback_exit=$readback_exit readback=$readback expected=$STAGE02_TARGET_CONTENT_SIZE)"
+            exit 1
+          fi
+          echo "content size applied exactly: $readback (previous $original)"
+
+      - name: Apply the dark appearance when requested
+        if: inputs.dark_appearance
+        shell: bash
+        env:
+          STAGE02_TARGET_APPEARANCE: dark
+        run: |
+          set -euo pipefail
+          export DEVELOPER_DIR="$SELECTED_XCODE_PATH"
+          applied="$ARTIFACTS/appearance-applied.txt"
+          original_file="$ARTIFACTS/appearance-original.txt"
+          : > "$applied"
+          : > "$original_file"
+
+          # Capability evidence: the captured help must itself have succeeded and
+          # must list the light|dark appearance option (observed in the real help of
+          # run 37227995563, exit_status=0).
+          help_file="$ARTIFACTS/simctl-ui-help.txt"
+          test -f "$help_file"
+          if ! grep -qx 'exit_status=0' "$help_file"; then
+            echo "::error::the captured simctl help did not report exit_status=0; refusing to treat it as capability evidence"
+            exit 1
+          fi
+          if ! grep -qF 'appearance [light | dark]' "$help_file"; then
+            echo "::error::the captured simctl help does not list 'appearance [light | dark]'; refusing to set an unsupported appearance"
+            exit 1
+          fi
+
+          set +e
+          original=$(xcrun simctl ui "$STAGE02_SIMULATOR_ID" appearance)
+          original_exit=$?
+          set -e
+          printf 'command=simctl ui "$STAGE02_SIMULATOR_ID" appearance\nvalue=%s\nexit=%s\n' \
+            "$original" "$original_exit" >> "$original_file"
+          if [ "$original_exit" -ne 0 ]; then
+            echo "::error::could not read the current appearance (exit=$original_exit); nothing was changed"
+            exit 1
+          fi
+          # Only the two real appearances are accepted as a restore target.
+          case "$original" in
+            light|dark) ;;
+            *)
+              echo "::error::current appearance '$original' is neither light nor dark; refusing to change it"
+              exit 1
+              ;;
+          esac
+          echo "STAGE02_ORIGINAL_APPEARANCE=$original" >> "$GITHUB_ENV"
+
+          set +e
+          xcrun simctl ui "$STAGE02_SIMULATOR_ID" appearance "$STAGE02_TARGET_APPEARANCE"
+          set_exit=$?
+          readback=$(xcrun simctl ui "$STAGE02_SIMULATOR_ID" appearance)
+          readback_exit=$?
+          set -e
+          printf 'original=%s\ntarget=%s\ncommand=simctl ui "$STAGE02_SIMULATOR_ID" appearance %s\nset_exit=%s\nreadback=%s\nreadback_exit=%s\n' \
+            "$original" "$STAGE02_TARGET_APPEARANCE" "$STAGE02_TARGET_APPEARANCE" "$set_exit" "$readback" "$readback_exit" >> "$applied"
+          if [ "$set_exit" -ne 0 ] || [ "$readback_exit" -ne 0 ] || [ "$readback" != "$STAGE02_TARGET_APPEARANCE" ]; then
+            echo "::error::the dark appearance was not applied exactly (set_exit=$set_exit readback_exit=$readback_exit readback=$readback expected=$STAGE02_TARGET_APPEARANCE)"
+            exit 1
+          fi
+          echo "appearance applied exactly: $readback (previous $original)"
+
       - name: Run the existing unit and UI tests on the iOS 26+ simulator
         shell: bash
         run: |
@@ -295,6 +436,47 @@ jobs:
               )
           PY
 
+      - name: Verify the requested environment is still in effect after the tests
+        if: always() && (inputs.large_text || inputs.dark_appearance)
+        shell: bash
+        env:
+          REQUESTED_LARGE_TEXT: ${{ inputs.large_text }}
+          REQUESTED_DARK_APPEARANCE: ${{ inputs.dark_appearance }}
+        run: |
+          set -euo pipefail
+          export DEVELOPER_DIR="${SELECTED_XCODE_PATH:-/Applications/Xcode.app}"
+          report="$ARTIFACTS/environment-after-tests.txt"
+          : > "$report"
+          failures=0
+
+          # Only the values that were actually requested are checked.
+          if [ "$REQUESTED_LARGE_TEXT" = "true" ]; then
+            set +e
+            size=$(xcrun simctl ui "$STAGE02_SIMULATOR_ID" content_size)
+            size_exit=$?
+            set -e
+            printf 'content_size=%s\nexit=%s\n' "$size" "$size_exit" >> "$report"
+            if [ "$size_exit" -ne 0 ] || [ "$size" != "accessibility-extra-extra-extra-large" ]; then
+              echo "::error::content size is no longer the requested maximum after the tests (exit=$size_exit value=$size)"
+              failures=$((failures + 1))
+            fi
+          fi
+
+          if [ "$REQUESTED_DARK_APPEARANCE" = "true" ]; then
+            set +e
+            appearance=$(xcrun simctl ui "$STAGE02_SIMULATOR_ID" appearance)
+            appearance_exit=$?
+            set -e
+            printf 'appearance=%s\nexit=%s\n' "$appearance" "$appearance_exit" >> "$report"
+            if [ "$appearance_exit" -ne 0 ] || [ "$appearance" != "dark" ]; then
+              echo "::error::the appearance is no longer dark after the tests (exit=$appearance_exit value=$appearance)"
+              failures=$((failures + 1))
+            fi
+          fi
+
+          echo "requested environment checked after the tests; failures=$failures"
+          test "$failures" -eq 0
+
       - name: Package the simulator app for later interactive acceptance
         shell: bash
         run: |
@@ -309,6 +491,52 @@ jobs:
           xcrun simctl launch "$STAGE02_SIMULATOR_ID" com.example.MomentsStudio
           sleep 2
           xcrun simctl io "$STAGE02_SIMULATOR_ID" screenshot "$ARTIFACTS/launch.png"
+
+      - name: Restore the original content size when it was changed
+        if: always() && inputs.large_text && env.STAGE02_ORIGINAL_CONTENT_SIZE != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DEVELOPER_DIR="${SELECTED_XCODE_PATH:-/Applications/Xcode.app}"
+          restored="$ARTIFACTS/content-size-restored.txt"
+          : > "$restored"
+
+          set +e
+          xcrun simctl ui "$STAGE02_SIMULATOR_ID" content_size "$STAGE02_ORIGINAL_CONTENT_SIZE"
+          restore_exit=$?
+          readback=$(xcrun simctl ui "$STAGE02_SIMULATOR_ID" content_size)
+          readback_exit=$?
+          set -e
+          printf 'target=%s\nrestore_exit=%s\nreadback=%s\nreadback_exit=%s\n' \
+            "$STAGE02_ORIGINAL_CONTENT_SIZE" "$restore_exit" "$readback" "$readback_exit" >> "$restored"
+          if [ "$restore_exit" -ne 0 ] || [ "$readback_exit" -ne 0 ] || [ "$readback" != "$STAGE02_ORIGINAL_CONTENT_SIZE" ]; then
+            echo "::error::the original content size was not restored exactly (restore_exit=$restore_exit readback_exit=$readback_exit readback=$readback expected=$STAGE02_ORIGINAL_CONTENT_SIZE)"
+            exit 1
+          fi
+          echo "content size restored exactly: $readback"
+
+      - name: Restore the original appearance when it was changed
+        if: always() && inputs.dark_appearance && env.STAGE02_ORIGINAL_APPEARANCE != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DEVELOPER_DIR="${SELECTED_XCODE_PATH:-/Applications/Xcode.app}"
+          restored="$ARTIFACTS/appearance-restored.txt"
+          : > "$restored"
+
+          set +e
+          xcrun simctl ui "$STAGE02_SIMULATOR_ID" appearance "$STAGE02_ORIGINAL_APPEARANCE"
+          restore_exit=$?
+          readback=$(xcrun simctl ui "$STAGE02_SIMULATOR_ID" appearance)
+          readback_exit=$?
+          set -e
+          printf 'target=%s\nrestore_exit=%s\nreadback=%s\nreadback_exit=%s\n' \
+            "$STAGE02_ORIGINAL_APPEARANCE" "$restore_exit" "$readback" "$readback_exit" >> "$restored"
+          if [ "$restore_exit" -ne 0 ] || [ "$readback_exit" -ne 0 ] || [ "$readback" != "$STAGE02_ORIGINAL_APPEARANCE" ]; then
+            echo "::error::the original appearance was not restored exactly (restore_exit=$restore_exit readback_exit=$readback_exit readback=$readback expected=$STAGE02_ORIGINAL_APPEARANCE)"
+            exit 1
+          fi
+          echo "appearance restored exactly: $readback"
 
       - name: Check that only expected evidence will be uploaded
         id: evidence_guard
