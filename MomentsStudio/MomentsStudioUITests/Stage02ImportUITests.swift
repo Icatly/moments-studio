@@ -106,6 +106,14 @@ final class Stage02ImportUITests: XCTestCase {
 
         let createProject = app.buttons["home.createProject"]
         XCTAssertTrue(createProject.waitUntilEnabled(), "Home never became ready.")
+
+        // Baseline for INTERACTION-VERIFY[restart]: the full identifiers of the Home
+        // rows that already exist, so the project created by this test can later be
+        // identified by set difference — never by row order or a display name.
+        let projectIdentifiersBeforeCreation = homeProjectIdentifiers(in: app)
+        print("INTERACTION-VERIFY[restart] Home project identifiers before creation: "
+            + "\(projectIdentifiersBeforeCreation)")
+
         createProject.tap()
 
         let importEntry = element("editor.importPhotos", in: app)
@@ -286,6 +294,259 @@ final class Stage02ImportUITests: XCTestCase {
             "The same photo could not be imported again after removing the project copy.\n\(app.debugDescription)"
         )
         XCTAssertEqual(photoCount(in: app), "1 of 20 photos")
+
+        // 8. INTERACTION-VERIFY[restart]: the same project and the same imported
+        //    asset must survive a real terminate/launch. Everything below runs only
+        //    after the whole original import path above has passed, so its failures
+        //    can never mask an old-path regression.
+        let thumbnailsBeforeRestart = importedThumbnailIdentifiers(in: app)
+        XCTAssertEqual(
+            thumbnailsBeforeRestart.count, 1,
+            "INTERACTION-VERIFY[restart] expected exactly one imported thumbnail before restarting, "
+                + "got \(thumbnailsBeforeRestart).\n\(app.debugDescription)"
+        )
+        let importedAssetIdentifier = thumbnailsBeforeRestart.first ?? ""
+        print("INTERACTION-VERIFY[restart] imported asset identifier before restart: \(importedAssetIdentifier)")
+
+        let editorBack = editorBackButton(in: app)
+        XCTAssertTrue(
+            editorBack.waitUntilEnabledAndHittable(),
+            "INTERACTION-VERIFY[restart] the editor back button is not usable.\n\(app.debugDescription)"
+        )
+        editorBack.tap()
+
+        let homeAfterEditor = app.buttons["home.createProject"]
+        XCTAssertTrue(
+            homeAfterEditor.waitUntilEnabled(),
+            "INTERACTION-VERIFY[restart] Home was not ready after leaving the editor.\n\(app.debugDescription)"
+        )
+        XCTAssertFalse(
+            app.staticTexts["home.libraryError"].exists,
+            "INTERACTION-VERIFY[restart] Home reported a library error before the restart.\n\(app.debugDescription)"
+        )
+
+        let projectIdentifiersAfterImport = homeProjectIdentifiers(in: app)
+        let createdProjects = projectIdentifiersAfterImport.subtracting(projectIdentifiersBeforeCreation)
+        guard createdProjects.count == 1, let createdProjectIdentifier = createdProjects.first else {
+            XCTFail(
+                "INTERACTION-VERIFY[restart] expected exactly one new Home project, before="
+                    + "\(projectIdentifiersBeforeCreation) after=\(projectIdentifiersAfterImport)"
+            )
+            return
+        }
+        print("INTERACTION-VERIFY[restart] created project identifier: \(createdProjectIdentifier)")
+        attachFullAppScreenshot(app, named: "INTERACTION-VERIFY[restart] Home before relaunch")
+
+        // Real cold start: terminate the process and launch again. No reset, no data
+        // injection and no product hook — the saved package itself must restore.
+        app.terminate()
+        app.launch()
+
+        let homeAfterRelaunch = app.buttons["home.createProject"]
+        XCTAssertTrue(
+            homeAfterRelaunch.waitUntilEnabled(),
+            "INTERACTION-VERIFY[restart] Home was not ready after the relaunch.\n\(app.debugDescription)"
+        )
+        XCTAssertFalse(
+            app.staticTexts["home.libraryError"].exists,
+            "INTERACTION-VERIFY[restart] Home reported a library error after the relaunch.\n\(app.debugDescription)"
+        )
+
+        let restoredProjectRow = app.buttons[createdProjectIdentifier]
+        XCTAssertTrue(
+            restoredProjectRow.waitUntilEnabledAndHittable(),
+            "INTERACTION-VERIFY[restart] the same project was not restored: \(createdProjectIdentifier)\n"
+                + "\(app.debugDescription)"
+        )
+        attachFullAppScreenshot(app, named: "INTERACTION-VERIFY[restart] Home after relaunch")
+        restoredProjectRow.tap()
+
+        let editorAfterRestore = element("editor.importPhotos", in: app)
+        XCTAssertTrue(
+            editorAfterRestore.waitUntilEnabledAndHittable(),
+            "INTERACTION-VERIFY[restart] the restored editor is not usable.\n\(app.debugDescription)"
+        )
+        XCTAssertEqual(
+            photoCount(in: app), "1 of 20 photos",
+            "INTERACTION-VERIFY[restart] the restored project lost its photo count.\n\(app.debugDescription)"
+        )
+        let restoredThumbnails = importedThumbnailIdentifiers(in: app)
+        XCTAssertEqual(
+            restoredThumbnails.count, 1,
+            "INTERACTION-VERIFY[restart] the restored editor must show exactly one asset, got "
+                + "\(restoredThumbnails).\n\(app.debugDescription)"
+        )
+        XCTAssertEqual(
+            restoredThumbnails.first, importedAssetIdentifier,
+            "INTERACTION-VERIFY[restart] the restored asset identifier changed: expected "
+                + "\(importedAssetIdentifier), got \(restoredThumbnails).\n\(app.debugDescription)"
+        )
+
+        let restoredThumbnail = app.buttons[importedAssetIdentifier].firstMatch
+        XCTAssertTrue(
+            restoredThumbnail.waitUntilHittable(),
+            "INTERACTION-VERIFY[restart] the restored thumbnail is not hittable.\n\(app.debugDescription)"
+        )
+        restoredThumbnail.tap()
+
+        XCTAssertTrue(
+            element("preview.info", in: app).waitForExistence(timeout: 60),
+            "INTERACTION-VERIFY[restart] the restored preview did not appear.\n\(app.debugDescription)"
+        )
+        XCTAssertFalse(
+            element("preview.missingPhoto", in: app).exists,
+            "INTERACTION-VERIFY[restart] the restored preview lost its photo.\n\(app.debugDescription)"
+        )
+        XCTAssertTrue(
+            previewLoadingIndicator(in: app).waitForDisappearance(timeout: 60),
+            "INTERACTION-VERIFY[restart] the restored preview never finished loading.\n\(app.debugDescription)"
+        )
+        XCTAssertFalse(
+            element("photo.unavailable", in: app).exists,
+            "INTERACTION-VERIFY[restart] the restored preview failed to load.\n\(app.debugDescription)"
+        )
+        let restoredPreviewImage = app.images["preview.image"]
+        XCTAssertTrue(
+            restoredPreviewImage.waitForExistence(timeout: 30),
+            "INTERACTION-VERIFY[restart] the restored preview Image never appeared.\n\(app.debugDescription)"
+        )
+        let restoredPreviewFrame = restoredPreviewImage.frame
+        let restoredPreviewFinite = restoredPreviewFrame.origin.x.isFinite
+            && restoredPreviewFrame.origin.y.isFinite
+            && restoredPreviewFrame.size.width.isFinite
+            && restoredPreviewFrame.size.height.isFinite
+        XCTAssertTrue(
+            restoredPreviewFinite && !restoredPreviewFrame.isEmpty,
+            "INTERACTION-VERIFY[restart] the restored preview Image frame is not finite/non-empty: "
+                + "\(restoredPreviewFrame)"
+        )
+        XCTAssertTrue(
+            app.frame.contains(restoredPreviewFrame),
+            "INTERACTION-VERIFY[restart] the restored preview Image is not wholly on screen: image "
+                + "\(restoredPreviewFrame) vs app \(app.frame)"
+        )
+        attachFullAppScreenshot(app, named: "INTERACTION-VERIFY[restart] restored preview")
+
+        let restoredDone = app.buttons["preview.done"]
+        XCTAssertTrue(
+            restoredDone.waitUntilEnabledAndHittable(),
+            "INTERACTION-VERIFY[restart] the restored preview Done is not usable.\n\(app.debugDescription)"
+        )
+        restoredDone.tap()
+        XCTAssertTrue(
+            element("editor.importPhotos", in: app).waitUntilEnabledAndHittable(),
+            "INTERACTION-VERIFY[restart] the editor is not operable after the restored preview.\n"
+                + "\(app.debugDescription)"
+        )
+
+        // 9. INTERACTION-VERIFY[dark]: the same restored project stays operable in
+        //    dark appearance. The original appearance is always restored on exit and
+        //    only this test simulator is affected.
+        let originalAppearance = XCUIDevice.shared.appearance
+        defer { XCUIDevice.shared.appearance = originalAppearance }
+        XCUIDevice.shared.appearance = .dark
+        print("INTERACTION-VERIFY[dark] appearance set to .dark for the restored project")
+
+        let darkEditorImport = element("editor.importPhotos", in: app)
+        XCTAssertTrue(
+            darkEditorImport.waitUntilEnabledAndHittable(),
+            "INTERACTION-VERIFY[dark] the editor import entry is not usable in dark appearance.\n"
+                + "\(app.debugDescription)"
+        )
+        XCTAssertEqual(
+            photoCount(in: app), "1 of 20 photos",
+            "INTERACTION-VERIFY[dark] the photo count is wrong in dark appearance.\n\(app.debugDescription)"
+        )
+        let darkThumbnails = importedThumbnailIdentifiers(in: app)
+        XCTAssertEqual(
+            darkThumbnails.first, importedAssetIdentifier,
+            "INTERACTION-VERIFY[dark] the restored asset changed in dark appearance: \(darkThumbnails).\n"
+                + "\(app.debugDescription)"
+        )
+        attachFullAppScreenshot(app, named: "INTERACTION-VERIFY[dark] Editor")
+
+        let darkThumbnail = app.buttons[importedAssetIdentifier].firstMatch
+        XCTAssertTrue(
+            darkThumbnail.waitUntilHittable(),
+            "INTERACTION-VERIFY[dark] the thumbnail is not hittable in dark appearance.\n\(app.debugDescription)"
+        )
+        darkThumbnail.tap()
+        XCTAssertTrue(
+            element("preview.info", in: app).waitForExistence(timeout: 60),
+            "INTERACTION-VERIFY[dark] the preview did not appear in dark appearance.\n\(app.debugDescription)"
+        )
+        XCTAssertTrue(
+            previewLoadingIndicator(in: app).waitForDisappearance(timeout: 60),
+            "INTERACTION-VERIFY[dark] the preview never finished loading in dark appearance.\n"
+                + "\(app.debugDescription)"
+        )
+        XCTAssertFalse(
+            element("photo.unavailable", in: app).exists,
+            "INTERACTION-VERIFY[dark] the preview image is unavailable in dark appearance.\n"
+                + "\(app.debugDescription)"
+        )
+        XCTAssertFalse(
+            element("preview.missingPhoto", in: app).exists,
+            "INTERACTION-VERIFY[dark] the preview lost its photo in dark appearance.\n\(app.debugDescription)"
+        )
+        let darkPreviewImage = app.images["preview.image"]
+        XCTAssertTrue(
+            darkPreviewImage.waitForExistence(timeout: 30),
+            "INTERACTION-VERIFY[dark] the preview Image never appeared in dark appearance.\n"
+                + "\(app.debugDescription)"
+        )
+        let darkPreviewFrame = darkPreviewImage.frame
+        let darkPreviewFinite = darkPreviewFrame.origin.x.isFinite && darkPreviewFrame.origin.y.isFinite
+            && darkPreviewFrame.size.width.isFinite && darkPreviewFrame.size.height.isFinite
+        XCTAssertTrue(
+            darkPreviewFinite && !darkPreviewFrame.isEmpty
+                && darkPreviewFrame.width > 0 && darkPreviewFrame.height > 0,
+            "INTERACTION-VERIFY[dark] the preview Image has no finite, non-empty, positive frame: "
+                + "\(darkPreviewFrame)"
+        )
+        XCTAssertTrue(
+            app.frame.contains(darkPreviewFrame),
+            "INTERACTION-VERIFY[dark] the preview Image is not wholly on screen: \(darkPreviewFrame) "
+                + "vs app \(app.frame)"
+        )
+        attachFullAppScreenshot(app, named: "INTERACTION-VERIFY[dark] loaded preview")
+
+        let darkDone = app.buttons["preview.done"]
+        XCTAssertTrue(
+            darkDone.waitUntilEnabledAndHittable(),
+            "INTERACTION-VERIFY[dark] Done is not usable in dark appearance.\n\(app.debugDescription)"
+        )
+        darkDone.tap()
+        XCTAssertTrue(
+            element("editor.importPhotos", in: app).waitUntilEnabledAndHittable(),
+            "INTERACTION-VERIFY[dark] the editor is not operable after Done in dark appearance.\n"
+                + "\(app.debugDescription)"
+        )
+
+        let darkBack = editorBackButton(in: app)
+        XCTAssertTrue(
+            darkBack.waitUntilEnabledAndHittable(),
+            "INTERACTION-VERIFY[dark] the editor back button is not usable in dark appearance.\n"
+                + "\(app.debugDescription)"
+        )
+        darkBack.tap()
+        XCTAssertTrue(
+            app.buttons["home.createProject"].waitUntilEnabled(),
+            "INTERACTION-VERIFY[dark] Home was not ready after leaving the editor in dark appearance.\n"
+                + "\(app.debugDescription)"
+        )
+        attachFullAppScreenshot(app, named: "INTERACTION-VERIFY[dark] Home")
+
+        let darkProjectRow = app.buttons[createdProjectIdentifier]
+        XCTAssertTrue(
+            darkProjectRow.waitUntilEnabledAndHittable(),
+            "INTERACTION-VERIFY[dark] the project row is not usable in dark appearance.\n\(app.debugDescription)"
+        )
+        darkProjectRow.tap()
+        XCTAssertTrue(
+            element("editor.importPhotos", in: app).waitUntilEnabledAndHittable(),
+            "INTERACTION-VERIFY[dark] the project did not reopen in dark appearance.\n\(app.debugDescription)"
+        )
     }
 
     // MARK: - Pickers, gallery and confirmation helpers
@@ -408,14 +669,36 @@ final class Stage02ImportUITests: XCTestCase {
                     + "(exists=\(photo.exists) count=\(photos.count))"
             )
         }
+        // The recorded layout must also place the target fully inside both its own
+        // scroll scope and the app window before anything is tapped.
+        guard scope.frame.contains(frame), app.frame.contains(frame) else {
+            return PickerInteraction(
+                succeeded: false,
+                diagnostic: "the first 'PXGGridLayout-Info' photo frame \(frame) is not fully inside "
+                    + "scope \(scope.frame) / app \(app.frame)"
+            )
+        }
 
+        // Logging policy for this branch: one INTERACTION-VERIFY[picker] diagnostic
+        // line per picker interaction (scope frame, count and the first three real
+        // photos), plus one keepAlways screenshot immediately before and after the
+        // single tap. The `session` label keeps the initial import and the reimport
+        // distinguishable in the same run log.
         let diagnostics = pickerElementDiagnostics(scope: scope, photos: photos)
-        print("Stage02 iOS 26 picker diagnostics (\(session)): \(diagnostics)")
+        print("INTERACTION-VERIFY[picker] session=\(session): \(diagnostics)")
         attachFullAppScreenshot(app, named: "Stage02 iOS 26 picker before first photo tap (\(session))")
 
-        // Exactly one native tap on the real element; the framework computes the
-        // hit point and scrolls the grid if it needs to.
-        photo.tap()
+        // Native `tap()` computed hit points of {-1, -1} for this layout in three
+        // attempts (run 37222556297), so the Architect authorized exactly one
+        // element-relative center tap for this recorded iOS 26 layout.
+        // `coordinate(withNormalizedOffset:)` is a public XCTest API and the offset
+        // is relative to the target element — never an absolute screen point. A tap
+        // is still not proof of selection: the real confirmation control and the
+        // whole import path must pass afterwards.
+        let relativeCenterDescription = "element-relative center tap on '\(identifier)' normalized=(0.5, 0.5) "
+            + "target=\(frame) scope=\(scope.frame) app=\(app.frame)"
+        print("INTERACTION-VERIFY[picker] session=\(session): \(relativeCenterDescription)")
+        photo.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
 
         attachFullAppScreenshot(app, named: "Stage02 iOS 26 picker after first photo tap (\(session))")
         return PickerInteraction(succeeded: true, diagnostic: diagnostics)
@@ -474,6 +757,54 @@ final class Stage02ImportUITests: XCTestCase {
         app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH %@", "editor.photo."))
             .firstMatch
+    }
+
+    /// The editor's back control differs between the supported iOS versions, both
+    /// recorded from real native dumps:
+    ///
+    /// * iOS 26.5 (run 37222556297): `Button` with `identifier: 'BackButton'`.
+    /// * iOS 18.5 (run 37147120379): the same leading navigation button has **no**
+    ///   identifier; it is exposed only with the observed label `'Moments Studio'`
+    ///   (the previous screen's title). This branch matches that observed label
+    ///   inside the navigation bar — no other label is guessed.
+    private func editorBackButton(in app: XCUIApplication) -> XCUIElement {
+        if ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 26 {
+            return app.buttons["BackButton"]
+        }
+        return app.navigationBars.buttons["Moments Studio"]
+    }
+
+    /// Full identifiers of the Home project rows. Used to identify a project across
+    /// a real terminate/launch by set difference, never by row order or name.
+    private func homeProjectIdentifiers(in app: XCUIApplication) -> Set<String> {
+        let rows = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "home.project."))
+        var identifiers = Set<String>()
+        for index in 0..<rows.count {
+            let identifier = rows.element(boundBy: index).identifier
+            if identifier.hasPrefix("home.project.") {
+                identifiers.insert(identifier)
+            }
+        }
+        return identifiers
+    }
+
+    /// Unique full `editor.photo.<assetID>` identifiers of the imported thumbnails.
+    ///
+    /// The thumbnail is a SwiftUI `Button` (PhotoImportSection) and one button can be
+    /// exposed as several accessibility nodes, so identifiers are deduplicated: the
+    /// count must be the number of distinct assets, never the number of AX nodes.
+    /// The `editor.photoCount` label shares the prefix without the dot, so it is
+    /// deliberately excluded.
+    private func importedThumbnailIdentifiers(in app: XCUIApplication) -> [String] {
+        let thumbnails = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "editor.photo."))
+        var identifiers = Set<String>()
+        for index in 0..<thumbnails.count {
+            let identifier = thumbnails.element(boundBy: index).identifier
+            if identifier.hasPrefix("editor.photo.") {
+                identifiers.insert(identifier)
+            }
+        }
+        return identifiers.sorted()
     }
 
     private func photoCount(in app: XCUIApplication) -> String {

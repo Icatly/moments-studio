@@ -8,11 +8,15 @@ Status: CHANGES_REQUESTED（新版工具链实际失败，限定修复复审完�
 
 User Decision: 2026-10-05所有者豁免今天Stage02逐项审批，委托Architect持续推进技术验收；本人亲自操作未执行，技术通过尚未取得。
 
-## 当前工具链预检补充（2026-10-05，第二轮失败／FIX03待实跑）
+## 当前工具链预检补充（2026-10-05，第三轮失败／FIX04实现中）
 
 所有者批准d5e3152的10文件上传后，已实际推送并核对私有仓库main。第二轮run[37220074605](https://github.com/Icatly/moments-studio/actions/runs/37220074605)，source `d5e31521f31ee9b67dbbeb655e02e1973a36fcdf`，attempt1，01:30:24结束failure。Xcode26.6/SDK26.5/iOS26.5 arm64设备Release构建/产物校验success；80单元通过、5UI中1失败，即84/85、0skip。正确照片scope找到9张但首个isHittable=false，选择前停止。诊断导出/guard/上传success，包装skipped；原始job.log已下载，84,427,159bytes外层artifact下载进行中，未核完SHA/像素。无新模拟器ZIP，不套用下方旧Xcode通过记录。
 
 DSH FIX03已01:52交付。Round26独立复审确认48条既有行为断言原文全部保留、80+5方法不变，只修改原生照片点击与截图诊断；Windows工程校验通过，但Xcode尚未实跑。所有者今天免逐项审批已写入AGENTS第5节；Stage02仍须取得真实证据才可能技术通过，Stage03禁止。Appetize仍0免费分钟，Apple账户暂停。
+
+后续实际事实：第三轮run37222556297/source1d103fb已执行，02:10:31结束failure，仍84/85、0skip；原生tap滚动后hit point为{-1,-1}，418行硬失败，未成功选中/导入/预览。device Release/导出/上传成功，包装skipped。原点击前1206×2622 PNG已实际查看，照片完整可见、隐私栏未遮挡；未到点击后截图。完整第三轮86,148,919bytes外层SHA `172f1e742ddf49976b54bac56e11acca50eb09e20c30a6c4534ffa3b35f6d230`与GitHub digest一致；原xcresult存在。旧第二轮完整SHA亦已匹配（见CLOUD-PREFLIGHT-02），不再是仅日志证据。
+
+Round27基于真实PNG/层级明确限定允许iOS26真实photo元素相对中心单次点击；全部原48断言和85方法保留，并在原路径之后补精确同项目/同素材terminate/launch恢复及深色交互。02:23已实际送达DSH并开始实现，尚未交付/运行FIX04。新增字号CLI只读帮助/当前值，不是大字号检查已执行。不能将实现中的新测试与上述已执行的失败结果混算。
 
 首轮Xcode26预检run37216674264/source d4d4ee7实际84/85、1失败0skip，系统picker原生层级变化导致测试定位失败，诊断视频被guard误拦；只有原始job.log已取回。新定位按实见Photos网格及Done修改，尚待本轮验证。Appetize0分钟仍暂停，本人交互验收、同会话重启、深色/大字号未完成。Apple账户问题搁置，Stage03不执行，所有者清单不勾选。
 

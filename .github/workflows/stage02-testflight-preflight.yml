@@ -206,6 +206,19 @@ jobs:
           python3 tools/generate_stage02_photo_fixtures.py "$RUNNER_TEMP/stage02-photo-fixtures"
           (cd "$RUNNER_TEMP/stage02-photo-fixtures" && shasum -a 256 ./*.png) > "$ARTIFACTS/photo-fixtures-sha256.txt"
           xcrun simctl bootstatus "$STAGE02_SIMULATOR_ID" -b
+          # Read-only capability probe for a future large-text check (Round27): the
+          # help text and the current content size are recorded with their exit
+          # status. No size is changed, no unknown parameter is passed and the
+          # original test/gate conditions stay untouched.
+          set +e
+          xcrun simctl help ui > "$ARTIFACTS/simctl-ui-help.txt" 2>&1
+          simctl_help_ui_status=$?
+          xcrun simctl ui "$STAGE02_SIMULATOR_ID" content_size > "$ARTIFACTS/content-size-current.txt" 2>&1
+          simctl_content_size_status=$?
+          set -e
+          echo "exit_status=$simctl_help_ui_status" >> "$ARTIFACTS/simctl-ui-help.txt"
+          echo "exit_status=$simctl_content_size_status" >> "$ARTIFACTS/content-size-current.txt"
+          echo "simctl help ui exit=$simctl_help_ui_status; content size read exit=$simctl_content_size_status"
           xcrun simctl addmedia "$STAGE02_SIMULATOR_ID" "$RUNNER_TEMP"/stage02-photo-fixtures/*.png
 
       - name: Run the existing unit and UI tests on the iOS 26+ simulator

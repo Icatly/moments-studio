@@ -98,6 +98,12 @@ SYSTEM_CONTROL_LABELS = {
     "content_scroll_view",
     # The system photo picker's own navigation bar title.
     "Photos",
+    # The editor's system back button, taken from the native hierarchy dump of
+    # run 37222556297 (iOS 26.5): a Button with identifier "BackButton" and label
+    # "Moments Studio" inside the editor's NavigationBar. The iOS 18.5 dump
+    # (run 37147120379) shows the same leading navigation button *without* an
+    # identifier, which is why the test branches on the system version.
+    "BackButton",
 }
 
 

@@ -19,3 +19,7 @@
 后续继续下载核实旧诊断；DSH FIX03已交付、Round26限定复审通过，下一轮只能用新固定源码验证，不重跑本轮不变源码。逐项核source/toolchain/SDK/runtime/device、85/85/0/0/0、警告、真实预览PNG、新包/外层SHA。任何通过也不冒称所有者亲自操作过。
 
 Appetize仍零免费分钟，不启动新会话、不购买；Apple账户问题暂停。照片与桌面截图不上传Git仓库。
+
+### 02:26补充：完整证据已取回
+
+两次连接中断后保留partial，以同artifact HTTP Range续传完成；外层84,427,159bytes，SHA256 `36e2d7cce4354fe3bd3b861f8cff5b8a99f1b00a04563316493e8c0f89748223`精确匹配GitHub digest。原xcresult目录存在；原summary再次确认85/84/1/0/0/source d5e3152，没有模拟器ZIP。视频在包内但尚未观看，不能用完整下载代替视频审查。
