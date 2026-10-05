@@ -4,9 +4,21 @@ Stage: 02
 
 Name: Photo Import and Asset Pipeline
 
-Status: CHANGES_REQUESTED（新版工具链85/85成功，深色像素与最大辅助字号仍需补验）
+Status: CHANGES_REQUESTED（默认85/85；第六轮最大字号84/85，FIX06复审接受待真实补验）
 
 User Decision: 2026-10-05所有者豁免今天Stage02逐项审批，委托Architect持续推进技术验收；本人亲自操作未执行，技术通过尚未取得。
+
+## 08:42最新修复交付
+
+DSH FIX06及Home补充08:41实际最终答复/停止，Round33独立接受：87完整旧断言原文有序保留/99现有/80+5方法，40 Swift/7378行；唯一AX说明Close一次、Editor真实有界滚动、Home Label两行自适应及初始Home截图，workflow仅20→18。报告残留旧数据已终审校正；DSH日志误记08:50不是实际时刻。新版尚未native运行/未通过完整大字号交互，准备限定推送与单次缺口验证。今天免审批，本人操作仍未发生，Stage03禁止。
+
+## 当前真实失败与修复（2026-10-05 04:22）
+
+第六轮run37230253288/source64fb192实际04:12:17 failure，85/84/1/0/0。最大辅助字号/真实dark应用、测试后持续读回及还原通过；原生录屏6/9/40秒帧实际目视深色最大字体，Private Access说明超屏挡grid，Home Create Project主按钮尾部截断。不是照片流程通过；未到新导入/预览/恢复，包装skipped。完整SHA已核。FIX0604:20已送DSH并开始，Home最小纵向布局补充04:22排队；新关闭/滚动/Home全文未native验证。详见[第六轮证据](../reviews/STAGE-02-CLOUD-PREFLIGHT-06.md)。今天免逐项审批，技术CHANGES_REQUESTED，本人未操作，Stage03禁止。下文保留各时点历史。
+
+## 第六轮当前运行（2026-10-05 03:59）
+
+已推送64fb192，单次输入large_text=true/dark_appearance=true，run37230253288/job111518241377于03:57:59开始；尚无本轮环境/85/真实PNG/ZIP结论。限定补深色/最大字号，不重复默认85。见[第六轮记录](../reviews/STAGE-02-CLOUD-PREFLIGHT-06.md)。今天免逐项审批，本人未操作、技术CHANGES_REQUESTED，Stage03禁止。
 
 ## 当前真实证据更新（2026-10-05 03:50）
 

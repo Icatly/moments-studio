@@ -114,10 +114,19 @@ final class Stage02ImportUITests: XCTestCase {
         print("INTERACTION-VERIFY[restart] Home project identifiers before creation: "
             + "\(projectIdentifiersBeforeCreation)")
 
+        // Initial Home evidence for the maximum-text-size review: the review of the
+        // 6s frame of run 37230253288 showed the main action label truncated, so the
+        // next real run must be able to check the full string again.
+        attachFullAppScreenshot(app, named: "INTERACTION-VERIFY[home] initial Home before creating")
+
         createProject.tap()
 
         let importEntry = element("editor.importPhotos", in: app)
         XCTAssertTrue(importEntry.waitUntilEnabled(), "The import entry never became tappable.")
+        XCTAssertTrue(
+            scrollEditorToMakeHittable(importEntry, in: app),
+            "INTERACTION-VERIFY[editor-scroll] the import entry never became hittable.\n\(app.debugDescription)"
+        )
         XCTAssertTrue(
             app.staticTexts["editor.galleryEmpty"].exists,
             "A new project must start with an empty gallery."
@@ -145,6 +154,10 @@ final class Stage02ImportUITests: XCTestCase {
         XCTAssertTrue(
             thumbnail.waitForExistence(timeout: 90),
             "The imported photo never appeared in the grid.\n\(app.debugDescription)"
+        )
+        XCTAssertTrue(
+            scrollEditorToMakeHittable(thumbnail, in: app),
+            "INTERACTION-VERIFY[editor-scroll] the imported thumbnail never became hittable.\n\(app.debugDescription)"
         )
         XCTAssertTrue(
             thumbnail.waitUntilHittable(),
@@ -229,7 +242,12 @@ final class Stage02ImportUITests: XCTestCase {
         XCTAssertEqual(photoCount(in: app), "1 of 20 photos")
 
         // 5. Remove asks first; Cancel keeps this project's copy.
-        importedThumbnail(in: app).tap()
+        let removalThumbnail = importedThumbnail(in: app)
+        XCTAssertTrue(
+            scrollEditorToMakeHittable(removalThumbnail, in: app),
+            "INTERACTION-VERIFY[editor-scroll] the removal thumbnail never became hittable.\n\(app.debugDescription)"
+        )
+        removalThumbnail.tap()
         let removeButton = app.buttons["preview.remove"]
         XCTAssertTrue(
             removeButton.waitUntilEnabledAndHittable(),
@@ -260,7 +278,13 @@ final class Stage02ImportUITests: XCTestCase {
         XCTAssertEqual(photoCount(in: app), "1 of 20 photos", "Cancel must keep the imported copy.")
 
         // 6. Confirming removal updates the project.
-        importedThumbnail(in: app).tap()
+        let confirmRemovalThumbnail = importedThumbnail(in: app)
+        XCTAssertTrue(
+            scrollEditorToMakeHittable(confirmRemovalThumbnail, in: app),
+            "INTERACTION-VERIFY[editor-scroll] the confirm-removal thumbnail never became hittable.\n"
+                + "\(app.debugDescription)"
+        )
+        confirmRemovalThumbnail.tap()
         let removeAgain = app.buttons["preview.remove"]
         XCTAssertTrue(
             removeAgain.waitUntilEnabledAndHittable(),
@@ -279,6 +303,10 @@ final class Stage02ImportUITests: XCTestCase {
         //    selected and imported again.
         let importAfterRemoval = element("editor.importPhotos", in: app)
         XCTAssertTrue(importAfterRemoval.waitUntilEnabled(), "The import entry was not usable after removal.")
+        XCTAssertTrue(
+            scrollEditorToMakeHittable(importAfterRemoval, in: app),
+            "INTERACTION-VERIFY[editor-scroll] the re-import entry never became hittable.\n\(app.debugDescription)"
+        )
         importAfterRemoval.tap()
         XCTAssertTrue(
             waitForPickerToOpen(in: app),
@@ -368,6 +396,11 @@ final class Stage02ImportUITests: XCTestCase {
 
         let editorAfterRestore = element("editor.importPhotos", in: app)
         XCTAssertTrue(
+            scrollEditorToMakeHittable(editorAfterRestore, in: app),
+            "INTERACTION-VERIFY[editor-scroll] the restored editor entry never became hittable.\n"
+                + "\(app.debugDescription)"
+        )
+        XCTAssertTrue(
             editorAfterRestore.waitUntilEnabledAndHittable(),
             "INTERACTION-VERIFY[restart] the restored editor is not usable.\n\(app.debugDescription)"
         )
@@ -388,6 +421,10 @@ final class Stage02ImportUITests: XCTestCase {
         )
 
         let restoredThumbnail = app.buttons[importedAssetIdentifier].firstMatch
+        XCTAssertTrue(
+            scrollEditorToMakeHittable(restoredThumbnail, in: app),
+            "INTERACTION-VERIFY[editor-scroll] the restored thumbnail never became hittable.\n\(app.debugDescription)"
+        )
         XCTAssertTrue(
             restoredThumbnail.waitUntilHittable(),
             "INTERACTION-VERIFY[restart] the restored thumbnail is not hittable.\n\(app.debugDescription)"
@@ -438,6 +475,12 @@ final class Stage02ImportUITests: XCTestCase {
             "INTERACTION-VERIFY[restart] the restored preview Done is not usable.\n\(app.debugDescription)"
         )
         restoredDone.tap()
+        let editorAfterRestoredDone = element("editor.importPhotos", in: app)
+        XCTAssertTrue(
+            scrollEditorToMakeHittable(editorAfterRestoredDone, in: app),
+            "INTERACTION-VERIFY[editor-scroll] the editor after the restored preview never became hittable.\n"
+                + "\(app.debugDescription)"
+        )
         XCTAssertTrue(
             element("editor.importPhotos", in: app).waitUntilEnabledAndHittable(),
             "INTERACTION-VERIFY[restart] the editor is not operable after the restored preview.\n"
@@ -453,6 +496,11 @@ final class Stage02ImportUITests: XCTestCase {
         print("INTERACTION-VERIFY[dark] appearance set to .dark for the restored project")
 
         let darkEditorImport = element("editor.importPhotos", in: app)
+        XCTAssertTrue(
+            scrollEditorToMakeHittable(darkEditorImport, in: app),
+            "INTERACTION-VERIFY[editor-scroll] the dark-mode import entry never became hittable.\n"
+                + "\(app.debugDescription)"
+        )
         XCTAssertTrue(
             darkEditorImport.waitUntilEnabledAndHittable(),
             "INTERACTION-VERIFY[dark] the editor import entry is not usable in dark appearance.\n"
@@ -471,6 +519,10 @@ final class Stage02ImportUITests: XCTestCase {
         attachFullAppScreenshot(app, named: "INTERACTION-VERIFY[dark] Editor")
 
         let darkThumbnail = app.buttons[importedAssetIdentifier].firstMatch
+        XCTAssertTrue(
+            scrollEditorToMakeHittable(darkThumbnail, in: app),
+            "INTERACTION-VERIFY[editor-scroll] the dark-mode thumbnail never became hittable.\n\(app.debugDescription)"
+        )
         XCTAssertTrue(
             darkThumbnail.waitUntilHittable(),
             "INTERACTION-VERIFY[dark] the thumbnail is not hittable in dark appearance.\n\(app.debugDescription)"
@@ -522,6 +574,12 @@ final class Stage02ImportUITests: XCTestCase {
             "INTERACTION-VERIFY[dark] Done is not usable in dark appearance.\n\(app.debugDescription)"
         )
         darkDone.tap()
+        let editorAfterDarkDone = element("editor.importPhotos", in: app)
+        XCTAssertTrue(
+            scrollEditorToMakeHittable(editorAfterDarkDone, in: app),
+            "INTERACTION-VERIFY[editor-scroll] the editor after dark Done never became hittable.\n"
+                + "\(app.debugDescription)"
+        )
         XCTAssertTrue(
             element("editor.importPhotos", in: app).waitUntilEnabledAndHittable(),
             "INTERACTION-VERIFY[dark] the editor is not operable after Done in dark appearance.\n"
@@ -548,6 +606,12 @@ final class Stage02ImportUITests: XCTestCase {
             "INTERACTION-VERIFY[dark] the project row is not usable in dark appearance.\n\(app.debugDescription)"
         )
         darkProjectRow.tap()
+        let editorAfterDarkReopen = element("editor.importPhotos", in: app)
+        XCTAssertTrue(
+            scrollEditorToMakeHittable(editorAfterDarkReopen, in: app),
+            "INTERACTION-VERIFY[editor-scroll] the reopened dark project editor never became hittable.\n"
+                + "\(app.debugDescription)"
+        )
         XCTAssertTrue(
             element("editor.importPhotos", in: app).waitUntilEnabledAndHittable(),
             "INTERACTION-VERIFY[dark] the project did not reopen in dark appearance.\n\(app.debugDescription)"
@@ -656,7 +720,19 @@ final class Stage02ImportUITests: XCTestCase {
 
         // iOS 26 layout: existence plus a finite non-empty frame is the
         // precondition. `isHittable` is recorded for the report but does not block
-        // the native tap.
+        // the native tap. Maximum text size can push the grid below the fold behind
+        // the system's photo-access onboarding, which is closed once - from its own
+        // identified container only - before the original photo wait.
+        let onboarding = closeOverflowingPhotoAccessOnboarding(in: app, scope: scope, photos: photos,
+                                                              session: session)
+        print("INTERACTION-VERIFY[onboarding] session=\(session): \(onboarding.diagnostic)")
+        guard onboarding.succeeded else {
+            return PickerInteraction(
+                succeeded: false,
+                diagnostic: "the overflowing photo-access onboarding could not be closed: \(onboarding.diagnostic)"
+            )
+        }
+
         guard photo.waitForExistence(timeout: 20) else {
             return PickerInteraction(
                 succeeded: false,
@@ -839,6 +915,152 @@ final class Stage02ImportUITests: XCTestCase {
         frame.origin.x.isFinite && frame.origin.y.isFinite
             && frame.size.width.isFinite && frame.size.height.isFinite
             && !frame.isEmpty && frame.width > 0 && frame.height > 0
+    }
+
+    /// Minimal bounded user scroll for Editor targets that exist but are not
+    /// hittable, which is what maximum text size exposes (Editor content 2256.3
+    /// points tall over four pages with the import entry from y=786.7 in run
+    /// 37230253288).
+    ///
+    /// The Editor context is proven by the real `editor.placeholder`, the absence of
+    /// the system `Photos` picker navigation and of the app's own preview sheet
+    /// (detected through its declared `preview.*` identifiers, so no undeclared
+    /// title string has to be queried), and a single Editor scroll view. The usable
+    /// viewport is that scroll view intersected with the app window and reduced by
+    /// the area the Editor navigation bar covers. The target frame and the viewport
+    /// are re-read on every pass: only a target that reaches past the bottom edge
+    /// swipes up, only one that reaches past the top edge swipes down, and a target
+    /// inside the usable viewport that still cannot be hit (or whose frame is not
+    /// finite) fails instead of guessing a direction. At most three native swipes;
+    /// an already hittable target never sees a gesture.
+    private func scrollEditorToMakeHittable(_ target: XCUIElement, in app: XCUIApplication) -> Bool {
+        if target.isHittable { return true }
+        guard target.exists else { return false }
+        guard element("editor.placeholder", in: app).exists else { return false }
+        guard !app.navigationBars["Photos"].exists,
+              !element("preview.image", in: app).exists,
+              !element("preview.done", in: app).exists else { return false }
+        guard app.scrollViews.count == 1 else { return false }
+        let scrollView = app.scrollViews.element
+        guard isFinitePositive(app.frame), isFinitePositive(scrollView.frame) else { return false }
+
+        for _ in 0..<3 {
+            if target.isHittable { return true }
+            // Every real geometry value is re-read on each pass: the app window, the
+            // single Editor navigation bar and scroll view, and the target itself.
+            let targetFrame = target.frame
+            guard isFinitePositive(targetFrame) else { return false }
+            let appFrame = app.frame
+            guard isFinitePositive(appFrame) else { return false }
+            guard app.navigationBars.count == 1 else { return false }
+            let navigationFrame = app.navigationBars.element.frame
+            guard isFinitePositive(navigationFrame) else { return false }
+            let scrollFrame = scrollView.frame
+            guard isFinitePositive(scrollFrame) else { return false }
+
+            var viewport = scrollFrame.intersection(appFrame)
+            if viewport.intersects(navigationFrame) {
+                if navigationFrame.midY <= viewport.midY {
+                    let newMinY = max(viewport.minY, navigationFrame.maxY)
+                    viewport = CGRect(x: viewport.minX, y: newMinY,
+                                      width: viewport.width, height: viewport.maxY - newMinY)
+                } else {
+                    let newMaxY = min(viewport.maxY, navigationFrame.minY)
+                    viewport = CGRect(x: viewport.minX, y: viewport.minY,
+                                      width: viewport.width, height: newMaxY - viewport.minY)
+                }
+            }
+            guard isFinitePositive(viewport) else { return false }
+
+            // Any part of the target reaching past an edge needs a gesture, so a
+            // partially overflowing target (observed Import at y=786.7 with height
+            // 125.3) is handled as well. A target fully inside the usable viewport
+            // that still cannot be hit has no justified direction, so it fails
+            // instead of guessing.
+            if targetFrame.maxY > viewport.maxY {
+                scrollView.swipeUp()
+            } else if targetFrame.minY < viewport.minY {
+                scrollView.swipeDown()
+            } else {
+                return false
+            }
+        }
+        return target.isHittable
+    }
+
+    /// Closes the system's "Private Access to Photos" onboarding exactly once when
+    /// it overflows the picker's grid.
+    ///
+    /// Observed at maximum text size (run 37230253288): the picker scope
+    /// `photosView_content_scroll_view` is `{{0,72},{402,802}}` while the unique
+    /// `PXGSingleViewContainerView_AX` banner is `{{0,184},{402,896.7}}` - taller
+    /// than the scope - and pushes the grid to y=1080.7, below the 874-point window,
+    /// so no photo ever existed. The same banner text also appears once in an
+    /// unidentified wrapper with its own `Close`, so the button is queried **only**
+    /// inside the identified container and must be unique there.
+    ///
+    /// Any state that is not an overflowing onboarding is left to the original path
+    /// unchanged.
+    private func closeOverflowingPhotoAccessOnboarding(in app: XCUIApplication, scope: XCUIElement,
+                                                      photos: XCUIElementQuery,
+                                                      session: String) -> PickerInteraction {
+        let containers = app.otherElements.matching(identifier: "PXGSingleViewContainerView_AX")
+        guard containers.count == 1 else {
+            return PickerInteraction(succeeded: true,
+                                     diagnostic: "no single photo-access onboarding container (count=\(containers.count))")
+        }
+        let container = containers.element
+        guard container.exists else {
+            return PickerInteraction(succeeded: true, diagnostic: "no photo-access onboarding present")
+        }
+        let containerFrame = container.frame
+        guard isFinitePositive(containerFrame), isFinitePositive(scope.frame) else {
+            return PickerInteraction(
+                succeeded: false,
+                diagnostic: "onboarding/scope frame is not finite and positive "
+                    + "(container=\(containerFrame) scope=\(scope.frame))"
+            )
+        }
+        // Only an onboarding that actually overflows the grid and hides every photo
+        // is handled here.
+        guard containerFrame.height > scope.frame.height, photos.count == 0 else {
+            return PickerInteraction(
+                succeeded: true,
+                diagnostic: "no overflowing photo-access onboarding "
+                    + "(container=\(containerFrame) scope=\(scope.frame) photos=\(photos.count))"
+            )
+        }
+
+        let closes = container.buttons.matching(NSPredicate(format: "label == %@", "Close"))
+        guard closes.count == 1 else {
+            return PickerInteraction(
+                succeeded: false,
+                diagnostic: "expected exactly one Close inside the onboarding container, found \(closes.count)"
+            )
+        }
+        let close = closes.element
+        guard close.waitUntilEnabledAndHittable(), isFinitePositive(close.frame),
+              scope.frame.contains(close.frame), app.frame.contains(close.frame) else {
+            return PickerInteraction(
+                succeeded: false,
+                diagnostic: "the onboarding Close is not usable (exists=\(close.exists) enabled=\(close.isEnabled) "
+                    + "hittable=\(close.isHittable) frame=\(close.frame))"
+            )
+        }
+
+        print("INTERACTION-VERIFY[onboarding] session=\(session): overflowing container=\(containerFrame) "
+            + "scope=\(scope.frame) photos=\(photos.count) close=\(close.frame)")
+        print("INTERACTION-VERIFY[onboarding] hierarchy before close: \(app.debugDescription)")
+        attachFullAppScreenshot(app, named: "INTERACTION-VERIFY[onboarding] before close (\(session))")
+
+        close.tap()
+
+        print("INTERACTION-VERIFY[onboarding] photos after close: \(photos.count)")
+        attachFullAppScreenshot(app, named: "INTERACTION-VERIFY[onboarding] after close (\(session))")
+        return PickerInteraction(
+            succeeded: true,
+            diagnostic: "closed overflowing onboarding (container=\(containerFrame) scope=\(scope.frame))"
+        )
     }
 
     /// Cancels the removal confirmation.

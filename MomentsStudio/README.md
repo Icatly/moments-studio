@@ -7,7 +7,7 @@ Stage 01 基础工程及 Stage 02 照片管线的 iOS 应用工程（Swift / Swi
 | 项 | 要求 |
 | --- | --- |
 | macOS | 必需（Xcode 只能在 macOS 上运行） |
-| Xcode | 最低设计基线15.4（使用iOS17 API）；实际验证16.4；15.4与26尚未验证 |
+| Xcode | 最低设计基线15.4（使用iOS17 API）；实际验证16.4与26.6；15.4尚未验证 |
 | iOS Deployment Target | 17.0（依据见下表） |
 | 第三方依赖 | 无（只使用 Apple 原生框架） |
 | 设备 | iPhone 模拟器或真机；UI 测试需要模拟器 |
@@ -68,6 +68,7 @@ UI 测试会启动一次真实 App，因此比单元测试慢；若模拟器环�
 
 - 工作流文件：`.github/workflows/stage02-testflight-preflight.yml`
 - 触发方式：GitHub → Actions → **Stage 02 Xcode 26 toolchain preflight** → Run workflow（仅 `workflow_dispatch`）
+- 可选环境输入：`large_text` 和 `dark_appearance` 均默认关闭。开启时只改变此次模拟器的最大辅助字号或深色外观，记录原值、设置/读回、测试后的持续读回与还原。仍运行全部85项；设置日志和测试通过须结合原始截图判断，不能单独证明实际主题或大字号可用。
 - 它做什么：
   1. 在 runner 上**实际枚举**已安装的 Xcode，选择一个正式版 **Xcode 26+ 且 iphoneos SDK 26+** 的安装，记录路径与完整版本（排除 beta；不从 runner 标签推断版本；找不到就**明确失败**）。
   2. 用该工具链对现有 scheme 做**无签名 iphoneos Release 构建**，并校验产物确实是设备构建（`iPhoneOS`/`iphoneos`/arm64、`platform IOS` 而非 `IOSSIMULATOR`）。
@@ -75,7 +76,7 @@ UI 测试会启动一次真实 App，因此比单元测试慢；若模拟器环�
   4. 从原生 `test-summary.json` **断言 85/85 通过、0 失败、0 跳过、0 预期失败**；同时核对实际 iOS 26+、Simulator、arm64 和选中设备 UDID，保留实际设备证据。
   5. 测试通过后打包模拟器 App（`MomentsStudio-simulator.zip`），附源码 SHA（`app-source-sha.txt`）与包 SHA256（`app-sha256.txt`），并抓一张启动截图。
   6. 上传前检查证据清单，上传明确依赖守卫成功；遇到凭据类文件或照片类文件拒绝上传，安全的失败构建/测试日志仍可保留。产物目录只放日志、xcresult、报告与包。
-- 权限与配额：`permissions: contents: read`、`persist-credentials: false`、`timeout-minutes: 20`、产物保留 2 天；**不上传 Apple、不读取任何账户密钥、不消费 Appetize**。
+- 权限与配额：`permissions: contents: read`、`persist-credentials: false`、`timeout-minutes: 18`、产物保留 2 天；**不上传 Apple、不读取任何账户密钥、不消费 Appetize**。
 - 它会证明什么、不会证明什么：证明“现有工程在该 Xcode/SDK 与 iOS 26 模拟器上仍能编译并通过原有 85 项测试”。**不**证明真机、iPad、VoiceOver、最低 iOS 17 覆盖、最终视觉，也不替代所有者的交互验收。新 SDK 可能改变系统控件外观，须另做实际视觉检查。
 
 ## 真机运行
@@ -103,7 +104,9 @@ python tools/verify_project.py       # 校验工程引用完整性、构建设�
 
 ## 当前限制
 
-- **Stage02真实编译测试门禁通过**：run9/source728f435在macOS15.7.9/Xcode16.4/arm64 iPhone16Pro18.5实际80单元+5UI全85通过，0失败0skip，取消选择器及完整照片流程同时通过，原生预览PNG已审。有效新ZIP已核SHA且04:39上传既有Appetize；17.2真实预置4032×3024 HEIC预览成功，不复现旧缺模型fatal。Done返回/同会话重启/深色大字号尚未完成；free30/30、0分钟，按所有者指令暂停等重置。Windows仅结构/语法检查，真机/iPad/VoiceOver/精确17.0/Xcode15.4/26未测，Stage02所有者PENDING。最新事实见[Round20](../.ai/reviews/STAGE-02-ARCHITECT-ROUND-20.md)和[验收证据](../.ai/acceptance/STAGE-02.md)。
+- **Stage02当前真实证据（2026-10-05）**：第五轮run37227995563/source01bc584，macOS26.6.2/Xcode26.6/SDK26.5/iPhone17Pro iOS26.5 arm64实际85/85、0失败0跳过；原生导入/预览/Done/取消保留/确认移除/再导入及同project与asset terminate/launch恢复通过。有效模拟器ZIP与源码/SHA已核。dark标签截图仍浅色，深色视觉未通过；第六轮run37230253288/source64fb192实际84/85失败；最大辅助字号+真实深色设置/持续读回/还原通过，原始录屏抽帧确认实际环境。系统照片Private Access说明溢出遮住网格，Home主按钮文本截断；FIX06修复关闭说明、有界Editor滚动及最小Home布局，尚未native验证。详见[第五轮Review](../.ai/reviews/STAGE-02-CLOUD-PREFLIGHT-05.md)、[第六轮记录](../.ai/reviews/STAGE-02-CLOUD-PREFLIGHT-06.md)与[当前验收事实](../.ai/acceptance/STAGE-02.md)。
+- 旧Xcode16.4/iOS18.5原85通过和Appetize17.2 HEIC加载预览证据仍有效；17.2 Done/重启未完成。Appetize31/30、0免费分钟；Apple账户暂停，不支付。真机/iPad/VoiceOver/精确17.0/Xcode15.4尚未验证。今天所有者委托Stage02免逐项审批技术验收，本人亲自操作未发生；技术验收尚未完成，Stage03禁止。
+- 构建有无AppIntents依赖的元数据提取告警；第五轮xcresult另记录UIKitToolbar/UIHostingController运行告警，根因未确立，不能宣称零警告。当前路径未出现因该告警导致的测试失败，仍需后续原证据核对。
 - Stage 01 外壳曾有真实构建证据：Architect 在 macOS 云端对源码 `6e8f449` 编译并执行 31 项测试（零失败），运行入口与警告见 [Round04](../.ai/reviews/STAGE-01-ARCHITECT-ROUND-04.md)。**该结果只对应 Stage 01 源码，不是 Stage 02 的构建证据。**
 - 未保存的空项目只在内存中，退出即丢失；导入过照片的项目写入 `Application Support/MomentsStudio/`，重启后恢复（界面已标注两者区别）。
 - Stage 02 暂定上限：每项目 20 张、每文件 100 MiB、每图 80 MP、thumbnail 320 / preview 2048、串行处理；未做真机性能测量。

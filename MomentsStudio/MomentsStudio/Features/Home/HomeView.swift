@@ -72,6 +72,14 @@ struct HomeView: View {
             Label("Create Project", systemImage: "plus")
                 .font(Typography.body.weight(.semibold))
                 .foregroundStyle(createProjectLabelColor)
+                // At the largest accessibility text size the single-line label used
+                // to truncate to "Cre- / ate Proj…" (run 37230253288, 6s Home
+                // frame). Letting the title take its full vertical size lets it wrap
+                // onto as many centred lines as it needs; the string, the system
+                // body font, the dynamic colour, the 44pt minimum tap target, the
+                // create action and the identifier stay unchanged.
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, minHeight: Layout.minimumTapTarget)
         }
         .buttonStyle(.borderedProminent)
