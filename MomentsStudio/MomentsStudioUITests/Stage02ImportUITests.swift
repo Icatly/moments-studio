@@ -151,6 +151,7 @@ final class Stage02ImportUITests: XCTestCase {
 
         // 2. The import committed: a real thumbnail and a truthful count.
         let thumbnail = importedThumbnail(in: app)
+        prepareEditorGallery(expectingThumbnail: thumbnail, in: app, session: "initial import")
         XCTAssertTrue(
             thumbnail.waitForExistence(timeout: 90),
             "The imported photo never appeared in the grid.\n\(app.debugDescription)"
@@ -243,6 +244,7 @@ final class Stage02ImportUITests: XCTestCase {
 
         // 5. Remove asks first; Cancel keeps this project's copy.
         let removalThumbnail = importedThumbnail(in: app)
+        prepareEditorGallery(expectingThumbnail: removalThumbnail, in: app, session: "removal")
         XCTAssertTrue(
             scrollEditorToMakeHittable(removalThumbnail, in: app),
             "INTERACTION-VERIFY[editor-scroll] the removal thumbnail never became hittable.\n\(app.debugDescription)"
@@ -279,6 +281,7 @@ final class Stage02ImportUITests: XCTestCase {
 
         // 6. Confirming removal updates the project.
         let confirmRemovalThumbnail = importedThumbnail(in: app)
+        prepareEditorGallery(expectingThumbnail: confirmRemovalThumbnail, in: app, session: "confirm removal")
         XCTAssertTrue(
             scrollEditorToMakeHittable(confirmRemovalThumbnail, in: app),
             "INTERACTION-VERIFY[editor-scroll] the confirm-removal thumbnail never became hittable.\n"
@@ -322,6 +325,7 @@ final class Stage02ImportUITests: XCTestCase {
             secondConfirmation.succeeded,
             "The picker's confirmation control never became usable: \(secondConfirmation.diagnostic)\n\(app.debugDescription)"
         )
+        prepareEditorGallery(expectingThumbnail: importedThumbnail(in: app), in: app, session: "reimport")
         XCTAssertTrue(
             importedThumbnail(in: app).waitForExistence(timeout: 90),
             "The same photo could not be imported again after removing the project copy.\n\(app.debugDescription)"
@@ -408,6 +412,8 @@ final class Stage02ImportUITests: XCTestCase {
             photoCount(in: app), "1 of 20 photos",
             "INTERACTION-VERIFY[restart] the restored project lost its photo count.\n\(app.debugDescription)"
         )
+        prepareEditorGallery(expectingThumbnail: app.buttons[importedAssetIdentifier].firstMatch, in: app,
+                             session: "restore")
         let restoredThumbnails = importedThumbnailIdentifiers(in: app)
         XCTAssertEqual(
             restoredThumbnails.count, 1,
@@ -510,6 +516,8 @@ final class Stage02ImportUITests: XCTestCase {
             photoCount(in: app), "1 of 20 photos",
             "INTERACTION-VERIFY[dark] the photo count is wrong in dark appearance.\n\(app.debugDescription)"
         )
+        prepareEditorGallery(expectingThumbnail: app.buttons[importedAssetIdentifier].firstMatch, in: app,
+                             session: "dark")
         let darkThumbnails = importedThumbnailIdentifiers(in: app)
         XCTAssertEqual(
             darkThumbnails.first, importedAssetIdentifier,
@@ -915,6 +923,77 @@ final class Stage02ImportUITests: XCTestCase {
         frame.origin.x.isFinite && frame.origin.y.isFinite
             && frame.size.width.isFinite && frame.size.height.isFinite
             && !frame.isEmpty && frame.width > 0 && frame.height > 0
+    }
+
+    /// Prepares the Editor gallery before a thumbnail is queried.
+    ///
+    /// At maximum text size the committed count anchor **exists but sits below the
+    /// screen** (run 37248700016: `editor.photoCount` at y=920 inside an 874-point
+    /// window) while no `editor.photo.<assetID>` node has been created at all. The
+    /// lazy grid not having exposed those nodes yet is an inference from the product
+    /// source plus that dump, not a verified Apple internal mechanism, so the
+    /// preparation only simulates a user scroll and the original assertions still
+    /// decide.
+    ///
+    /// It first proves the Editor context (real `editor.placeholder`, no `Photos`
+    /// picker navigation, no preview sheet, a unique Editor scroll view and a unique
+    /// navigation bar), then finds the **unique** count anchor and waits on it with a
+    /// predicate expectation for `exists == true AND label == "1 of 20 photos"` for up
+    /// to 90 seconds: the real node commonly exists first as "0 of 20 photos", so
+    /// existence alone would return before the asynchronous import commits. Only then
+    /// does it scroll that anchor into the usable viewport with the reviewed bounded
+    /// helper. It never treats a missing element's frame as valid and never guesses
+    /// coordinates; if the anchor never commits or the thumbnail is still missing
+    /// afterwards, the original existence/identifier assertions fail as before.
+    private func prepareEditorGallery(expectingThumbnail thumbnail: XCUIElement, in app: XCUIApplication,
+                                      session: String) {
+        if thumbnail.exists { return }
+        guard element("editor.placeholder", in: app).exists else {
+            print("INTERACTION-VERIFY[gallery] session=\(session): no Editor placeholder; not an Editor context")
+            return
+        }
+        guard !app.navigationBars["Photos"].exists,
+              !element("preview.image", in: app).exists,
+              !element("preview.done", in: app).exists else {
+            print("INTERACTION-VERIFY[gallery] session=\(session): the picker or preview sheet is on screen")
+            return
+        }
+        guard app.scrollViews.count == 1, app.navigationBars.count == 1 else {
+            print("INTERACTION-VERIFY[gallery] session=\(session): the Editor scroll view or navigation is not "
+                + "unique (scrollViews=\(app.scrollViews.count) navigationBars=\(app.navigationBars.count))")
+            return
+        }
+
+        let anchors = app.staticTexts.matching(identifier: "editor.photoCount")
+        guard anchors.count == 1 else {
+            print("INTERACTION-VERIFY[gallery] session=\(session): expected exactly one count anchor, "
+                + "found \(anchors.count)")
+            return
+        }
+        let anchor = anchors.element
+        let committed = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == true AND label == %@", "1 of 20 photos"),
+            object: anchor
+        )
+        guard XCTWaiter().wait(for: [committed], timeout: 90) == .completed else {
+            print("INTERACTION-VERIFY[gallery] session=\(session): the count anchor never committed "
+                + "(exists=\(anchor.exists) label=\(anchor.label))")
+            return
+        }
+
+        print("INTERACTION-VERIFY[gallery] session=\(session): anchor frame=\(anchor.frame) app=\(app.frame) "
+            + "thumbnailExists=\(thumbnail.exists)")
+        attachFullAppScreenshot(app, named: "INTERACTION-VERIFY[gallery] before preparation (\(session))")
+        if scrollEditorToMakeHittable(anchor, in: app) {
+            print("INTERACTION-VERIFY[gallery] session=\(session): count anchor reached the viewport at "
+                + "\(anchor.frame)")
+        } else {
+            print("INTERACTION-VERIFY[gallery] session=\(session): count anchor could not be scrolled into "
+                + "the viewport (frame=\(anchor.frame))")
+        }
+        print("INTERACTION-VERIFY[gallery] session=\(session): after preparation "
+            + "thumbnailExists=\(thumbnail.exists)")
+        attachFullAppScreenshot(app, named: "INTERACTION-VERIFY[gallery] after preparation (\(session))")
     }
 
     /// Minimal bounded user scroll for Editor targets that exist but are not

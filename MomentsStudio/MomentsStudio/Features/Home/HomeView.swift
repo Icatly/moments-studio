@@ -69,18 +69,25 @@ struct HomeView: View {
             let project = projectStore.createProject()
             navigation.push(.editor(projectID: project.id))
         } label: {
-            Label("Create Project", systemImage: "plus")
-                .font(Typography.body.weight(.semibold))
-                .foregroundStyle(createProjectLabelColor)
-                // At the largest accessibility text size the single-line label used
-                // to truncate to "Cre- / ate Proj…" (run 37230253288, 6s Home
-                // frame). Letting the title take its full vertical size lets it wrap
-                // onto as many centred lines as it needs; the string, the system
-                // body font, the dynamic colour, the 44pt minimum tap target, the
-                // create action and the identifier stay unchanged.
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, minHeight: Layout.minimumTapTarget)
+            // The explicit title is intended to let the label wrap at the largest
+            // accessibility text size: run 37248700016 still showed
+            // "Cre- / ate Proj…" with the outer modifiers alone, so the title is now a
+            // real `Text` that may take its full vertical size and any line count,
+            // centred. Whether this removes the truncation still awaits verification
+            // on a real run. The string, the plus icon, the system body font, the
+            // dynamic colour, the 44pt minimum tap target, the create action and the
+            // identifier are unchanged.
+            Label {
+                Text("Create Project")
+                    .multilineTextAlignment(.center)
+                    .lineLimit(nil)
+                    .fixedSize(horizontal: false, vertical: true)
+            } icon: {
+                Image(systemName: "plus")
+            }
+            .font(Typography.body.weight(.semibold))
+            .foregroundStyle(createProjectLabelColor)
+            .frame(maxWidth: .infinity, minHeight: Layout.minimumTapTarget)
         }
         .buttonStyle(.borderedProminent)
         .tint(Palette.accent)
