@@ -17,7 +17,7 @@ struct AboutSheet: View {
                 }
 
                 Section {
-                    Text("Photo import is implemented: photos you pick are copied into this app, with a thumbnail and a preview generated on device. The canvas, layers, layouts, cutouts, AI styling, manual editing and export are not implemented yet.")
+                    Text("Photos you pick are copied into this app, with a thumbnail and a preview generated on device. You can add photos to the canvas and move, scale, rotate and manage their layers. Automatic layouts, cutouts, AI styling and export are not implemented yet.")
                         .font(Typography.caption)
                         .foregroundStyle(.secondary)
                 }

@@ -99,9 +99,11 @@ final class PhotoImportModel {
         importingProjectID != nil
     }
 
-    /// True while any mutation (restore, import or removal) is running.
+    /// One busy rule for every mutation **and** for an active canvas gesture, so
+    /// conflicting entries (restore, import, removal, save, gesture) are disabled
+    /// together. A canvas gesture owns the gate for its whole duration.
     var isBusy: Bool {
-        mutationToken != nil
+        mutationToken != nil || importingProjectID != nil || isSavingEdits || canvasGestureProjectID != nil
     }
 
     func isImporting(projectID: UUID) -> Bool {
@@ -121,7 +123,8 @@ final class PhotoImportModel {
     /// so a restore can never race a batch that is rewriting a package.
     func restoreProjects() async {
         if restoreState == .loading { return }
-        guard mutationToken == nil else { return }
+        // Restore must never start while a canvas gesture owns the gate.
+        guard mutationToken == nil, canvasGestureProjectID == nil else { return }
 
         let token = UUID()
         mutationToken = token
@@ -149,7 +152,7 @@ final class PhotoImportModel {
     /// continues. Values are taken from the newest committed package each time,
     /// so a batch can never write over a photo another batch committed.
     func importSelection(_ items: [PhotosPickerItem], projectID: UUID) async {
-        guard mutationToken == nil, importingProjectID == nil, !items.isEmpty else { return }
+        guard !isBusy, failedDraft(for: projectID) == nil, !items.isEmpty else { return }
         guard store.openProject(id: projectID) != nil else { return }
 
         let capacity = remainingCapacity(for: projectID)
@@ -202,7 +205,7 @@ final class PhotoImportModel {
     /// first, so a later cleanup failure is reported instead of bringing the
     /// photo back.
     func removePhoto(projectID: UUID, assetID: UUID) async {
-        guard mutationToken == nil, importingProjectID == nil else {
+        guard !isBusy, failedDraft(for: projectID) == nil else {
             itemErrors = ["Another photo operation is still running. Try again in a moment."]
             return
         }
@@ -222,6 +225,303 @@ final class PhotoImportModel {
             appendWarnings(result.warnings)
         } catch {
             itemErrors.append(Self.message(for: error))
+        }
+    }
+
+    // MARK: - Canvas editing (Stage 03)
+
+    /// What happened to one canvas edit request.
+    enum CanvasEditOutcome: Equatable {
+        case saved
+        case rejected(String)
+        case saveFailed(String)
+        case busy
+    }
+
+    /// True while an edit is being written. The UI uses it to disable conflicting
+    /// controls and to show a real saving state instead of a fake "saved".
+    private(set) var isSavingEdits = false
+
+    /// The single entry point for canvas edits.
+    ///
+    /// It reuses the same `mutationToken` as import and removal, so at most one
+    /// mutation (import, removal or edit) is ever in flight. The change closure
+    /// receives the **latest committed** document and returns a new one; only the
+    /// fields it touches change, and project identity, assets and other layers are
+    /// preserved by the pure `CanvasEditor` operations. A write failure leaves the
+    /// committed store and manifest untouched and reports `saveFailed`, so the
+    /// caller can keep a draft and retry or discard it.
+    @discardableResult
+    func editCanvas(
+        projectID: UUID,
+        intent: CanvasDraft? = nil,
+        _ change: (CanvasDocument) throws -> CanvasDocument
+    ) async -> CanvasEditOutcome {
+        // A canvas gesture owns the gate for its whole duration; button edits wait.
+        guard !isCanvasGestureActive else { return .busy }
+        guard intent == nil || intent?.projectID == projectID else {
+            return .rejected("This edit belongs to another project.")
+        }
+        guard failedDraft(for: projectID) == nil else {
+            return .rejected("Retry or discard this project's unsaved edit first.")
+        }
+        return await performEdit(projectID: projectID, draft: intent, change)
+    }
+
+    /// The shared edit body: one gate, one atomic write, real failure reporting.
+    ///
+    /// `draft` is retained only when a write actually fails, so the caller can retry
+    /// or discard the exact transform it tried to save.
+    private func performEdit(
+        projectID: UUID,
+        draft: CanvasDraft?,
+        _ change: (CanvasDocument) throws -> CanvasDocument
+    ) async -> CanvasEditOutcome {
+        guard mutationToken == nil, importingProjectID == nil else { return .busy }
+        guard let package = currentPackage(for: projectID) else {
+            return .rejected("This project is not available in the current session.")
+        }
+
+        let token = UUID()
+        mutationToken = token
+        isSavingEdits = true
+        defer {
+            if mutationToken == token {
+                mutationToken = nil
+                isSavingEdits = false
+            }
+        }
+
+        do {
+            let document = try change(package.project.document)
+            let result = try await library.saveEdit(document: document, into: package, at: Date())
+            guard mutationToken == token else { return .busy }
+            store.apply(result.package)
+            appendWarnings(result.warnings)
+            editMessages[projectID] = nil
+            failedDrafts[projectID] = nil
+            return .saved
+        } catch let error as CanvasEditError {
+            let message = Self.message(for: error)
+            editMessages[projectID] = message
+            return .rejected(message)
+        } catch {
+            let message = Self.message(for: error)
+            editMessages[projectID] = "Not saved: \(message)"
+            if let draft { failedDrafts[projectID] = draft }
+            return .saveFailed(message)
+        }
+    }
+
+    /// Adds one imported asset to the canvas as a new photo layer.
+    ///
+    /// The photo is only an asset source; adding it does not consume or move it, so
+    /// the same asset can be added again as an independent layer until the layer
+    /// limit is reached. The base size comes from the EXIF-corrected display size,
+    /// fitted proportionally inside the canvas.
+    @discardableResult
+    func addPhotoLayer(projectID: UUID, assetID: UUID) async -> CanvasEditOutcome {
+        await applyCanvasIntent(projectID: projectID, layerID: nil, intent: .add(assetID: assetID))
+    }
+
+    // MARK: - Canvas gesture and failure state
+
+    /// What a failed edit intended to do, so a retry re-applies the same intent to
+    /// the **latest** committed document instead of replaying a stale document.
+    enum CanvasDraftIntent: Equatable {
+        case transform(LayerTransform)
+        case visibility(isHidden: Bool)
+        case lock(isLocked: Bool)
+        case remove
+        case order(forward: Bool)
+        case add(assetID: UUID)
+        case reset
+        case move(x: Double, y: Double)
+        case scaleBy(Double)
+        case rotateBy(Double)
+    }
+
+    /// A change that was edited but could not be written.
+    ///
+    /// It is kept by the model rather than by the canvas view, so leaving the screen
+    /// does not discard it and it can be retried or explicitly discarded. It only
+    /// ever applies to the project it was made in.
+    struct CanvasDraft: Equatable {
+        var projectID: UUID
+        var layerID: UUID?
+        var intent: CanvasDraftIntent
+    }
+
+    /// Applies one draft intent to the latest document.
+    static func apply(_ intent: CanvasDraftIntent, to document: CanvasDocument, layerID: UUID) throws -> CanvasDocument {
+        switch intent {
+        case .transform(let transform):
+            guard let clamped = CanvasGeometry.clampedForEditing(transform, canvasSize: document.canvasSize) else {
+                throw CanvasEditError.unusableTransform(transform)
+            }
+            return try CanvasEditor.settingTransform(clamped, forLayerID: layerID, in: document)
+        case .visibility(let isHidden):
+            return try CanvasEditor.settingHidden(isHidden, forLayerID: layerID, in: document)
+        case .lock(let isLocked):
+            return try CanvasEditor.settingLocked(isLocked, forLayerID: layerID, in: document)
+        case .remove:
+            return try CanvasEditor.removingLayer(layerID: layerID, from: document)
+        case .order(let forward):
+            return forward
+                ? try CanvasEditor.bringingForward(layerID: layerID, in: document)
+                : try CanvasEditor.sendingBackward(layerID: layerID, in: document)
+        case .reset:
+            return try CanvasEditor.resettingTransform(forLayerID: layerID, in: document)
+        case .move(let x, let y):
+            guard let layer = document.layers.first(where: { $0.id == layerID }) else {
+                throw CanvasEditError.layerNotFound(layerID)
+            }
+            var transform = layer.transform
+            transform.translationX += x
+            transform.translationY += y
+            return try apply(.transform(transform), to: document, layerID: layerID)
+        case .scaleBy(let factor):
+            guard let layer = document.layers.first(where: { $0.id == layerID }) else {
+                throw CanvasEditError.layerNotFound(layerID)
+            }
+            var transform = layer.transform
+            transform.scale *= factor
+            return try apply(.transform(transform), to: document, layerID: layerID)
+        case .rotateBy(let delta):
+            guard let layer = document.layers.first(where: { $0.id == layerID }) else {
+                throw CanvasEditError.layerNotFound(layerID)
+            }
+            var transform = layer.transform
+            transform.rotationRadians += delta
+            return try apply(.transform(transform), to: document, layerID: layerID)
+        case .add(let assetID):
+            throw CanvasEditError.assetAlreadyMissing(assetID)
+        }
+    }
+
+    /// The project whose canvas gesture is currently in flight, if any, and the
+    /// identity of that one gesture so a late callback cannot commit or cancel a
+    /// different (or already finished) gesture.
+    private(set) var canvasGestureProjectID: UUID?
+    private(set) var canvasGestureID: UUID?
+
+    /// The draft that failed to save, retained for retry or explicit discard.
+    private var failedDrafts: [UUID: CanvasDraft] = [:]
+
+    /// A message for the editor UI: save failures and rejections are visible.
+    private var editMessages: [UUID: String] = [:]
+
+    func failedDraft(for projectID: UUID) -> CanvasDraft? { failedDrafts[projectID] }
+    func editMessage(for projectID: UUID) -> String? { editMessages[projectID] }
+
+    @discardableResult
+    func applyCanvasIntent(projectID: UUID, layerID: UUID?, intent: CanvasDraftIntent) async -> CanvasEditOutcome {
+        let draft = CanvasDraft(projectID: projectID, layerID: layerID, intent: intent)
+        return await editCanvas(projectID: projectID, intent: draft) { document in
+            try self.apply(draft, to: document)
+        }
+    }
+
+    private func apply(_ draft: CanvasDraft, to document: CanvasDocument) throws -> CanvasDocument {
+        if case .add(let assetID) = draft.intent {
+            guard let photo = store.photos(for: draft.projectID).first(where: { $0.asset.id == assetID }) else {
+                throw CanvasEditError.assetAlreadyMissing(assetID)
+            }
+            let size = photo.displayPixelSize
+            guard let baseSize = CanvasGeometry.fittedBaseSize(
+                displayWidth: size.width, displayHeight: size.height, canvasSize: document.canvasSize
+            ) else { throw CanvasEditError.unusableBaseSize(document.canvasSize) }
+            return try CanvasEditor.addingLayer(assetID: assetID, baseSize: baseSize, to: document)
+        }
+        guard let layerID = draft.layerID else {
+            throw CanvasEditError.layerNotFound(draft.projectID)
+        }
+        return try Self.apply(draft.intent, to: document, layerID: layerID)
+    }
+
+    var isCanvasGestureActive: Bool { canvasGestureProjectID != nil }
+
+    /// The canvas holds the gate for the whole gesture: while a finger is editing, no
+    /// import/removal/restore/list edit may start, and the system back button stays
+    /// usable. It refuses when any other work is in flight, and never blocks its own
+    /// gesture.
+    @discardableResult
+    func beginCanvasGesture(projectID: UUID) -> UUID? {
+        guard !isBusy, failedDraft(for: projectID) == nil,
+              store.openProject(id: projectID) != nil else { return nil }
+        let id = UUID()
+        canvasGestureProjectID = projectID
+        canvasGestureID = id
+        return id
+    }
+
+    /// Ends a gesture without committing: used when the view disappears or the app
+    /// goes to the background. It releases the gate immediately, and a late callback
+    /// for a different or already finished gesture is ignored.
+    func cancelCanvasGesture(id: UUID? = nil) {
+        if let id, canvasGestureID != id { return }
+        canvasGestureProjectID = nil
+        canvasGestureID = nil
+    }
+
+    /// Commits exactly one complete transform at the end of a gesture.
+    ///
+    /// The gate stays held until the write returns, so a finished save is never
+    /// interrupted by a new gesture; a late callback for another gesture is refused.
+    /// A failed write keeps the draft and reports why.
+    @discardableResult
+    func commitCanvasGesture(
+        id: UUID,
+        projectID: UUID,
+        layerID: UUID,
+        transform: LayerTransform
+    ) async -> CanvasEditOutcome {
+        guard canvasGestureID == id, canvasGestureProjectID == projectID else { return .busy }
+        let draft = CanvasDraft(projectID: projectID, layerID: layerID, intent: .transform(transform))
+        let outcome = await performEdit(projectID: projectID, draft: draft) { document in
+            try Self.apply(.transform(transform), to: document, layerID: layerID)
+        }
+        // Release only this gesture's gate, and only after the write returned.
+        if canvasGestureID == id {
+            canvasGestureProjectID = nil
+            canvasGestureID = nil
+        }
+        return outcome
+    }
+
+    /// Retries the retained draft against the **latest** committed package. It never
+    /// touches another project and never rewrites the asset package.
+    @discardableResult
+    func retryFailedDraft(projectID: UUID) async -> CanvasEditOutcome {
+        guard !isCanvasGestureActive else { return .busy }
+        guard let draft = failedDraft(for: projectID) else { return .rejected("There is nothing to save again.") }
+        let outcome = await performEdit(projectID: draft.projectID, draft: draft) { document in
+            try self.apply(draft, to: document)
+        }
+        return outcome
+    }
+
+    /// Explicitly gives up a failed draft.
+    func discardFailedDraft(projectID: UUID) {
+        guard !isBusy else { return }
+        failedDrafts[projectID] = nil
+        editMessages[projectID] = nil
+    }
+
+    private static func message(for error: CanvasEditError) -> String {
+        switch error {
+        case .layerLimitReached(let limit):
+            return "This project already holds the maximum of \(limit) layers."
+        case .layerNotFound:
+            return "That layer is no longer part of this project."
+        case .layerIsLocked:
+            return "Unlock the layer before changing it."
+        case .unusableTransform:
+            return "That position, scale or rotation cannot be saved."
+        case .unusableBaseSize:
+            return "That photo has an unusable display size."
+        case .assetAlreadyMissing:
+            return "That photo is no longer part of this project."
         }
     }
 

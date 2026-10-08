@@ -94,7 +94,15 @@ final class ProjectPackageTests: XCTestCase {
 
         let root = try json(of: package)
         XCTAssertEqual(Set(root.keys), ["schemaVersion", "project", "photos"])
-        XCTAssertEqual(root["schemaVersion"] as? Int, 1)
+        // Stage 03 raised the written format to 2 (approved contract: `Layer.assetID`
+        // and `Layer.baseSize` were added and version 1 documents are upgraded in
+        // memory on read). The previous value here was the literal `1`; the key set
+        // and every other assertion in this file are unchanged. Version 1 remains
+        // readable and is covered by Stage03ContractTests and
+        // Stage03StorageCoordinatorTests (a real version 1 manifest is restored from
+        // disk without being rewritten).
+        XCTAssertEqual(root["schemaVersion"] as? Int, ProjectPackage.currentSchemaVersion)
+        XCTAssertEqual(ProjectPackage.currentSchemaVersion, 2)
 
         let photos = try XCTUnwrap(root["photos"] as? [[String: Any]])
         XCTAssertEqual(photos.count, 2)

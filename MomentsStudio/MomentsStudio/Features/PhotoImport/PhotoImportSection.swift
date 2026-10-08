@@ -3,10 +3,8 @@ import SwiftUI
 
 /// Import and gallery block for the editor placeholder.
 ///
-/// Stage 02 scope only: pick photos with the system picker, watch progress,
-/// cancel, open a read-only preview, and remove a photo from this project. No
-/// canvas, layers, editing, AI, styling or export exist yet, and nothing here
-/// pretends otherwise.
+/// Preserves the Stage 02 picker, progress, gallery and read-only preview. The
+/// adjacent canvas owns layer editing; photo removal also removes its bound layers.
 ///
 /// `@MainActor` is stated explicitly rather than left to SwiftUI inference: the
 /// private computed properties and helpers below read the main-actor-isolated
@@ -38,7 +36,7 @@ struct PhotoImportSection: View {
     /// Creating or importing is only safe once the library finished loading, and
     /// only one mutation may run at a time.
     private var isBlocked: Bool {
-        !photoImport.isReady || photoImport.isBusy || batchIsRunning || capacity == 0
+        !photoImport.isReady || photoImport.isBusy || photoImport.failedDraft(for: projectID) != nil || batchIsRunning || capacity == 0
     }
 
     var body: some View {
@@ -105,7 +103,7 @@ struct PhotoImportSection: View {
                 .accessibilityIdentifier("editor.photoCount")
 
             if capacity == 0 {
-                Text("This project has reached the Stage 02 photo limit. Remove a photo to import another.")
+                Text("This project has reached the photo limit. Remove a photo to import another.")
                     .font(Typography.caption)
                     .foregroundStyle(Color.secondary)
             }

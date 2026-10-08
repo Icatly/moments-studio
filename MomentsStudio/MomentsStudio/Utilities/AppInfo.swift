@@ -11,7 +11,7 @@ enum AppInfo {
     static let displayName = "Moments Studio"
 
     /// Identifies the build during stage review.
-    static let stageLabel = "Stage 02 · Photo import"
+    static let stageLabel = "Stage 03 · Editable canvas"
 
     /// `CFBundleShortVersionString` from the generated Info.plist.
     static let version = infoString(forKey: "CFBundleShortVersionString") ?? "unknown"

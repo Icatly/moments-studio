@@ -55,7 +55,7 @@ struct PhotoPreviewSheet: View {
                         Button("Remove", role: .destructive) {
                             isConfirmingRemoval = true
                         }
-                        .disabled(photoImport.isBusy)
+                        .disabled(photoImport.isBusy || photoImport.failedDraft(for: projectID) != nil)
                         .accessibilityIdentifier("preview.remove")
                     }
                 }
@@ -73,9 +73,15 @@ struct PhotoPreviewSheet: View {
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("Only this project's copy is deleted. The photo in your photo library is not changed.")
+                Text(removalMessage)
             }
         }
+    }
+
+    private var removalMessage: String {
+        let count = projectStore.openProject(id: projectID)?.document.layers.filter { $0.assetID == assetID }.count ?? 0
+        let cascade = count == 0 ? "" : "This also removes \(count) canvas layer(s), including any locked layers. "
+        return cascade + "Only this project's copy is deleted. The photo in your photo library is not changed."
     }
 
     private func content(for photo: ImportedPhoto) -> some View {

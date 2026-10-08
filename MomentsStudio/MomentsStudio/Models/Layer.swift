@@ -54,11 +54,29 @@ struct Layer: Identifiable, Codable, Equatable, Hashable {
         case zIndex
         case isLocked
         case isHidden
+        // Stage 03 additions (approved schema change): a photo layer points at an
+        // asset inside the same package and remembers its unscaled canvas size.
+        case assetID
+        case baseSize
     }
 
     let id: UUID
     var kind: LayerKind
     var transform: LayerTransform
+
+    /// The asset this layer renders, when it is bound to an imported photo.
+    ///
+    /// Stage 03 photo layers always have both `assetID` and `baseSize`. A layer
+    /// saved before Stage 03 has neither: it is kept as an honest unbound
+    /// placeholder, is listed as unavailable and can be removed, but no image is
+    /// invented for it.
+    var assetID: UUID?
+
+    /// Canvas-space size of the layer before `transform.scale` is applied.
+    ///
+    /// Fixed once the layer is added; it never follows the screen or the derived
+    /// preview pixel size.
+    var baseSize: CanvasSize?
 
     /// Opacity inside `opacityRange`.
     ///
@@ -83,7 +101,9 @@ struct Layer: Identifiable, Codable, Equatable, Hashable {
         opacity: Double = Layer.defaultOpacity,
         zIndex: Int = 0,
         isLocked: Bool = false,
-        isHidden: Bool = false
+        isHidden: Bool = false,
+        assetID: UUID? = nil,
+        baseSize: CanvasSize? = nil
     ) {
         self.id = id
         self.kind = kind
@@ -92,7 +112,12 @@ struct Layer: Identifiable, Codable, Equatable, Hashable {
         self.zIndex = zIndex
         self.isLocked = isLocked
         self.isHidden = isHidden
+        self.assetID = assetID
+        self.baseSize = baseSize
     }
+
+    /// True when both Stage 03 keys are present, i.e. this layer can be rendered.
+    var isBoundToAsset: Bool { assetID != nil && baseSize != nil }
 
     /// Sets opacity, applying the same policy as `init(...)`.
     ///
@@ -127,11 +152,53 @@ struct Layer: Identifiable, Codable, Equatable, Hashable {
 
         self.id = try container.decode(UUID.self, forKey: .id)
         self.kind = try container.decode(LayerKind.self, forKey: .kind)
-        self.transform = try container.decode(LayerTransform.self, forKey: .transform)
+        let decodedTransform = try container.decode(LayerTransform.self, forKey: .transform)
+        // Stage 03: a persisted transform must already be usable. Finite position
+        // and rotation with a positive, finite scale is the decode contract; bad
+        // archives are rejected instead of silently repaired.
+        guard decodedTransform.translationX.isFinite,
+              decodedTransform.translationY.isFinite,
+              decodedTransform.rotationRadians.isFinite,
+              decodedTransform.scale.isFinite,
+              decodedTransform.scale > 0 else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .transform,
+                in: container,
+                debugDescription: "Layer transform must have finite position/rotation and a positive finite scale: \(decodedTransform)."
+            )
+        }
+        self.transform = decodedTransform
         self.opacity = decodedOpacity
         self.zIndex = try container.decode(Int.self, forKey: .zIndex)
         self.isLocked = try container.decode(Bool.self, forKey: .isLocked)
         self.isHidden = try container.decode(Bool.self, forKey: .isHidden)
+
+        // Stage 03 keys. Both present is a bound photo layer; both absent is a
+        // historical unbound placeholder. Anything in between, or a base size
+        // that is not finite and positive, is damage and is rejected.
+        let assetID = try container.decodeIfPresent(UUID.self, forKey: .assetID)
+        let baseSize = try container.decodeIfPresent(CanvasSize.self, forKey: .baseSize)
+        switch (assetID, baseSize) {
+        case (nil, nil):
+            break
+        case let (.some(_), .some(size)):
+            guard size.width.isFinite, size.height.isFinite, size.width > 0, size.height > 0 else {
+                throw DecodingError.dataCorruptedError(
+                    forKey: .baseSize,
+                    in: container,
+                    debugDescription: "Layer base size must be finite and positive: \(size)."
+                )
+            }
+            break
+        default:
+            throw DecodingError.dataCorruptedError(
+                forKey: .assetID,
+                in: container,
+                debugDescription: "A layer must carry both assetID and baseSize, or neither."
+            )
+        }
+        self.assetID = assetID
+        self.baseSize = baseSize
     }
 
     private static func sanitizedOpacity(_ value: Double) -> Double {

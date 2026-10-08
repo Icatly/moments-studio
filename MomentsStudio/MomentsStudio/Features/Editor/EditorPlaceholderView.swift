@@ -1,10 +1,6 @@
 import SwiftUI
 
-/// The Stage 02 editor screen.
-///
-/// There is still no canvas: this stage adds photo import, a thumbnail gallery,
-/// a read-only preview and removal. The copy says that plainly instead of
-/// implying that editing exists.
+/// The manual canvas editor, with photo tools in a separate scroll area.
 ///
 /// `@MainActor` is stated explicitly rather than left to SwiftUI inference: the
 /// view reads the main-actor-isolated store from `navigationTitle` and from
@@ -16,6 +12,10 @@ struct EditorPlaceholderView: View {
     @Environment(ProjectStore.self) private var projectStore
     @Environment(PhotoImportModel.self) private var photoImport
     @Environment(AppNavigationModel.self) private var navigation
+
+    /// Selection is view state only: it is never serialized with the document.
+    @State private var selectedLayerID: UUID?
+    @State private var reloadID = 0
 
     var body: some View {
         Group {
@@ -53,25 +53,63 @@ struct EditorPlaceholderView: View {
     }
 
     private func content(for project: Project) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Spacing.large) {
-                VStack(alignment: .leading, spacing: Spacing.small) {
-                    Text("Editor")
-                        .font(Typography.sectionTitle)
-                        .accessibilityIdentifier("editor.placeholder")
-                    Text("Photo import is available. The canvas, layers, layouts, cutouts, styling, manual editing and export are not implemented yet.")
-                        .font(Typography.body)
-                        .foregroundStyle(Color.secondary)
-                        .accessibilityIdentifier("editor.status")
+        GeometryReader { geometry in
+          VStack(spacing: 0) {
+            // The canvas is its own gesture area on purpose: it must not sit inside
+            // the vertical scroll view below, or a single-finger drag would scroll
+            // the page instead of moving the photo.
+            EditorCanvasView(
+                projectID: projectID,
+                document: project.document,
+                photos: projectStore.photos(for: projectID),
+                selectedLayerID: $selectedLayerID,
+                isEditingDisabled: isEditingDisabled,
+                reloadID: reloadID
+            )
+            .frame(height: min(360, max(100, geometry.size.height * 0.42)))
+            .padding(.horizontal, Spacing.medium)
+            .padding(.top, Spacing.medium)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: Spacing.large) {
+                    VStack(alignment: .leading, spacing: Spacing.small) {
+                        Text("Editor")
+                            .font(Typography.sectionTitle)
+                            .accessibilityIdentifier("editor.placeholder")
+                        Text("Add photos from your library to the canvas, then move, scale, rotate, reorder, hide, lock, reset or remove layers.")
+                            .font(Typography.body)
+                            .foregroundStyle(Color.secondary)
+                            .accessibilityIdentifier("editor.status")
+                    }
+
+                    EditorLayerListView(
+                        projectID: projectID,
+                        document: project.document,
+                        photos: projectStore.photos(for: projectID),
+                        selectedLayerID: $selectedLayerID,
+                        isEditingDisabled: isEditingDisabled,
+                        reloadSelectedPhoto: { reloadID += 1 }
+                    )
+
+                    PhotoImportSection(projectID: projectID)
+
+                    projectState(for: project)
                 }
-
-                PhotoImportSection(projectID: projectID)
-
-                projectState(for: project)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(Spacing.medium)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(Spacing.medium)
+            .frame(maxHeight: .infinity)
+          }
         }
+        .onChange(of: project.document.layers.map(\.id)) { _, ids in
+            if let selectedLayerID, !ids.contains(selectedLayerID) { self.selectedLayerID = nil }
+        }
+    }
+
+    /// Conflicting edits are disabled while a mutation is in flight, and the UI can
+    /// therefore show a real saving state instead of a fake "saved".
+    private var isEditingDisabled: Bool {
+        photoImport.isBusy || photoImport.failedDraft(for: projectID) != nil
     }
 
     private func projectState(for project: Project) -> some View {
@@ -85,7 +123,7 @@ struct EditorPlaceholderView: View {
             Divider()
             InfoRow(
                 title: "Canvas",
-                value: "\(Int(project.document.canvasSize.width)) × \(Int(project.document.canvasSize.height))"
+                value: String(format: "%.0f × %.0f", project.document.canvasSize.width, project.document.canvasSize.height)
             )
             Divider()
             InfoRow(title: "Layers", value: "\(project.document.layers.count)")
@@ -94,7 +132,10 @@ struct EditorPlaceholderView: View {
             Divider()
             InfoRow(
                 title: "Saved on device",
-                value: projectStore.savedProjectIDs.contains(projectID)
+                value: photoImport.failedDraft(for: projectID) != nil
+                    ? "Changes not saved"
+                    : photoImport.isSavingEdits ? "Saving…"
+                    : projectStore.savedProjectIDs.contains(projectID)
                     ? "Yes"
                     : "Not yet — import a photo to save this project"
             )

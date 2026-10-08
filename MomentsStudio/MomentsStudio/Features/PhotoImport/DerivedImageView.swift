@@ -18,6 +18,7 @@ import SwiftUI
 struct DerivedImageView<Placeholder: View>: View {
     let reference: String
     let contentMode: ContentMode
+    var reloadID: Int = 0
     let load: @MainActor (String) async -> CGImage?
     @ViewBuilder let placeholder: () -> Placeholder
 
@@ -45,7 +46,7 @@ struct DerivedImageView<Placeholder: View>: View {
                 unavailable
             }
         }
-        .task(id: "\(reference)#\(attempt)") {
+        .task(id: "\(reference)#\(attempt)#\(reloadID)") {
             phase = .loading
             let loaded = await load(reference)
             // `.task(id:)` cancels the previous task when the id changes, so a

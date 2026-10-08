@@ -414,7 +414,7 @@ actor PhotoLibrary {
 
             var updatedPhotos = package.photos
             updatedPhotos.append(photo)
-            try ProjectPackage.validate(photos: updatedPhotos, projectID: projectID)
+            try ProjectPackage.validate(photos: updatedPhotos, projectID: projectID, canvasSize: package.project.document.canvasSize, layers: package.project.document.layers)
             guard updatedPhotos.count <= limits.maxPhotosPerProject else {
                 throw PhotoLibraryError.photoLimitReached(limit: limits.maxPhotosPerProject)
             }
@@ -456,9 +456,19 @@ actor PhotoLibrary {
         var updatedPhotos = package.photos
         updatedPhotos.remove(at: index)
 
+        // Stage 03: deleting a photo also drops every layer that renders it, in the
+        // same manifest transaction, so a package can never reference a missing
+        // asset. Layer identity for other assets is untouched.
         var updatedProject = package.project
+        updatedProject.document = CanvasEditor.removingLayers(boundTo: assetID, from: package.project.document)
         updatedProject.updatedAt = date
         let updatedPackage = ProjectPackage(project: updatedProject, photos: updatedPhotos)
+        try ProjectPackage.validate(
+            photos: updatedPhotos,
+            projectID: updatedProject.id,
+            canvasSize: updatedProject.document.canvasSize,
+            layers: updatedProject.document.layers
+        )
 
         try writeManifest(updatedPackage)
 
@@ -635,6 +645,42 @@ actor PhotoLibrary {
         }
     }
 
+    /// Applies an already-computed canvas document edit to a package.
+    ///
+    /// This is Stage 03's edit commit point: the updated manifest is validated and
+    /// written atomically by the same writer the import path uses, and **no asset
+    /// file is touched**. The caller (the single mutation gate in
+    /// `PhotoImportModel`) guarantees at most one edit is in flight, and a thrown
+    /// error leaves the previously committed manifest untouched.
+    func saveEdit(
+        document: CanvasDocument,
+        into package: ProjectPackage,
+        at date: Date
+    ) throws -> PhotoLibraryMutationResult {
+        try checkCancellation()
+        try validatePackageEntry(package)
+        guard document.id == package.project.document.id else {
+            throw PhotoLibraryError.invalidPackage("canvas identity cannot change during an edit")
+        }
+        try ensureLibraryDirectories()
+
+        var updatedProject = package.project
+        updatedProject.document = document
+        updatedProject.updatedAt = date
+        let updatedPackage = ProjectPackage(project: updatedProject, photos: package.photos)
+        try ProjectPackage.validate(
+            photos: updatedPackage.photos,
+            projectID: updatedProject.id,
+            canvasSize: document.canvasSize,
+            layers: document.layers
+        )
+
+        // Commit point: only after this succeeds is the edit committed.
+        try checkCancellation()
+        try writeManifest(updatedPackage)
+        return PhotoLibraryMutationResult(package: updatedPackage, warnings: [])
+    }
+
     // MARK: - Files
 
     private func sourceByteCount(of url: URL) throws -> Int {
@@ -765,7 +811,7 @@ actor PhotoLibrary {
         guard package.schemaVersion == ProjectPackage.currentSchemaVersion else {
             throw PhotoLibraryError.unsupportedSchemaVersion(package.schemaVersion)
         }
-        try ProjectPackage.validate(photos: package.photos, projectID: package.project.id)
+        try ProjectPackage.validate(photos: package.photos, projectID: package.project.id, canvasSize: package.project.document.canvasSize, layers: package.project.document.layers)
     }
 
     /// Source pixel count for the limit check, computed without overflowing.

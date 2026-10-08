@@ -49,7 +49,7 @@
 
 所有者原话：“stage 02无需我审批 今天在你额度结束之前都保持一直推进项目”。今天Stage02内已定位修复、测试、Review、必要交付/文档推送及已确认包含额度内的构建，由Architect持续推进，不逐项停下来索取所有者审批；Stage02阶段结论由Architect在实际证据充分后完成技术验收。不得把这项免审批授权写成所有者已亲自操作验收，也不得把尚未执行的检查写成通过。
 
-该授权仅限今天与Stage02。Stage03禁止、Apple账户暂停、零新增费用边界、产品/公开契约/依赖边界均保持；DSH仍受Architect任务与Review控制，不自行开始后续阶段。实际构建/测试/交互Review仍须完成，下面旧流程的审批步骤在本次授权范围内不再阻塞持续推进。未取得新验证结果前不宣称Stage02通过。
+该授权仅限当日与Stage02，不自动延伸为Stage03免验收。该时点Stage03禁止的限制已被2026-10-06所有者“进入stage03”明确指令取代，当前阶段见第6节；Apple账户暂停、零新增费用、契约/依赖边界仍保持。实际构建/测试/交互Review仍须如实记录，未取得结果不宣称通过。
 
 - 流程固定为：REQUIREMENTS → ARCHITECTURE → IMPLEMENTATION → AUTOMATED TESTING → ARCHITECTURE REVIEW → USER BUILD → USER ACCEPTANCE → APPROVAL。不得跳过 USER ACCEPTANCE。
 - 完成实现后必须**停止开发**、准备可运行版本与验收说明、如实报告已知限制。
@@ -62,8 +62,9 @@
 
 - 一次只推进一个 Stage。未获批准不得开始新功能、新 Stage，也不得开始 `TASKS.md` 路线图中的下一步。
 - Stage01已于2026-10-03由项目所有者明确确认验收（原话：“确认验收 继续下一阶段任务”），状态APPROVED。
-- 当前 Stage：**Stage 02 — Photo Import and Asset Pipeline**；执行范围以 `docs/architecture/STAGE-02-PHOTO-ASSET-PIPELINE.md` 和 `.ai/tasks/STAGE-02-IMPLEMENT-01.md` 为准。Stage02尚未验收批准。
-- `TASKS.md` 中的 Stage03–15是**未批准、可调整的路线图草案**，不是待执行队列。
+- Stage02于2026-10-06按所有者最新指令“进入stage03”记APPROVED。所有者已亲自体验照片路径并反馈正常；旧版录屏已复审。最新云第三轮/设备构建/还原等仍未验证，批准不等于补测通过，具体见 `.ai/reviews/STAGE-02-OWNER-CLOSEOUT-2026-10-06.md`。
+- 当前 Stage：**Stage 03 — Editable Canvas and Layer System**；已获所有者开始授权，执行范围以 `docs/architecture/STAGE-03-EDITABLE-CANVAS-LAYERS.md` 和 `.ai/tasks/STAGE-03-IMPLEMENT-01.md` 为准。Stage03尚未交付验收，DSH仅可推进到READY_FOR_ARCHITECT_REVIEW。
+- `TASKS.md` 中的 Stage04–15是**未批准、可调整的路线图草案**，不是待执行队列。
 
 ## 7. 性能原则
 
@@ -75,7 +76,7 @@
 ## 8. 视觉设计权威
 
 - 最终视觉由项目所有者批准；ChatGPT 作为 Design Reviewer 提供评审意见；DSH 不发明品牌风格。
-- Stage01已验收基础外壳；Stage02延续中性、系统原生、功能优先的临时样式，仅增加照片导入与素材查看，不定义最终品牌；临时token见 `MomentsStudio/MomentsStudio/DesignSystem/DesignTokens.swift`。
+- Stage01已验收基础外壳；Stage02和Stage03延续中性、系统原生、功能优先的临时样式，Stage03仅增加批准的画布/图层交互，不定义最终品牌；临时token见 `MomentsStudio/MomentsStudio/DesignSystem/DesignTokens.swift`。
 - 设计系统与视觉规范见 `docs/design/UI_DESIGN_SYSTEM.md`（当前状态：未定义）。
 - 用户照片在未来产品中始终是第一视觉焦点；禁止霓虹、紫蓝 AI 渐变、过量玻璃材质、满屏卡片、无意义动画、Web 控制台式布局。
 
@@ -95,3 +96,4 @@
 | 2026-10-03 | 上下文交接入口 | 按项目所有者要求新增 `项目要求与上下文交接.md`，规定接续先读及关键事实持续更新；原有权限与验收闸门不变 |
 | 2026-10-03 | Stage01所有者批准 / Stage02启动 | 所有者明确确认验收并要求继续；Architect定义照片导入和素材管线范围，Stage03仍未批准 |
 | 2026-10-05 | 所有者当日免逐项审批 / Stage02持续推进 | 原话及临时执行范围见第5节；技术结论仍基于实际证据，不伪称本人验收；Stage03和Apple暂停边界不变 |
+| 2026-10-06 | Stage02所有者收尾 / Stage03启动 | 所有者在已体验且获告知取证失败后明确“进入stage03”；保留验证缺口，不伪称云测试通过。Architect定义画布/图层契约，Stage04仍未批准 |

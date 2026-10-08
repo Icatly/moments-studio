@@ -28,7 +28,7 @@ struct SettingsPlaceholderView: View {
                 InfoRow(title: "Processing", value: "On device")
                 InfoRow(title: "Cloud services", value: "None")
                 InfoRow(title: "Saved photos", value: "App-owned copies")
-                InfoRow(title: "Canvas editing", value: "Not implemented")
+                InfoRow(title: "Canvas editing", value: "Manual photo layers")
                 InfoRow(title: "AI and styling", value: "Not implemented")
                 InfoRow(title: "Export", value: "Not implemented")
             } header: {
@@ -38,7 +38,7 @@ struct SettingsPlaceholderView: View {
                 // Explicit `Color.secondary` rather than the hierarchical
                 // `.secondary` style, which renders too faint inside a list
                 // footer in both colour schemes.
-                Text("Settings has no user-adjustable options in Stage 02.")
+                Text("Settings has no user-adjustable options in this version.")
                     .font(Typography.caption)
                     .foregroundStyle(Color.secondary)
             }
