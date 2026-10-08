@@ -3,8 +3,8 @@ import Observation
 
 /// The single owner of project state for the running app.
 ///
-/// A project without photos is memory-only: it disappears when the app exits.
-/// Once a project has imported photos, `PhotoLibrary` has committed a
+/// A project is memory-only until Done or importing a photo commits it.
+/// Once saved, `PhotoLibrary` has committed a
 /// `ProjectPackage` on disk and `apply(_:)` / `restore(_:)` keep this store's
 /// snapshot in step with that committed value. This type still never touches
 /// the filesystem: `init` performs no I/O, which keeps it usable in unit tests,
@@ -55,8 +55,8 @@ final class ProjectStore {
 
     /// Photos of every project that exists on disk, keyed by project id.
     ///
-    /// A project with no imported photos is memory-only and has no entry here;
-    /// `savedProjectIDs` is what tells the two apart.
+    /// A saved empty project has an empty collection here; `savedProjectIDs`
+    /// distinguishes it from a project that has never been committed.
     private(set) var photoCollections: [UUID: [ImportedPhoto]] = [:]
 
     /// Projects that have been committed to the photo library on disk.

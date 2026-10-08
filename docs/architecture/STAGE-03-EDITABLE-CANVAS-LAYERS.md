@@ -1,5 +1,9 @@
 # Stage03 — Editable Canvas and Layer System
 
+## 2026-10-08 真机反馈限定修正
+
+所有者反馈锁定重叠上层会拦截列表所选下层拖动、偶发新增持久化副本，并明确要求编辑器“完成，保存并返回首页”。Architect决定：tap仍选最上可见层（锁层可选），drag在已选可见绑定层包含起点时保持该目标，锁定选层仍拒绝变换；明确添加缩略图及工具视口触控边界，重复新增的真实触发尚待复测，不伪称根因已确认。Done复用唯一writer与mutation gate，saved后才返回首页，失败保留最新项目与可Retry/Discard意图；明确Done允许空项目持久化。内部新增save意图不改变序列化字段/schema/导航route/模块边界，不引入依赖。详见[限定修正任务](../../.ai/tasks/STAGE-03-DEVICE-FIX-2026-10-08.md)。Stage03未通过，Stage04未授权。
+
 Architect 决定，2026-10-06。所有者最新指令：“进入stage03”。Stage02 已按所有者决定收尾，未取回的测试证据见 [收尾记录](../../.ai/reviews/STAGE-02-OWNER-CLOSEOUT-2026-10-06.md)。本文件是 Stage03 唯一新架构与公开契约授权，Stage04–15 未批准。
 
 ## 目标与完成范围

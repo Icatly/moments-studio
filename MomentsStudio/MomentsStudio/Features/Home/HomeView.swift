@@ -4,8 +4,8 @@ import SwiftUI
 /// list.
 ///
 /// Since Stage 02 the list mixes two truthful kinds of project: a project with
-/// no photos exists only for this session, while a project that has imported
-/// photos was committed to the photo library and is restored on the next
+/// no photos and no explicit save exists only for this session, while a project
+/// saved with Done or by importing photos is restored on the next
 /// launch. The copy and the library status section say exactly that.
 ///
 /// `@MainActor` is stated explicitly rather than left to SwiftUI inference: this
@@ -42,7 +42,7 @@ struct HomeView: View {
                 // Explicit `Color.secondary` rather than the hierarchical
                 // `.secondary` style, which renders too faint inside a list
                 // footer in both colour schemes.
-                Text("Projects without photos stay in memory for this session only. A project with imported photos is saved on this device and comes back after a restart.")
+                Text("Tap Done in the editor or import a photo to save a project on this device. Projects you leave without saving stay in memory for this session only.")
                     .font(Typography.caption)
                     .foregroundStyle(Color.secondary)
             }

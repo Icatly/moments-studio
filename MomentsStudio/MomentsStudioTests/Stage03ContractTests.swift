@@ -318,6 +318,36 @@ final class Stage03ContractTests: XCTestCase {
         XCTAssertFalse(CanvasGeometry.contains(CanvasPoint(x: 180, y: 100), layer: layer))
     }
 
+    func testDragKeepsListSelectedLayerUnderLockedOrUnlockedOverlap() {
+        let lower = Layer(transform: LayerTransform(translationX: 500, translationY: 500), zIndex: 0,
+                          assetID: UUID(), baseSize: CanvasSize(width: 200, height: 200))
+        var upper = Layer(transform: lower.transform, zIndex: 1, isLocked: true,
+                          assetID: UUID(), baseSize: CanvasSize(width: 200, height: 200))
+        let point = CanvasPoint(x: 500, y: 500)
+        XCTAssertEqual(CanvasGeometry.hitTest(point, in: [lower, upper])?.id, upper.id)
+        XCTAssertEqual(CanvasGeometry.dragTarget(point, selectedLayerID: lower.id, in: [lower, upper])?.id, lower.id)
+        XCTAssertNil(CanvasGeometry.dragTarget(point, selectedLayerID: nil, in: [lower, upper]))
+        upper.isLocked = false
+        XCTAssertEqual(CanvasGeometry.dragTarget(point, selectedLayerID: lower.id, in: [lower, upper])?.id, lower.id)
+        XCTAssertEqual(CanvasGeometry.dragTarget(point, selectedLayerID: nil, in: [lower, upper])?.id, upper.id)
+    }
+
+    func testDragNeverMovesLockedOrHiddenSelectionAndUsesRotatedBounds() {
+        let lower = Layer(transform: LayerTransform(translationX: 100, translationY: 100), zIndex: 0,
+                          assetID: UUID(), baseSize: CanvasSize(width: 200, height: 200))
+        var selected = Layer(transform: LayerTransform(translationX: 100, translationY: 100, rotationRadians: .pi / 2),
+                             zIndex: 1, isLocked: true, assetID: UUID(), baseSize: CanvasSize(width: 200, height: 40))
+        let inside = CanvasPoint(x: 100, y: 180)
+        XCTAssertNil(CanvasGeometry.dragTarget(inside, selectedLayerID: selected.id, in: [lower, selected]))
+        selected.isLocked = false
+        XCTAssertEqual(CanvasGeometry.dragTarget(inside, selectedLayerID: selected.id, in: [lower, selected])?.id, selected.id)
+        let outside = CanvasPoint(x: 180, y: 100)
+        XCTAssertEqual(CanvasGeometry.dragTarget(outside, selectedLayerID: selected.id, in: [lower, selected])?.id, lower.id)
+        selected.isHidden = true
+        XCTAssertEqual(CanvasGeometry.dragTarget(inside, selectedLayerID: selected.id, in: [lower, selected])?.id, lower.id)
+        XCTAssertNil(CanvasGeometry.dragTarget(CanvasPoint(x: 5000, y: 5000), selectedLayerID: lower.id, in: [lower, selected]))
+    }
+
     // MARK: - Document operations
 
     func testBoundLayerRoundTripsAllKeysWithoutChangingIdentityOrFlags() throws {

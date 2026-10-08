@@ -329,6 +329,7 @@ final class PhotoImportModel {
     /// What a failed edit intended to do, so a retry re-applies the same intent to
     /// the **latest** committed document instead of replaying a stale document.
     enum CanvasDraftIntent: Equatable {
+        case save
         case transform(LayerTransform)
         case visibility(isHidden: Bool)
         case lock(isLocked: Bool)
@@ -355,6 +356,8 @@ final class PhotoImportModel {
     /// Applies one draft intent to the latest document.
     static func apply(_ intent: CanvasDraftIntent, to document: CanvasDocument, layerID: UUID) throws -> CanvasDocument {
         switch intent {
+        case .save:
+            return document
         case .transform(let transform):
             guard let clamped = CanvasGeometry.clampedForEditing(transform, canvasSize: document.canvasSize) else {
                 throw CanvasEditError.unusableTransform(transform)
@@ -423,6 +426,7 @@ final class PhotoImportModel {
     }
 
     private func apply(_ draft: CanvasDraft, to document: CanvasDocument) throws -> CanvasDocument {
+        if case .save = draft.intent { return document }
         if case .add(let assetID) = draft.intent {
             guard let photo = store.photos(for: draft.projectID).first(where: { $0.asset.id == assetID }) else {
                 throw CanvasEditError.assetAlreadyMissing(assetID)

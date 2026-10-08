@@ -167,6 +167,16 @@ enum CanvasGeometry {
         orderedBackToFront(layers).last { !$0.isHidden && contains(point, layer: $0) }
     }
 
+    /// A list-selected layer keeps the drag when the start lies within it, even
+    /// under another photo. Taps still use `hitTest`; a locked target never moves.
+    static func dragTarget(_ point: CanvasPoint, selectedLayerID: UUID?, in layers: [Layer]) -> Layer? {
+        let target = layers.first {
+            $0.id == selectedLayerID && !$0.isHidden && contains(point, layer: $0)
+        } ?? hitTest(point, in: layers)
+        guard let target, !target.isLocked else { return nil }
+        return target
+    }
+
     /// True when a transform is inside the Stage 03 editing range.
     static func isWithinEditRange(_ transform: LayerTransform, canvasSize: CanvasSize) -> Bool {
         guard canvasSize.width.isFinite, canvasSize.height.isFinite,

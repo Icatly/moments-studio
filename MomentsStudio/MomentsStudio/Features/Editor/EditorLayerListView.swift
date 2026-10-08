@@ -78,9 +78,12 @@ struct EditorLayerListView: View {
                                 } placeholder: { Color.secondary.opacity(0.15) }
                                 .frame(width: 56, height: 56)
                                 .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .contentShape(.interaction, Rectangle())
                                 .allowsHitTesting(false)
                             }
+                            .buttonStyle(.plain)
                             .frame(minWidth: Layout.minimumTapTarget, minHeight: Layout.minimumTapTarget)
+                            .contentShape(.interaction, Rectangle())
                             .disabled(blocked || document.layers.count >= ProjectPackage.layerLimit)
                             .accessibilityLabel("Add photo \(index + 1) to canvas")
                             .accessibilityIdentifier("editor.addLayer.\(photo.asset.id.uuidString)")

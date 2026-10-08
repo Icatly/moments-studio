@@ -232,7 +232,7 @@ struct EditorCanvasView: View {
                     let point = fit.canvasPoint(CanvasPoint(x: value.startLocation.x, y: value.startLocation.y))
                     guard point.x >= 0, point.y >= 0,
                           point.x <= document.canvasSize.width, point.y <= document.canvasSize.height,
-                          let touched = CanvasGeometry.hitTest(point, in: document.layers) else { return }
+                          let touched = CanvasGeometry.dragTarget(point, selectedLayerID: selectedLayerID, in: document.layers) else { return }
                     selectedLayerID = touched.id
                 }
                 gestureTranslation = CanvasPoint(x: value.translation.width, y: value.translation.height)
@@ -280,8 +280,8 @@ struct EditorCanvasView: View {
     }
 
     /// Recomposes the draft from the start snapshot plus the three accumulated
-    /// components. The gesture starts on the current selection when it is editable,
-    /// otherwise on the topmost layer; a locked layer is never transformed.
+    /// components. The gesture starts on its resolved selection; a locked layer
+    /// is never transformed.
     private func recomposeDraft(fit: CanvasFit) {
         if gestureStart == nil {
             guard !isEditingDisabled else { return }
@@ -342,9 +342,9 @@ struct EditorCanvasView: View {
 
     /// Cancels without committing: used when the view disappears or is interrupted.
     private func cancelGesture() {
-        guard let id = gestureID else { return }
+        let id = gestureID
         clearGestureState()
-        photoImport.cancelCanvasGesture(id: id)
+        if let id { photoImport.cancelCanvasGesture(id: id) }
     }
 
     private func clearGestureState() {

@@ -255,6 +255,38 @@ final class Stage03CanvasUITests: XCTestCase {
         XCTAssertEqual(layerOrdinal(fromLabel: targetButton.label), 2, "The new top layer's ordinal is not 2.")
         XCTAssertEqual(layerOrdinal(fromLabel: otherButton.label), 1, "The first layer's ordinal is not 1.")
 
+        // Locking an overlap must not steal the list-selected lower photo's drag
+        // or add another persistent layer through an unrelated thumbnail button.
+        activate(targetButton, in: app, named: "select upper photo before locking")
+        let upperTransform = element("editor.layerTransform", in: app).label
+        activate(element("editor.lockLayer.\(targetID)", in: app), in: app, named: "lock overlapping upper photo")
+        XCTAssertTrue(waitForLabel(targetButton, toEqual: "Select layer 2, Photo, locked"))
+        let overlapSurface = element("editor.canvasSurface", in: app)
+        XCTAssertTrue(overlapSurface.waitUntilHittable())
+        overlapSurface.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            .press(forDuration: 0.15, thenDragTo: overlapSurface.coordinate(withNormalizedOffset: CGVector(dx: 0.57, dy: 0.53)))
+        XCTAssertEqual(element("editor.layerTransform", in: app).label, upperTransform)
+        XCTAssertEqual(distinctSelectLayerUUIDs(in: app), layersAfterSecondAdd)
+        XCTAssertEqual(layerCountLabel.label, "2 of 20 layers")
+        activate(otherButton, in: app, named: "select lower photo beneath locked upper photo")
+        let lowerBeforeDrag = element("editor.layerTransform", in: app).label
+        overlapSurface.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            .press(forDuration: 0.15, thenDragTo: overlapSurface.coordinate(withNormalizedOffset: CGVector(dx: 0.6, dy: 0.56)))
+        let lowerDrag = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label != %@", lowerBeforeDrag),
+                                                  object: element("editor.layerTransform", in: app))
+        XCTAssertEqual(XCTWaiter().wait(for: [lowerDrag], timeout: 30), .completed,
+                       "The locked upper photo stole the selected lower photo's drag.")
+        let movedLower = element("editor.layerTransform", in: app).label
+        activate(targetButton, in: app, named: "check upper photo stayed fixed")
+        XCTAssertEqual(element("editor.layerTransform", in: app).label, upperTransform)
+        XCTAssertEqual(distinctSelectLayerUUIDs(in: app), layersAfterSecondAdd)
+        XCTAssertEqual(layerCountLabel.label, "2 of 20 layers")
+        activate(element("editor.lockLayer.\(targetID)", in: app), in: app, named: "unlock upper photo after regression")
+        activate(otherButton, in: app, named: "check lower photo committed")
+        XCTAssertEqual(element("editor.layerTransform", in: app).label, movedLower)
+        activate(element("editor.resetLayer", in: app), in: app, named: "reset lower photo for existing smoke steps")
+        XCTAssertTrue(waitForLabel(element("editor.layerTransform", in: app), toEqual: lowerBeforeDrag))
+
         // 4. Fix the target (number 2, top) and drag it on the real canvas
         //    (element-relative drag; never a screen coordinate).
         activate(targetButton, in: app, named: "select the top layer (number 2)")
@@ -384,6 +416,30 @@ final class Stage03CanvasUITests: XCTestCase {
     }
 
     /// The canvas screen keeps the Stage 02 import entry and identifiers reachable.
+    func testDoneSavesEmptyProjectReturnsHomeAndRestoresAfterRestart() {
+        let app = XCUIApplication()
+        app.launch()
+        let create = element("home.createProject", in: app)
+        XCTAssertTrue(create.waitUntilEnabledAndHittable())
+        let before = homeProjectIdentifiers(in: app)
+        create.tap()
+        XCTAssertTrue(element("editor.canvas", in: app).waitForExistence(timeout: 60))
+        activate(element("editor.done", in: app), in: app, named: "Done saves empty project")
+        XCTAssertTrue(create.waitUntilEnabledAndHittable())
+        let added = homeProjectIdentifiers(in: app).subtracting(before)
+        XCTAssertEqual(added.count, 1)
+        guard let projectID = added.first else { return XCTFail("No completed project on Home") }
+        app.terminate()
+        app.launch()
+        XCTAssertTrue(create.waitUntilEnabledAndHittable())
+        let project = element(projectID, in: app)
+        XCTAssertTrue(project.waitUntilEnabledAndHittable())
+        project.tap()
+        XCTAssertTrue(element("editor.canvas", in: app).waitForExistence(timeout: 60))
+        XCTAssertTrue(waitForLabel(element("editor.layerCount", in: app), toEqual: "0 of 20 layers"))
+        XCTAssertTrue(waitForLabel(element("editor.photoCount", in: app), toEqual: "0 of 20 photos"))
+    }
+
     func testCanvasScreenKeepsTheStage02ImportEntryReachable() {
         let app = XCUIApplication()
         app.launch()

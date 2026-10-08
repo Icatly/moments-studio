@@ -157,6 +157,7 @@ struct PhotoImportSection: View {
                     )
                     .frame(width: 96, height: 96)
                     .clipShape(RoundedRectangle(cornerRadius: Radius.thumbnail, style: .continuous))
+                    .contentShape(.interaction, Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("editor.photo.\(photo.asset.id.uuidString)")

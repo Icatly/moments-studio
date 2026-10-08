@@ -27,6 +27,22 @@ struct EditorPlaceholderView: View {
         }
         .navigationTitle(navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Done") {
+                    Task {
+                        let outcome = await photoImport.applyCanvasIntent(projectID: projectID, layerID: nil, intent: .save)
+                        if case .saved = outcome, navigation.path.last == .editor(projectID: projectID) {
+                            navigation.popToRoot()
+                        }
+                    }
+                }
+                .frame(minHeight: Layout.minimumTapTarget)
+                .disabled(isEditingDisabled || !photoImport.isReady || projectStore.openProject(id: projectID) == nil)
+                .accessibilityIdentifier("editor.done")
+                .accessibilityHint("Saves this project and returns to Home")
+            }
+        }
         .onDisappear {
             // Leaving the editor stops the remaining work of a running batch;
             // committed photos stay. Presenting the preview sheet keeps
@@ -99,6 +115,8 @@ struct EditorPlaceholderView: View {
                 .padding(Spacing.medium)
             }
             .frame(maxHeight: .infinity)
+            .contentShape(.interaction, Rectangle())
+            .clipped()
           }
         }
         .onChange(of: project.document.layers.map(\.id)) { _, ids in
@@ -137,7 +155,7 @@ struct EditorPlaceholderView: View {
                     : photoImport.isSavingEdits ? "Saving…"
                     : projectStore.savedProjectIDs.contains(projectID)
                     ? "Yes"
-                    : "Not yet — import a photo to save this project"
+                    : "Not yet — tap Done or import a photo to save this project"
             )
         }
     }

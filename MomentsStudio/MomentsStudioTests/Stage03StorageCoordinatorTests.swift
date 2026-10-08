@@ -565,4 +565,52 @@ final class Stage03StorageCoordinatorTests: XCTestCase {
         }
         XCTAssertEqual(try Data(contentsOf: manifestURL(committed.id)), bytes)
     }
+
+    @MainActor
+    func testExplicitSavePersistsAnEmptyProjectAndRestoresItsIdentity() async throws {
+        let library = makeLibrary()
+        let store = ProjectStore()
+        let project = store.createProject()
+        let model = PhotoImportModel(library: library, store: store)
+        XCTAssertFalse(store.savedProjectIDs.contains(project.id))
+        let result = await model.applyCanvasIntent(projectID: project.id, layerID: nil, intent: .save)
+        XCTAssertEqual(result, .saved)
+        XCTAssertTrue(store.savedProjectIDs.contains(project.id))
+        let disk = try JSONDecoder().decode(ProjectPackage.self, from: Data(contentsOf: manifestURL(project.id)))
+        XCTAssertEqual(disk.project.id, project.id)
+        XCTAssertEqual(disk.project.document, project.document)
+        XCTAssertEqual(disk.project.name, project.name)
+        XCTAssertTrue(disk.photos.isEmpty)
+        let restoredStore = ProjectStore()
+        let restored = PhotoImportModel(library: makeLibrary(), store: restoredStore)
+        await restored.restoreProjects()
+        XCTAssertEqual(restoredStore.openProject(id: project.id), disk.project)
+        XCTAssertTrue(restoredStore.savedProjectIDs.contains(project.id))
+    }
+
+    @MainActor
+    func testExplicitSaveFailureKeepsCommittedBytesAndRetryableIntent() async throws {
+        let library = makeLibrary()
+        let committed = try await importedPhotoPackage(library: library).package
+        let id = committed.id
+        let bytes = try Data(contentsOf: manifestURL(id))
+        let store = ProjectStore()
+        store.apply(committed)
+        let model = PhotoImportModel(library: library, store: store)
+        let backup = try blockManifest(id)
+        let result = await model.applyCanvasIntent(projectID: id, layerID: nil, intent: .save)
+        guard case .saveFailed = result else { return XCTFail("Expected a real manifest save failure") }
+        XCTAssertEqual(store.openProject(id: id), committed.project)
+        XCTAssertEqual(try Data(contentsOf: manifestURL(id)), bytes)
+        XCTAssertEqual(model.failedDraft(for: id)?.intent, .save)
+        XCTAssertFalse(model.isBusy)
+        try unblockManifest(id, backup: backup)
+        let retried = await model.retryFailedDraft(projectID: id)
+        XCTAssertEqual(retried, .saved)
+        XCTAssertNil(model.failedDraft(for: id))
+        let disk = try JSONDecoder().decode(ProjectPackage.self, from: Data(contentsOf: manifestURL(id)))
+        XCTAssertEqual(store.openProject(id: id), disk.project)
+        XCTAssertEqual(disk.project.document, committed.project.document)
+        XCTAssertEqual(disk.photos, committed.photos)
+    }
 }
