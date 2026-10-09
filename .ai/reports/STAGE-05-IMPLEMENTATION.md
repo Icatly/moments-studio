@@ -2,9 +2,9 @@
 
 角色：DSH（Implementation Engineer，实施/工程/测试）；Architect 负责规格与独立 Review，不代写实现。授权：所有者 2026-10-09“把 stage04 和 stage05 都做了”；Stage04 技术检查点已留存（[STAGE-04-DSH-CHECKPOINT-2026-10-10](../reviews/STAGE-04-DSH-CHECKPOINT-2026-10-10.md)），Stage04 冻结基线 commit `edeca4ddaba03c727a7779bbbf042d899e408222`。范围：[STAGE-05-PHOTO-ANALYSIS](../../docs/architecture/STAGE-05-PHOTO-ANALYSIS.md)、[任务](../tasks/STAGE-05-IMPLEMENT-01.md)。
 
-**状态：READY_FOR_ARCHITECT_REVIEW。** 本轮只做本地实现、工程接线、测试编码与静态检查；**没有** Xcode 编译、**没有** XCTest 运行、**没有** 新 IPA/真机/本人验收，也没有 git 提交/推送、工作流派发、付费或账户设置更改。Stage06 未开始。Stage04 原生 run `37957684567` 的输入只有冻结 commit `edeca4d`，与本文档的当前工作树无关。
+**状态：READY_FOR_ARCHITECT_REVIEW。** 本报告覆盖首版本地实现与 Review FIX01–FIX06。**首次 Stage05 原生运行 `37964463618` 已真实发生且失败**：设备 App Release 编译通过，但 UI test target **编译失败、0 项测试执行**（见 §FIX06），修复后**尚未重新原生运行**；**没有** 新 IPA/真机/本人验收，也没有 git 提交/推送、工作流派发、付费或账户设置更改。Stage06 未开始。Stage04 原生 run `37957684567` 的输入只有冻结 commit `edeca4d`；Stage05 run `37964463618` 的输入是 commit `bc166d4517b9bced0f10e01b0240fd6ad4695543`，均与本文档的当前工作树不同。
 
-## 0. 补正（Review FIX01–FIX04，2026-10-10）
+## 0. 补正（Review FIX01–FIX06，2026-10-10）
 
 Architect 独立复审首版后提出四项问题（[FIX01](../tasks/STAGE-05-REVIEW-FIX-01.md)），第二轮复审又提出四项（[FIX02](../tasks/STAGE-05-REVIEW-FIX-02.md)）。两轮都在批准边界内最小修复：**未改**公开 Codable 字段/schema2、未放宽任何旧 155 项断言、未改 Stage04 两个冻结工作流、未加生产测试入口或空服务。**历史时点说明**：FIX01/FIX02 当时确实**未改**既有共享 `UITestSupport.swift`；FIX03 依据真实失败 A 才最小修改该共享 helper（`prepareEditorGallery` 有界慢拖实例化 lazy 图库），此后它不再属于“未改”清单，见 §FIX03 与 §1。
 
@@ -51,7 +51,25 @@ Architect 独立复审首版后提出四项问题（[FIX01](../tasks/STAGE-05-RE
 
 **FIX05 静态检查（本机实跑）**：`verify_project.py` **PASS**（166 objects、58 refs、Sources 33/18/6 = 57 Swift **13567 行**、17 个 UI 标识符解析、App 声明 **74**——已回到未加 `layout.navigationBar` 的数值）；tree-sitter 重解析 **57/57 文件 0 ERROR**；同父节点重复声明扫描 **0 处**；复算 stage05 清单 **unit=176 ui=10 total=186**，逐文件方法数与冻结期望表一致（Stage04LayoutUITests 仍为 1 个 UI 方法）。当前源聚合 SHA256（57 Swift 逐文件哈希按路径序再哈希）`5da07b10cf4e1e0d…f63c12c9`，被改文件 `Stage04LayoutUITests.swift` 15759 bytes / `376df73e50c3cc81…f72768922`。清单 SHA 会随改动的源码哈希变化，不作为通过依据。
 
-**当前计数（FIX05 为准）**：Stage05 测试 4 个文件、31 个方法（11 + 8 + 11 unit + 1 UI）；全工程 **176 unit + 10 UI = 186**，其中 Stage01–04 的 155 项与断言不变。下方 §1/§4/§5 已按本轮实际值更新（FIX01 首版的 172 与旧哈希不再引用）。
+### FIX06（2026-10-10 01:2x，首次 Stage05 原生运行后的编译冲突；只重命名 1 个本地 helper）
+
+**首次 Stage05 原生运行实际结果**：[run 37964463618](https://github.com/Icatly/moments-studio/actions/runs/37964463618)（`Stage 05 Xcode 26 native test run`，source `bc166d4517b9bced0f10e01b0240fd6ad4695543`，completed / **failure**）：
+- **设备 App Release 编译通过**：`xcodebuild-device.log` 有 `** BUILD SUCCEEDED **`（无新 IPA、未签名、无本人验收）。
+- **XCTest target 在编译阶段失败，测试根本没开始执行**：`test-summary.json` 为 `result=unknown`、`totalTestCount=0`、passed/failed/skipped 全 0；这是 **0 项执行**，不是“0 失败通过”。
+- 原始失败行（私密证据 `.ai/build/stage05-run-37964463618-20261010-012020/evidence/xcodebuild-test.log:696-709`）：
+  - `Stage04LayoutUITests.swift:23:18: error: overriding instance method must be as accessible as the declaration it overrides`
+  - `Stage04LayoutUITests.swift:23:18: error: overriding declaration requires an 'override' keyword`
+  - note：`UITestSupport.swift:333:10: note: overridden declaration is here` → `func isFinitePositive(_ frame: CGRect) -> Bool`
+
+**根因（按原始 note 更正）**：冲突来自**本仓库** `UITestSupport.swift:333` 的 `extension XCTestCase` 共享方法 `isFinitePositive(_:)`（internal），不是 SDK 新 API。`Stage04LayoutUITests` 内的 `private func isFinitePositive(_ rect: CGRect)` 因此被编译器当作对继承成员的非法 override（private 且无 `override`）。
+
+**唯一改动**（允许范围内，`Stage04LayoutUITests.swift`）：把该**本地**私有 helper 重命名为 `layoutFrameIsFiniteAndPositive`，并更新全部 6 处调用（`:55`×2、`:62`、`:83`、`:92`、`:121`、`:138`）。**未**加 `override`、**未**改函数体、**未**改断言/viewport/导航/搜索/拖拽/计数，**未**改共享 `UITestSupport.swift`（仍 42130 bytes / `222f5f0092829230`），**未**改其他源码或任何工作流；方法总数仍 186。该文件 15871 bytes / `3e6c48616492887c…c62e55a`（FIX05 时为 15759）。
+
+**证明“只是改名”**：基线为 Architect 已冻结推送的 `bc166d4`（`git show HEAD:…Stage04LayoutUITests.swift` = 15759 bytes / `376df73e50c3cc81…`，`isFinitePositive` 8 次、`layoutFrameIsFiniteAndPositive` 0 次）。把 HEAD 版的 `isFinitePositive` 与工作树的 `layoutFrameIsFiniteAndPositive` 都归一化为同一占位名后，两份文本**逐字节相同**（归一化 SHA256 均为 `d780fc2ca9725138…ec45e1b`，8 处对 8 处，272 行对 272 行）：除该标识符外**没有任何文本变化**。
+
+**FIX06 本机核验（实跑）**：`verify_project.py` **PASS**（166 objects、58 refs、Sources 33/18/6 = 57 Swift **13567 行**、17 个 UI 标识符解析、App 声明 74）；tree-sitter 重解析 **57/57 文件 0 ERROR**；同父节点重复声明 **0 处**；**跨文件 helper 冲突扫描 0 处**（即 UI test 目录内已无与 `UITestSupport.swift` 扩展成员同名同签名的本地 helper —— 正是本次编译错误的那类冲突）；复算清单 **unit=176 + ui=10 = 186**、逐文件与冻结期望表一致；scheme 两个 testable 均不 skip。被改文件 `Stage04LayoutUITests.swift` 15871 bytes / `3e6c48616492887c…c62e55a`；共享 `UITestSupport.swift` 42130 bytes / `222f5f0092829230`、`CollageLayoutSheet.swift` 8955 bytes / `c0cc666f4dacd7e6` 均未变。当前源聚合 **`9c26ce92223c579a…f3a0295`**。**未执行**：任何原生 XCTest（本机无 Xcode/模拟器/`swift`），无新 IPA、无本人验收；新原生 run 由 Architect 组织。
+
+**当前计数（FIX06 为准）**：Stage05 测试 4 个文件、31 个方法（11 + 8 + 11 unit + 1 UI）；全工程 **176 unit + 10 UI = 186**，其中 Stage01–04 的 155 项与断言不变。下方 §1/§4/§5 已按本轮实际值更新（FIX01 首版的 172 与旧哈希不再引用）。
 
 ---
 
@@ -64,7 +82,7 @@ Architect 独立复审首版后提出四项问题（[FIX01](../tasks/STAGE-05-RE
 | `MomentsStudio/MomentsStudio/Services/PhotoAnalyzer.swift` | 11871 | `7ff5f4dcee8d7790` | 纯 CoreGraphics/Foundation 有界采样统计、严格 sRGB、`PhotoAnalysis`/失败类型/置信度/三档估计 |
 | `MomentsStudio/MomentsStudio/Features/Editor/CollageLayoutSheet.swift` | 8955 | `c0cc666f4dacd7e6` | 三预设 sheet + `searchable(isPresented:)`/提交置 false（收键盘且不清 query） |
 | `MomentsStudio/MomentsStudioUITests/UITestSupport.swift` | 42130 | `222f5f0092829230` | 既有共享 helper：`prepareEditorGallery` 有界慢拖实例化 lazy 图库（原断言不变） |
-| `MomentsStudio/MomentsStudioUITests/Stage04LayoutUITests.swift` | 15759 | `376df73e50c3cc81` | 可用视口有限/`layout.scroll` 与 `Layouts` sheet 各自唯一校验 + 视口端点换算为相对 `layout.scroll` 的归一化拖拽 + 搜索提交保留过滤（断言全保留；FIX05 后字节/哈希） |
+| `MomentsStudio/MomentsStudioUITests/Stage04LayoutUITests.swift` | 15871 | `3e6c48616492887c` | 可用视口有限/`layout.scroll` 与 `Layouts` sheet 各自唯一校验 + 视口端点换算为相对 `layout.scroll` 的归一化拖拽 + 搜索提交保留过滤（断言全保留；FIX05 视口/拖拽 + **FIX06 本地 helper 改名**后的字节/哈希） |
 | `MomentsStudio/MomentsStudio/Features/PhotoImport/PhotoAnalysisSheet.swift` | 19360 | `6ccbedb2c6848c75` | Photo summary sheet + `PhotoAnalysisRun` 身份/请求 guard（currentProjectID、取消/关闭/重算即时失效、asset/尺寸核对）、用户语言提示 |
 | `MomentsStudio/MomentsStudioTests/Stage05PhotoAnalysisTests.swift` | 12217 | `858a3787fa19afde` | 11 项纯统计测试（真实 CGImage，明确容差，含 alpha 12/13 边界） |
 | `MomentsStudio/MomentsStudioTests/Stage05AnalysisStorageTests.swift` | 13158 | `9e58731314502fad` | 8 项真实文件/actor/桥接测试（含符号链接与越界路径守卫） |
@@ -128,14 +146,17 @@ Architect 独立复审首版后提出四项问题（[FIX01](../tasks/STAGE-05-RE
 | tree-sitter（0.26.0 + tree_sitter_swift） | 全部 **57 个 Swift 文件解析 0 ERROR/missing**；FIX05 另按“同一父节点同名+同参数列表”扫描重复声明：**0 处** |
 | 两个 Stage05 工作流 | PyYAML 解析：仅 `workflow_dispatch`、`contents: read`、超时 30/6 分钟、2 天产物；**7 + 4 段内嵌 Python 全部 `compile()` 通过**；无 `STAGE04_`/`stage04-` 残留、无 `-only-testing`/skip/retry；边界 176/10/186 与清单实算一致 |
 | 既有工作流保护 | `git status --porcelain -- .github/workflows` 只有两个新增 `stage05-*`；`stage04-tests.yml` `1a0f19d05226ba27…5a425fef0e4e` 与 `stage04-device.yml` `957198157f7f277d…31ff073a77` **与冻结时逐字节相同**；Stage01/02/03 工作流未被修改 |
-| 源基线（FIX05 后） | 57 个 Swift 文件逐文件 SHA256，按路径序再哈希的聚合 `5da07b10cf4e1e0d2301b185e609de99c04242dab1cd4fa0f325a687f63c12c9`；本机无 Xcode，故这只是编码基线，不是构建产物哈希 |
+| 源基线（FIX06 后） | 57 个 Swift 文件逐文件 SHA256，按路径序再哈希的聚合 `9c26ce92223c579ac5bbfc0d4a22431261ecbc1103dda67187c957b18f3a0295`；本机无 Xcode，故这只是编码基线，不是构建产物哈希 |
+| 跨文件 helper 冲突扫描（FIX06 新增） | UI test 目录内与 `UITestSupport.swift` 扩展成员**同名同签名**的本地 helper：**0 处**（`Stage04LayoutUITests.swift` 的本地几何判定已改名 `layoutFrameIsFiniteAndPositive`）。该扫描只是源码层防回归，不能替代原生编译 |
+| 首次 Stage05 原生运行（真实，已失败） | [run 37964463618](https://github.com/Icatly/moments-studio/actions/runs/37964463618)：设备 `** BUILD SUCCEEDED **`；测试 target 编译失败 → `totalTestCount=0`。**不是**测试通过，也不是“0 失败通过”；修复后尚未重跑 |
 | 私密证据 | `.ai/build/stage05-dsh-implementation-20261010/`：`test-manifest.txt`、`test-methods.txt`、`test-source-hashes.txt`、`test-method-counts.txt`、`env-values.txt`、`project-wiring.txt`、`swift-source-hashes.txt`、`BASELINE.txt`、`HOW-THESE-WERE-PRODUCED.txt`（明示是编码清单/源哈希，**不是** XCTest 结果；已按补正后源码重生成） |
 
 逐文件方法数（实际源码，非猜测）：unit 176 = AppNavigation 6 + CanvasDocument 3 + LargePhotoBatch 2 + LayerModel 9 + PhotoImportModel 6 + PhotoLibrary 31 + ProjectModel 5 + ProjectPackage 8 + ProjectStore 11 + Stage03Contract 34 + Stage03StorageCoordinator 16 + Stage04Layout 11 + Stage04Storage 4 + **Stage05PhotoAnalysis 11** + **Stage05AnalysisStorage 8** + **Stage05AnalysisRun 11**（+2 个 0 方法支持文件）；UI 10 = Stage01Smoke 2 + Stage02Import 3 + Stage03Canvas 3 + Stage04Layout 1 + **Stage05PhotoSummary 1**（+1 个 0 方法 helper 文件）。
 
 ## 6. 未执行 / 不得冒充
 
-- **没有任何原生结果**：本机 Windows 无 Xcode、无模拟器/真机，也没有 `swift`/`swiftc` → **186 项 XCTest 未运行**，无编译、无 xcresult、无 Stage05 IPA、无本人验收；手机仍是 Stage03 包。Stage04 原生 run `37957684567`（测试中）只对应冻结 commit `edeca4d`，**不覆盖**本文档的当前工作树。
+- **本机没有任何原生结果**：本机 Windows 无 Xcode、无模拟器/真机，也没有 `swift`/`swiftc` → 修复后的 **186 项 XCTest 未运行**、无本机构建/`xcresult`/IPA/本人验收；手机仍是 Stage03 包。
+- **已有一次真实但失败的原生运行**：Stage05 `37964463618`（source `bc166d45…`）设备 App 编译通过、UI test target **编译失败、0 项测试执行**（§FIX06）；该次结果**不是**通过，修复后**尚未重跑**。Stage04 `37957684567` 的真实结果（155 运行 / 153 通过 / 2 UI 失败）只对应冻结 commit `edeca4d`，其后的 FIX03/04/05/06 改动**均未原生重验**；两次运行都**不覆盖**本文档的当前工作树。
 - 因此无法在本机验证：Swift 类型/actor 隔离错误、`CGContext` 实际像素行为、SwiftUI `searchable`/AX 合并/`.task(id:)` 时序、`analysis.*` 标识符在原生层级中的真实暴露、真实照片的视觉与弱采样提示观感。
 - 静态检查（工程接线、语法树、YAML/内嵌 Python、清单门禁）**不等于** Xcode 通过；§5 的方法清单是编码清单。
 - **工作流未推送、未触发**；本机无免费额度结论，未产生费用；未做过任何外部发布或账户动作。

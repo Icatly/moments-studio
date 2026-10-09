@@ -20,7 +20,7 @@ final class Stage04LayoutUITests: XCTestCase {
         item.tap()
     }
 
-    private func isFinitePositive(_ rect: CGRect) -> Bool {
+    private func layoutFrameIsFiniteAndPositive(_ rect: CGRect) -> Bool {
         rect.origin.x.isFinite && rect.origin.y.isFinite
             && rect.size.width.isFinite && rect.size.height.isFinite
             && !rect.isEmpty && rect.width > 0 && rect.height > 0
@@ -52,14 +52,14 @@ final class Stage04LayoutUITests: XCTestCase {
         }
         let scrollFrame = scrolls.element.frame
         let appFrame = app.frame
-        guard isFinitePositive(scrollFrame), isFinitePositive(appFrame) else {
+        guard layoutFrameIsFiniteAndPositive(scrollFrame), layoutFrameIsFiniteAndPositive(appFrame) else {
             XCTFail("Non-finite layout geometry: scroll=\(scrollFrame) app=\(appFrame)")
             return nil
         }
         var viewport = scrollFrame.intersection(appFrame)
         let sheetNavigationBar = sheetNavigationBars.element
         let navigationFrame = sheetNavigationBar.frame
-        guard isFinitePositive(navigationFrame) else {
+        guard layoutFrameIsFiniteAndPositive(navigationFrame) else {
             XCTFail("Non-finite sheet navigation frame \(navigationFrame)")
             return nil
         }
@@ -80,7 +80,7 @@ final class Stage04LayoutUITests: XCTestCase {
         }
         if app.keyboards.count > 0 {
             let keyboardFrame = app.keyboards.element.frame
-            guard isFinitePositive(keyboardFrame) else {
+            guard layoutFrameIsFiniteAndPositive(keyboardFrame) else {
                 XCTFail("Non-finite keyboard frame \(keyboardFrame)")
                 return nil
             }
@@ -89,7 +89,7 @@ final class Stage04LayoutUITests: XCTestCase {
                                   width: viewport.width, height: min(viewport.maxY, keyboardFrame.minY) - viewport.minY)
             }
         }
-        guard isFinitePositive(viewport) else {
+        guard layoutFrameIsFiniteAndPositive(viewport) else {
             XCTFail("No usable layout viewport after clipping: \(viewport)")
             return nil
         }
@@ -118,7 +118,7 @@ final class Stage04LayoutUITests: XCTestCase {
         for _ in 0..<5 {
             guard let viewport = usableViewport(in: app) else { return }
             let target = item.frame
-            guard isFinitePositive(target) else {
+            guard layoutFrameIsFiniteAndPositive(target) else {
                 XCTFail("Non-finite choice frame \(target) for \(id)")
                 return
             }
@@ -135,7 +135,7 @@ final class Stage04LayoutUITests: XCTestCase {
             // are the actual viewport points re-expressed as normalized offsets inside
             // the identified scroll element.
             let scrollFrame = scroll.frame
-            guard isFinitePositive(scrollFrame) else {
+            guard layoutFrameIsFiniteAndPositive(scrollFrame) else {
                 XCTFail("Non-finite layout scroll frame \(scrollFrame)")
                 return
             }
