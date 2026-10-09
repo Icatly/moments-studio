@@ -58,7 +58,7 @@ final class Stage03CanvasUITests: XCTestCase {
     private func activate(_ tool: XCUIElement, in app: XCUIApplication, named name: String,
                           file: StaticString = #filePath, line: UInt = #line) {
         XCTAssertTrue(tool.waitForExistence(timeout: 45), "\(name) never appeared.", file: file, line: line)
-        if !tool.isHittable {
+        if !tool.isHittable || !app.navigationBars.element.frame.contains(tool.frame) {
             XCTAssertTrue(scrollEditorToMakeHittable(tool, in: app), "\(name) never became hittable.", file: file, line: line)
         }
         // Waits for the save to release the control instead of asserting immediately.

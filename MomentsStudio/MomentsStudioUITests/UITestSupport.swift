@@ -407,8 +407,9 @@ extension XCTestCase {
         attachFullAppScreenshot(app, named: "INTERACTION-VERIFY[gallery] after preparation (\(session))")
     }
 
-    /// Minimal bounded user scroll for Editor targets that exist but are not
-    /// hittable, which is what maximum text size exposes (Editor content 2256.3
+    /// Minimal bounded user scroll for Editor targets outside the usable viewport,
+    /// including partially visible targets reported as hittable by XCTest.
+    /// Maximum text size also exposes this (Editor content 2256.3
     /// points tall over four pages with the import entry from y=786.7 in run
     /// 37230253288).
     ///
@@ -422,9 +423,8 @@ extension XCTestCase {
     /// swipes up, only one that reaches past the top edge swipes down, and a target
     /// inside the usable viewport that still cannot be hit (or whose frame is not
     /// finite) fails instead of guessing a direction. At most three native swipes;
-    /// an already hittable target never sees a gesture.
+    /// a fully visible, hittable target never sees a gesture.
     func scrollEditorToMakeHittable(_ target: XCUIElement, in app: XCUIApplication) -> Bool {
-        if target.isHittable { return true }
         guard target.exists else { return false }
         guard element("editor.placeholder", in: app).exists else { return false }
         guard !app.navigationBars["Photos"].exists,
@@ -434,8 +434,7 @@ extension XCTestCase {
         let scrollView = app.scrollViews.element
         guard isFinitePositive(app.frame), isFinitePositive(scrollView.frame) else { return false }
 
-        for _ in 0..<3 {
-            if target.isHittable { return true }
+        for attempt in 0...3 {
             // Every real geometry value is re-read on each pass: the app window, the
             // single Editor navigation bar and scroll view, and the target itself.
             let targetFrame = target.frame
@@ -462,6 +461,12 @@ extension XCTestCase {
             }
             guard isFinitePositive(viewport) else { return false }
 
+            // iOS 26.5 reports a thumbnail with only its top 14 points visible as
+            // hittable. Its center tap misses the clipped editor viewport, so
+            // require the whole control inside the actual viewport before tapping.
+            if viewport.contains(targetFrame) { return target.isHittable }
+            guard attempt < 3 else { return false }
+
             // Any part of the target reaching past an edge needs a gesture, so a
             // partially overflowing target (observed Import at y=786.7 with height
             // 125.3) is handled as well. A target fully inside the usable viewport
@@ -475,7 +480,7 @@ extension XCTestCase {
                 return false
             }
         }
-        return target.isHittable
+        return false
     }
 
     /// Closes the system's "Private Access to Photos" onboarding exactly once when

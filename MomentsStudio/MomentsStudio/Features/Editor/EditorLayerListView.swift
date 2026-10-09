@@ -79,7 +79,6 @@ struct EditorLayerListView: View {
                                 .frame(width: 56, height: 56)
                                 .clipShape(RoundedRectangle(cornerRadius: 8))
                                 .contentShape(.interaction, Rectangle())
-                                .allowsHitTesting(false)
                             }
                             .buttonStyle(.plain)
                             .frame(minWidth: Layout.minimumTapTarget, minHeight: Layout.minimumTapTarget)
