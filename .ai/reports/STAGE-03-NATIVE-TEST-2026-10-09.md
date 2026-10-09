@@ -1,6 +1,12 @@
 # Stage03 公开仓库原生测试
 
-## 最新结果（2026-10-09 12:49）
+## 最终结果（2026-10-09 13:29，覆盖下方历史）
+
+完整[run37885854102](https://github.com/Icatly/moments-studio/actions/runs/37885854102)真实success，source68864c2bc2109abaf8d8b9b45bec0777ae1700ec。130 unit+8 UI=138，138 passed/0 failed/0 skipped/0 expected failures；结果门禁、模拟器包/启动截图与上传均success。Xcode26.6/SDK26.5，arm64 iPhone17 Pro/iOS26.5。artifact11596802912、149818502 bytes，SHA256 903069f4878d6270aeca77d12f7ce028eaebb2d5e2d7cb9a31831e904e2e98b4，与GitHub digest一致；完整原始xcresult/附件已私密留存。Home启动截图已目视核对。
+
+设备run37885964541 success，source同68864c2，IPA验证与英文安装副本复核完成（535429 bytes、SHA f622ab1cd728466272c7ffe02146ca0b4212cc43edca5fcaedc0c2a9fcf6927c）。元数据提取无AppIntents依赖warning保留；编译器warning为0，未压日志。当前签名/安装/本人新版复测仍未执行，USB未检测iPhone、手机仍旧6bd2fbf。最终技术Review完成，Stage03 WAITING_FOR_USER，不是APPROVED；Stage04未授权。公开标准runner、未改付费预算/付款，前四轮真实结果保持历史，不伪造绿状态。
+
+## 第四轮原生通过与门禁修正记录（2026-10-09 12:49）
 
 第四轮原生XCTest已全部通过：138执行/138 passed/0 failed/0 skipped/0 expected failures，130 unit+8 UI；锁层重叠下层拖动、不增层、完整编辑/调序/强制结束重启恢复/删除保留素材及Done保存回首页均真实通过。source b436590b560da378687fbae1f2b4290a5f465224，run37883613668；整体workflow仍failure，原因是结果门禁残留旧“frozen-7 / 7”拆分，与真实130/8不符，不能把红workflow写success。
 
@@ -58,3 +64,11 @@
 ## 第四轮实际启动（2026-10-09 12:23）
 
 精确2文件正常推送b436590b560da378687fbae1f2b4290a5f465224，单次[run37883613668](https://github.com/Icatly/moments-studio/actions/runs/37883613668)，attempt1，in_progress；完整138/标准macos-26/30分钟上限，尚无第四轮结果。App与第三轮一致，无新IPA或本人修后验收。
+
+## 最终流程与设备包实际启动（2026-10-09 12:54）
+
+门禁/报告精确2文件推送68864c2bc2109abaf8d8b9b45bec0777ae1700ec；完整[run37885854102](https://github.com/Icatly/moments-studio/actions/runs/37885854102)与设备包[run37885964541](https://github.com/Icatly/moments-studio/actions/runs/37885964541)各单次派发，attempt1，均in_progress。设备包在138/138真实证据、公开标准macos-15、原生测试源码树完全一致的核验后准备；MomentsStudio树8dbb142284d4cd9ac0f7b28342a9f3af1e51e97f相同，未改付款/预算。尚无新IPA/签名/安装，不计整个native workflow通过。
+
+## 新版设备包验证（2026-10-09 12:58）
+
+run37885964541 success，source68864c2；有效unsigned IPA535429 bytes、SHA256 f622ab1cd728466272c7ffe02146ca0b4212cc43edca5fcaedc0c2a9fcf6927c。平台iPhoneOS/arm64/Mach-O IOS/min17，bundle com.example.MomentsStudio、无xctest、ZIP无损；Xcode16.4/SDK18.5，一项AppIntents无依赖的元数据提取warning，不隐藏。设备workflow不运行XCTest，但整个MomentsStudio树与138/138通过b436590一致。安装副本C:/Users/27411/AppData/Local/Temp/MomentsStudio-Stage03-37885964541/MomentsStudio.ipa已逐字SHA复核。签名/安装/本人新版复测均未执行；最终native入口仍运行，Stage03未批准。
