@@ -1,4 +1,6 @@
-# Stage04 DSH 接手核验报告 — 2026-10-09
+# Stage04 DSH 接手核验报告 — 2026-10-10
+
+**Architect 独立复审已落盘**：[技术检查点](../reviews/STAGE-04-DSH-CHECKPOINT-2026-10-10.md)（2026-10-10）确认本轮源码零改动；Stage04 冻结基线为 commit `edeca4ddaba03c727a7779bbbf042d899e408222`，原生测试由 Architect 组织、**不因此算已通过**。四项观察的决议见 §6 顶部；本报告标题/执行日期按实际核正为 2026-10-10（原 2026-10-09 为草稿日期）。
 
 依据 [STAGE-04-DSH-TAKEOVER-01](../tasks/STAGE-04-DSH-TAKEOVER-01.md)、[Stage04规格](../../docs/architecture/STAGE-04-DETERMINISTIC-LAYOUT.md)、[实现任务](../tasks/STAGE-04-IMPLEMENT-01.md)与[工作须知](../../工作须知.md)（2026-10-09 恢复分工）。
 
@@ -114,12 +116,14 @@
 ### 5.3 源文件清单
 51 个 Swift 文件（app 31 / unit 15 / UI 5）的逐文件 SHA256 与聚合哈希见 `.ai/build/stage04-dsh-takeover-20261009/swift-source-hashes.txt`（聚合 `3a560ab15f3c31b9b38f2ec469803386561cc2bb49a7f3358f90a6b36344c227`）。
 
-## 6. 观察与建议（交 Architect 决定，本轮未改）
+## 6. 观察与建议（交 Architect 决定；已由检查点决议，DSH 未改）
 
-- **O1（规格/验收措辞，建议 Architect 定）**：`editor.layouts` 在项目**无照片**时禁用（EditorPlaceholderView 入口条件含 `photos.isEmpty`），因此 sheet 内 `.noPhotos` 的“导入照片后再选布局”说明无法从 UI 到达。[验收清单](../acceptance/STAGE-04.md)第 6 条要求“无照片、全部层不可排列、非法几何有真实反馈”：后两者**可达**（sheet 打开后逐项显示 `noEditableLayers`/`cannotFit`），仅“无照片”这一支只剩编辑器 Add-to-canvas 区的 “Import a photo first, then add it to the canvas.” 与禁用按钮。建议二选一：(i) 认为该既有文案即真实反馈，把口径写进规格；(ii) 若要求布局自身的说明，我可做最小增补（Layouts 按钮下加一行仅 `photos.isEmpty` 时显示的 caption + 标识符，纯增量、不动行为/测试/契约），本轮未擅自改。
+**检查点决议（[STAGE-04-DSH-CHECKPOINT-2026-10-10](../reviews/STAGE-04-DSH-CHECKPOINT-2026-10-10.md)）**：O1 接受缺照片时 Layouts 入口禁用、复用编辑器既有导入说明，不新增页面/问卷；O2 固定 Focus 首图为 `orderedBackToFront` 首个可排层（空画布=导入顺序），本阶段不改堆叠语义；O3 接受 `fitScale>8` 时取 8 的安全上限（只变小、不掩盖裁切外溢，低于 0.1 仍拒绝）；O4 的 AX 层级待真实原生核对。以下原文保留以便追溯。
+
+- **O1（已决议：接受现状）**：`editor.layouts` 在项目**无照片**时禁用（EditorPlaceholderView 入口条件含 `photos.isEmpty`），因此 sheet 内 `.noPhotos` 的“导入照片后再选布局”说明无法从 UI 到达。[验收清单](../acceptance/STAGE-04.md)第 6 条要求“无照片、全部层不可排列、非法几何有真实反馈”：后两者**可达**（sheet 打开后逐项显示 `noEditableLayers`/`cannotFit`），仅“无照片”这一支只剩编辑器 Add-to-canvas 区的 “Import a photo first, then add it to the canvas.” 与禁用按钮。
 - **O2（语义确认）**：Focus 的“第一张”取 `orderedBackToFront` 的首层——空画布即**导入顺序第一张**（Stage04 主流程）；已有画布则是**最底层**而非层列表最上方那一层。确定性且已被测试覆盖，但规格未定义“第一张”。建议确认是否希望改为“最上层/最近添加”。
 - **O3（显式解释）**：`fittedTransform` 在 `fitScale > 8` 时按下取 8（而非拒绝），因此极小历史 `baseSize` 的层会小于其格但不越界、不裁切；这与“维持 0.1…8 范围”一致，与“不用 clamp 掩盖越界”也不冲突（不放大、不外溢）。建议在规格或注释中固化该解释。
-- **O4（验证缺口，不建议现在改）**：规格要求“避免三个重复的编辑器 canvas 标识泄漏到选择页面”，实现用 `.accessibilityElement(children: .ignore)` 处理，但 UI smoke 未断言 sheet 打开时不存在 `editor.canvas` / `editor.canvasSurface`。我可加一行断言，但本机无法验证 SwiftUI 的可访问性合并行为；考虑到**当前只获批一次原生运行**，我不在无法验证的断言上冒险，交 Architect 决定是否在原生运行中顺带核对。
+- **O4（验证缺口；已决议：AX 待真实原生）**：规格要求“避免三个重复的编辑器 canvas 标识泄漏到选择页面”，实现用 `.accessibilityElement(children: .ignore)` 处理，但 UI smoke 未断言 sheet 打开时不存在 `editor.canvas` / `editor.canvasSurface`。**更正**：我不加该断言的原因不是“只获批一次原生运行”（无此限制，本轮无该项依据），而是 **(a)** 本机无法验证 SwiftUI 的可访问性合并行为，**(b)** DSH 只有本地实施权限、没有自行派发/组织云端原生运行的权限（原生验证由 Architect 组织，失败后按明确根因修复、禁止无依据重复派发）。按检查点决议，重复 canvas 标识是否真的被预览包装隐藏属于原生层级/视觉待核项，必要时按实际原生失败修复；我不补猜测性断言、也不宣称原生通过。
 - **O5（能力边界）**：Windows 无 Swift 工具链，本轮全部结论建立在源码阅读、语法解析、工程接线与几何推演上；首次 `xcodebuild` 仍是唯一的类型/运行证明。
 
 ## 7. 状态

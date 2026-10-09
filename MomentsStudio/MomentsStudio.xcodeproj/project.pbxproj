@@ -54,6 +54,10 @@
 			"isa" = "PBXBuildFile";
 			"fileRef" = "1848FF44A31583EFEDDF1F9B";
 		};
+		9853B2B8F7ACF1D9838B77CF /* PhotoAnalysisSheet.swift in Sources */ = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "C4CC1CBAC78CBC0BAA0CB844";
+		};
 		F7B011A6D6F5C2AC72F014EE /* PhotoImportModel.swift in Sources */ = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "377D5C30AB18F9A248E60F2E";
@@ -109,6 +113,10 @@
 		FE678FB23CBAC43561FD29B0 /* ProjectPackage.swift in Sources */ = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "D030AD4B4EB027DE58DBAB18";
+		};
+		8883DF3632E6EC8A6C4392D3 /* PhotoAnalyzer.swift in Sources */ = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "9A117082ECB28C1908E294D8";
 		};
 		B15E7CF7591C6DB3B3E29580 /* PhotoDerivativeRenderer.swift in Sources */ = {
 			"isa" = "PBXBuildFile";
@@ -186,6 +194,18 @@
 			"isa" = "PBXBuildFile";
 			"fileRef" = "79205BB91984035DF9746C91";
 		};
+		67CC93ACF88CBF76FAB72D0D /* Stage05AnalysisRunTests.swift in Sources */ = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "764CDC8FC0C0AB01017B3020";
+		};
+		DF0DC72EFD64DCCFC4BDB570 /* Stage05AnalysisStorageTests.swift in Sources */ = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "1710457D3BCD7C45B22E5C80";
+		};
+		EC748EDE108260A2B6242ACE /* Stage05PhotoAnalysisTests.swift in Sources */ = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "5B93509D216FB6D3B368CF0E";
+		};
 		948476B7F983716C24CA82E9 /* SyntheticImageFactory.swift in Sources */ = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "735468D8CA374F016BA56C67";
@@ -209,6 +229,10 @@
 		CDED6DCEB7FA7FF3555B133B /* Stage04LayoutUITests.swift in Sources */ = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "E123B9454A0D40FF97ED5178";
+		};
+		DF0289004E0F25A10A817F02 /* Stage05PhotoSummaryUITests.swift in Sources */ = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "E025A099BA7CA293E14784B7";
 		};
 		06E34E9333CBB0038192DC30 /* UITestSupport.swift in Sources */ = {
 			"isa" = "PBXBuildFile";
@@ -304,6 +328,12 @@
 			"path" = "DerivedImageView.swift";
 			"sourceTree" = "<group>";
 		};
+		C4CC1CBAC78CBC0BAA0CB844 /* PhotoAnalysisSheet.swift */ = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "PhotoAnalysisSheet.swift";
+			"sourceTree" = "<group>";
+		};
 		377D5C30AB18F9A248E60F2E /* PhotoImportModel.swift */ = {
 			"isa" = "PBXFileReference";
 			"lastKnownFileType" = "sourcecode.swift";
@@ -392,6 +422,12 @@
 			"isa" = "PBXFileReference";
 			"lastKnownFileType" = "folder.assetcatalog";
 			"path" = "Assets.xcassets";
+			"sourceTree" = "<group>";
+		};
+		9A117082ECB28C1908E294D8 /* PhotoAnalyzer.swift */ = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "PhotoAnalyzer.swift";
 			"sourceTree" = "<group>";
 		};
 		87D1AEF23F84DD6E333EAB6B /* PhotoDerivativeRenderer.swift */ = {
@@ -502,6 +538,24 @@
 			"path" = "Stage04StorageTests.swift";
 			"sourceTree" = "<group>";
 		};
+		764CDC8FC0C0AB01017B3020 /* Stage05AnalysisRunTests.swift */ = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "Stage05AnalysisRunTests.swift";
+			"sourceTree" = "<group>";
+		};
+		1710457D3BCD7C45B22E5C80 /* Stage05AnalysisStorageTests.swift */ = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "Stage05AnalysisStorageTests.swift";
+			"sourceTree" = "<group>";
+		};
+		5B93509D216FB6D3B368CF0E /* Stage05PhotoAnalysisTests.swift */ = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "Stage05PhotoAnalysisTests.swift";
+			"sourceTree" = "<group>";
+		};
 		735468D8CA374F016BA56C67 /* SyntheticImageFactory.swift */ = {
 			"isa" = "PBXFileReference";
 			"lastKnownFileType" = "sourcecode.swift";
@@ -536,6 +590,12 @@
 			"isa" = "PBXFileReference";
 			"lastKnownFileType" = "sourcecode.swift";
 			"path" = "Stage04LayoutUITests.swift";
+			"sourceTree" = "<group>";
+		};
+		E025A099BA7CA293E14784B7 /* Stage05PhotoSummaryUITests.swift */ = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "Stage05PhotoSummaryUITests.swift";
 			"sourceTree" = "<group>";
 		};
 		CF8333EB1D44AE92B8C3EE3F /* UITestSupport.swift */ = {
@@ -648,6 +708,7 @@
 			"isa" = "PBXGroup";
 			"children" = (
 				"1848FF44A31583EFEDDF1F9B",
+				"C4CC1CBAC78CBC0BAA0CB844",
 				"377D5C30AB18F9A248E60F2E",
 				"B89C9FA89E429777829A37F1",
 				"D34511542E6D3D92171C2D96",
@@ -702,6 +763,7 @@
 		5FBC46E515304750D4BB4B2F /* Services */ = {
 			"isa" = "PBXGroup";
 			"children" = (
+				"9A117082ECB28C1908E294D8",
 				"87D1AEF23F84DD6E333EAB6B",
 				"E57744E774081767D922F009",
 				"A6F84618ED7C9DF6FF22D60D",
@@ -749,6 +811,9 @@
 				"B78B866CCFB5AC7FD7B2F179",
 				"9BC612C618E6FAF2540B82E0",
 				"79205BB91984035DF9746C91",
+				"764CDC8FC0C0AB01017B3020",
+				"1710457D3BCD7C45B22E5C80",
+				"5B93509D216FB6D3B368CF0E",
 				"735468D8CA374F016BA56C67",
 				"F17B86A26E1E8B85B69B56F8",
 			);
@@ -762,6 +827,7 @@
 				"5379B13C9D440E55C1B1614D",
 				"4B5E58BB63F41B6FD8F9A3DA",
 				"E123B9454A0D40FF97ED5178",
+				"E025A099BA7CA293E14784B7",
 				"CF8333EB1D44AE92B8C3EE3F",
 			);
 			"path" = "MomentsStudioUITests";
@@ -924,6 +990,7 @@
 				"49DDB28A430BB291155C4EC0",
 				"705D2C5450DF4D08F8D331DB",
 				"3678F4CB920A7609201711B6",
+				"9853B2B8F7ACF1D9838B77CF",
 				"F7B011A6D6F5C2AC72F014EE",
 				"36E2049E0BF0842FA97B3014",
 				"9415C730B3EBA8DE16F55459",
@@ -938,6 +1005,7 @@
 				"F6E7423B8497BB80F6355279",
 				"66B72D93C7EF29E5746711AE",
 				"FE678FB23CBAC43561FD29B0",
+				"8883DF3632E6EC8A6C4392D3",
 				"B15E7CF7591C6DB3B3E29580",
 				"B607F7EBCA65EECAAE861F54",
 				"269793534F88DDE85FA5BF7D",
@@ -963,6 +1031,9 @@
 				"949B17AE76E49BF2A01A8601",
 				"6487D66F4591EA146D410B0B",
 				"E2BA5ABA57B0AA209DF4C94F",
+				"67CC93ACF88CBF76FAB72D0D",
+				"DF0DC72EFD64DCCFC4BDB570",
+				"EC748EDE108260A2B6242ACE",
 				"948476B7F983716C24CA82E9",
 				"0A32706444EC1DB0EC70858B",
 			);
@@ -976,6 +1047,7 @@
 				"7F59F325EB8C740C94C5C7A8",
 				"96B65612CECF3DBA6ECEED62",
 				"CDED6DCEB7FA7FF3555B133B",
+				"DF0289004E0F25A10A817F02",
 				"06E34E9333CBB0038192DC30",
 			);
 			"runOnlyForDeploymentPostprocessing" = "0";

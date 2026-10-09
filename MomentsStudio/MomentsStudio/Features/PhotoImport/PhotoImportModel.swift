@@ -541,6 +541,21 @@ final class PhotoImportModel {
         }
     }
 
+    // MARK: - Photo analysis (Stage 05, read-only)
+
+    /// Read-only bridge for the Photo summary sheet.
+    ///
+    /// It deliberately does **not** take part in the single mutation gate and does
+    /// **not** write the store, the manifest or the failed-draft state: analysis
+    /// changes no project. Cancellation propagates as `CancellationError`, and only
+    /// the value result crosses back to the UI (never a `CGImage`).
+    func analyzePhoto(projectID: UUID, assetID: UUID) async throws -> PhotoAnalysis {
+        guard store.openProject(id: projectID) != nil else {
+            throw PhotoAnalysisFailure.missing
+        }
+        return try await library.analyzePhoto(projectID: projectID, assetID: assetID)
+    }
+
     // MARK: - Images
 
     /// Loads one generated derivative for display. Returns `nil` (and records a

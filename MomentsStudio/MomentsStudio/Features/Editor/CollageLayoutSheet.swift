@@ -8,6 +8,17 @@ struct CollageLayoutSheet: View {
     @Environment(ProjectStore.self) private var store
     @Environment(PhotoImportModel.self) private var photoImport
     @Environment(AppNavigationModel.self) private var navigation
+    /// Search activation state.
+    ///
+    /// Real evidence (run 37957684567): after typing `OFFSET` the keyboard stayed up
+    /// and covered the filtered choice (`layout.choose.offset` at y=541.3 inside a
+    /// 0...874 window sat inside `layout.scroll` but was not usable). The search
+    /// interface is ended by setting this binding to `false` on submit — a plain
+    /// state write in the same view that owns `.searchable`, which is exactly the
+    /// documented iOS 17 activation control. Unlike `dismissSearch`, it neither
+    /// depends on an environment value that does not travel up to the outer view
+    /// nor clears `query`, so the `OFFSET` filter and the no-results state survive.
+    @State private var searchIsPresented = false
 
     @State private var selected: CollagePreset?
     @State private var query = ""
@@ -85,7 +96,9 @@ struct CollageLayoutSheet: View {
             .accessibilityIdentifier("layout.scroll")
             .navigationTitle("Layouts")
             .navigationBarTitleDisplayMode(.inline)
-            .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Find a layout")
+            .searchable(text: $query, isPresented: $searchIsPresented,
+                        placement: .navigationBarDrawer(displayMode: .always), prompt: "Find a layout")
+            .onSubmit(of: .search) { searchIsPresented = false }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismissIfCurrent() }

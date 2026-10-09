@@ -34,4 +34,6 @@ UI只给“Estimated darker / balanced / brighter”（meanL<0.25 / 0.25…0.75 
 
 DSH提供Stage05手动原生测试/设备工作流，最小复用Stage04流程，保持完整scheme、真实方法清单与分组门禁、0失败/跳过、标准macOS运行器、合理明确时限和2天证据保留；不得硬填“通过”或减少旧断言。每阶段分别记录源码清单/检查点，最终包与实际全套原生测试同App树。Windows仅静态，macOS实际Xcode结果才构成原生证据。设备IPA/真机/阶段APPROVED仍需后续实际动作。
 
+2026-10-10 Architect工具链决定：Stage05测试和设备包均用标准macos-26，明确选择稳定Xcode26+/iphoneos26+，分别30/6分钟，避免照抄Stage03旧macos15默认Xcode16.4/SDK18.5导致展示不同。仅DSH更新新的Stage05 device工作流；Stage04冻结入口保持原记录。免费标准运行器，不授权larger或费用/账户设置变更。
+
 原生依据：[Apple CGImageAlphaInfo](https://developer.apple.com/documentation/coregraphics/cgimagealphainfo)、[CGContext bitmapInfo](https://developer.apple.com/documentation/coregraphics/cgcontext/bitmapinfo)、[Swift Task](https://developer.apple.com/documentation/swift/task/)、[Swift concurrency](https://docs.swift.org/latest/documentation/the-swift-programming-language/concurrency/)。具体统计公式与置信度阈值为本项目工程决定，不是Apple推荐算法。

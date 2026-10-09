@@ -1,6 +1,6 @@
 # Stage04验收清单
 
-当前READY_FOR_ARCHITECT_REVIEW，本地实现及工程/脚本检查完成，已编码146单元＋9 UI＝155项；尚无Stage04 Xcode结果或可运行包，不能用Stage03包验收新布局。范围见[架构](../../docs/architecture/STAGE-04-DETERMINISTIC-LAYOUT.md)。
+2026-10-10当前CHANGES_REQUESTED：冻结edeca4d真实原生155项运行、153通过、2 UI失败、0跳过，146单元全通过且设备Release编译/产品校验通过，不能称Stage04通过。DSH按[原生Review](../reviews/STAGE-04-NATIVE-ROUND-01-2026-10-10.md)修图库实例化和搜索键盘/视口路径，最终Stage05完整scheme保留旧155项回归两阶段；尚无新设备包/本人验收，不能用Stage03包验收新布局。范围见[架构](../../docs/architecture/STAGE-04-DETERMINISTIC-LAYOUT.md)。
 
 - 空画布导入至少两张照片后，打开Layouts，三个预设均有本人照片预览，构图有区别；布局名称是临时功能名。
 - 搜索关键词能筛选，清除后回到三个预设，所选项不丢；无结果有说明，不替换项目素材。

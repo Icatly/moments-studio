@@ -1,0 +1,179 @@
+# Stage05 device-package preparation only. Owner prefers iPhone acceptance.
+# MANUAL ONLY: do not dispatch until current free allowance and source are verified.
+# Adapted from the Stage04 device flow; the Stage04 workflow itself is unchanged.
+# A successful build packages the app; it does NOT execute unit/UI tests or device acceptance.
+# This packages an UNSIGNED device build; local signing and installation remain unverified.
+name: Stage 05 physical-device package
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: macos-26
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Select and record an Xcode 26+ toolchain with an iphoneos SDK 26+
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p stage05-device-artifacts
+          # The Stage03 device IPA was actually built with Xcode 16.4 / iphoneos SDK
+          # 18.5, which is not the toolchain the cloud test flow uses. This device
+          # package is built with the same official Xcode 26+ / iphoneos SDK 26+ it
+          # records here, so the two stages do not diverge; the selection is written
+          # into the evidence before anything is compiled.
+          python3 - <<'PY'
+          import os, re, subprocess
+          from pathlib import Path
+
+          artifacts = Path("stage05-device-artifacts")
+
+          def capture(command, environment):
+              return subprocess.run(command, capture_output=True, text=True, check=False, env=environment)
+
+          def numbers(text):
+              return tuple(int(part) for part in re.findall(r"\d+", text)[:3])
+
+          candidate_lines = []
+          qualified = []
+          for app in sorted(Path("/Applications").glob("Xcode*.app")):
+              if not app.is_dir():
+                  continue
+              if "beta" in app.name.lower():
+                  candidate_lines.append(f"{app.name}: SKIPPED (beta toolchains are not allowed)")
+                  continue
+              environment = dict(os.environ, DEVELOPER_DIR=str(app))
+              version = capture(["/usr/bin/xcodebuild", "-version"], environment)
+              sdk = capture(["/usr/bin/xcrun", "--sdk", "iphoneos", "--show-sdk-version"], environment)
+              version_lines = version.stdout.strip().splitlines()
+              match = re.fullmatch(r"Xcode (\d+(?:\.\d+){0,2})", version_lines[0]) if version_lines else None
+              full_version = match.group(1) if match else ""
+              build_match = next((re.fullmatch(r"Build version (\S+)", line) for line in version_lines
+                                  if line.startswith("Build version")), None)
+              build = build_match.group(1) if build_match else ""
+              sdk_version = sdk.stdout.strip().splitlines()[0].strip() if sdk.stdout.strip() else ""
+              candidate_lines.append(
+                  f"{app.name}: xcode={full_version or '?'} build={build or '?'} iphoneos_sdk={sdk_version or '?'}"
+              )
+              if version.returncode != 0 or sdk.returncode != 0 or not full_version or not build:
+                  candidate_lines[-1] += " (inspection failed)"
+                  continue
+              xcode_numbers, sdk_numbers = numbers(full_version), numbers(sdk_version)
+              if xcode_numbers and sdk_numbers and xcode_numbers[0] >= 26 and sdk_numbers[0] >= 26:
+                  qualified.append((xcode_numbers, full_version, build, sdk_version, str(app)))
+
+          (artifacts / "xcode-candidates.txt").write_text("\n".join(candidate_lines) + "\n")
+          if not qualified:
+              print("\n".join(candidate_lines))
+              raise SystemExit(
+                  "No official Xcode 26+ installation with an iphoneos SDK 26+ is present on this runner; "
+                  "refusing to package a device build with an unverified toolchain."
+              )
+
+          qualified.sort(key=lambda entry: entry[0])
+          _, full_version, build, sdk_version, path = qualified[-1]
+          selection = (
+              f"selected_xcode_path={path}\n"
+              f"selected_xcode_version={full_version}\n"
+              f"selected_xcode_build={build}\n"
+              f"selected_iphoneos_sdk={sdk_version}\n"
+              "runner=macos-26 standard hosted image (no larger runner)\n"
+          )
+          (artifacts / "xcode-selection.txt").write_text(selection)
+          with open(os.environ["GITHUB_ENV"], "a") as handle:
+              handle.write(f"DEVELOPER_DIR={path}\n")
+              handle.write(f"SELECTED_XCODE_PATH={path}\n")
+          print(selection)
+          PY
+      - name: Record source and build environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DEVELOPER_DIR="$SELECTED_XCODE_PATH"
+          git rev-parse HEAD > stage05-device-artifacts/source-commit.txt
+          xcodebuild -version > stage05-device-artifacts/xcode-version.txt
+          xcrun --sdk iphoneos --show-sdk-version > stage05-device-artifacts/device-sdk-version.txt
+          printf '%s\n' 'UNSIGNED device IPA. Requires local Apple-account signing before installation. Building is not device testing or owner acceptance.' > stage05-device-artifacts/INSTALLATION-STATUS.txt
+      - name: Build for physical iOS devices without account credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DEVELOPER_DIR="$SELECTED_XCODE_PATH"
+          xcodebuild build -project MomentsStudio/MomentsStudio.xcodeproj \
+            -scheme MomentsStudio -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/Stage05DeviceDerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee stage05-device-artifacts/xcodebuild-device.log
+      - name: Validate device product and package an unsigned IPA
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DEVELOPER_DIR="$SELECTED_XCODE_PATH"
+          stage05_device_app="$RUNNER_TEMP/Stage05DeviceDerivedData/Build/Products/Release-iphoneos/MomentsStudio.app"
+          test -d "$stage05_device_app"
+          python3 - "$stage05_device_app/Info.plist" <<'PY'
+          import plistlib, sys
+          from pathlib import Path
+          data = plistlib.loads(Path(sys.argv[1]).read_bytes())
+          assert data['CFBundleIdentifier'] == 'com.example.MomentsStudio', data
+          assert data['CFBundleExecutable'] == 'MomentsStudio', data
+          assert data['CFBundleSupportedPlatforms'] == ['iPhoneOS'], data
+          assert data['DTPlatformName'] == 'iphoneos', data
+          assert data['MinimumOSVersion'] == '17.0', data
+          Path('stage05-device-artifacts/Info.plist').write_bytes(Path(sys.argv[1]).read_bytes())
+          PY
+          lipo "$stage05_device_app/MomentsStudio" -verify_arch arm64
+          xcrun vtool -show-build "$stage05_device_app/MomentsStudio" > stage05-device-artifacts/macho-build-version.txt
+          python3 - <<'PY'
+          from pathlib import Path
+          lines = Path('stage05-device-artifacts/macho-build-version.txt').read_text().splitlines()
+          assert any(line.split() == ['platform', 'IOS'] for line in lines), lines
+          assert not any('IOSSIMULATOR' in line for line in lines), lines
+          PY
+          mkdir -p "$RUNNER_TEMP/Stage05DevicePayload/Payload"
+          ditto "$stage05_device_app" "$RUNNER_TEMP/Stage05DevicePayload/Payload/MomentsStudio.app"
+          ditto -c -k --keepParent "$RUNNER_TEMP/Stage05DevicePayload/Payload" stage05-device-artifacts/MomentsStudio-device-unsigned.ipa
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          package = Path('stage05-device-artifacts/MomentsStudio-device-unsigned.ipa')
+          with ZipFile(package) as archive:
+              names = archive.namelist()
+              assert 'Payload/MomentsStudio.app/MomentsStudio' in names, names
+              assert 'Payload/MomentsStudio.app/Info.plist' in names, names
+              assert not any(name.endswith('.xctest/') or '.xctest/' in name for name in names), names
+          PY
+          shasum -a 256 stage05-device-artifacts/MomentsStudio-device-unsigned.ipa > stage05-device-artifacts/ipa-sha256.txt
+      - name: Check evidence storage before upload
+        id: evidence_guard
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          folder = Path('stage05-device-artifacts')
+          allowed = {'source-commit.txt', 'xcode-version.txt', 'device-sdk-version.txt',
+                     'INSTALLATION-STATUS.txt', 'xcodebuild-device.log', 'Info.plist',
+                     'macho-build-version.txt', 'MomentsStudio-device-unsigned.ipa', 'ipa-sha256.txt',
+                     'xcode-candidates.txt', 'xcode-selection.txt'}
+          files = list(folder.rglob('*'))
+          assert folder.is_dir() and files, 'No evidence produced'
+          assert all(p.is_file() and not p.is_symlink() and p.name in allowed and p.parent == folder for p in files), files
+          size = sum(p.stat().st_size for p in files)
+          assert size <= 100 * 1024 * 1024, f'Evidence exceeds 100 MiB: {size}'
+          print(f'Evidence upload size: {size} bytes')
+          PY
+      - name: Preserve device packaging evidence even on failure
+        if: always() && steps.evidence_guard.outcome == 'success'
+        uses: actions/upload-artifact@v7
+        with:
+          name: stage05-device-package-and-evidence
+          path: stage05-device-artifacts/
+          retention-days: 2
+          if-no-files-found: error

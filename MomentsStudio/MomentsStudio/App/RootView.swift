@@ -83,6 +83,8 @@ struct RootView: View {
             PhotoPreviewSheet(projectID: projectID, assetID: assetID)
         case .collageLayout(let projectID):
             CollageLayoutSheet(projectID: projectID)
+        case .photoAnalysis(let projectID):
+            PhotoAnalysisSheet(projectID: projectID)
         }
     }
 }

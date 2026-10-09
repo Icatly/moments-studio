@@ -512,6 +512,72 @@ actor PhotoLibrary {
         }
     }
 
+    // MARK: - Photo analysis (Stage 05)
+
+    /// Read-only light/colour analysis for one photo of one project.
+    ///
+    /// It reads the current package's metadata and the generated 320px thumbnail
+    /// through the normal path guard, never an original, and it writes nothing: no
+    /// manifest, no asset, no project state. Cancellation propagates as
+    /// `CancellationError` and is never reported as an ordinary bad-photo result.
+    func analyzePhoto(projectID: UUID, assetID: UUID) throws -> PhotoAnalysis {
+        try checkAnalysisCancellation()
+
+        let package: ProjectPackage
+        do {
+            package = try loadPackage(projectID: projectID)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            // No readable package means the photo cannot be resolved at all.
+            throw PhotoAnalysisFailure.missing
+        }
+        guard let photo = package.photos.first(where: { $0.asset.id == assetID }) else {
+            throw PhotoAnalysisFailure.missing
+        }
+        let display = photo.displayPixelSize
+        guard photo.pixelWidth > 0, photo.pixelHeight > 0,
+              ImportedPhoto.orientationRange.contains(photo.orientation),
+              display.width > 0, display.height > 0 else {
+            throw PhotoAnalysisFailure.invalidMetadata
+        }
+        try checkAnalysisCancellation()
+
+        let thumbnail: CGImage
+        do {
+            thumbnail = try loadDerivedImage(reference: photo.thumbnailReference)
+        } catch PhotoLibraryError.cancelled {
+            throw CancellationError()
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            throw PhotoAnalysisFailure.unreadable
+        }
+        try checkAnalysisCancellation()
+
+        do {
+            return try PhotoAnalyzer.analyze(
+                assetID: assetID,
+                thumbnail: thumbnail,
+                displayWidth: display.width,
+                displayHeight: display.height
+            )
+        } catch let failure as PhotoAnalysisFailure {
+            throw failure
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            throw PhotoAnalysisFailure.unreadable
+        }
+    }
+
+    /// Cancellation for the read-only analysis path. It throws `CancellationError`
+    /// (not `PhotoLibraryError.cancelled`) so the caller can tell "cancelled" from
+    /// "this photo could not be analyzed".
+    private func checkAnalysisCancellation() throws {
+        if Task.isCancelled { throw CancellationError() }
+    }
+
     // MARK: - Staging
 
     /// Deletes one app-owned staging copy that was **not** committed, because

@@ -106,6 +106,14 @@ struct EditorPlaceholderView: View {
                     .accessibilityIdentifier("editor.layouts")
                     .accessibilityHint("Preview three layouts before applying one")
 
+                    Button("Photo summary") {
+                        navigation.present(.photoAnalysis(projectID: projectID))
+                    }
+                    .frame(minHeight: Layout.minimumTapTarget)
+                    .disabled(isEditingDisabled || !photoImport.isReady || projectStore.photos(for: projectID).isEmpty)
+                    .accessibilityIdentifier("editor.photoSummary")
+                    .accessibilityHint("Estimates light and colour for each imported photo")
+
                     EditorLayerListView(
                         projectID: projectID,
                         document: project.document,

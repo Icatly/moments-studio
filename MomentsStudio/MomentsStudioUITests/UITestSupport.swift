@@ -402,6 +402,36 @@ extension XCTestCase {
             print("INTERACTION-VERIFY[gallery] session=\(session): count anchor could not be scrolled into "
                 + "the viewport (frame=\(anchor.frame))")
         }
+
+        // Real evidence (run 37957684567, Stage02ImportUITests:155): the committed
+        // count anchor sat at y=852.3 inside the 874-point window, yet the lazy
+        // gallery grid *below* it had not been instantiated, so no thumbnail node
+        // existed. The approved minimal repair keeps every guard above and
+        // additionally scrolls the unique Editor container downwards from the count
+        // with bounded, slow real drags until the gallery grid exists. It never
+        // asserts the thumbnail itself and adds no waiting as a substitute: the
+        // caller's original existence, identity, viewport-hittable and
+        // preview/removal assertions still decide.
+        var instantiationAttempts = 0
+        while !thumbnail.exists, instantiationAttempts < 6 {
+            guard app.scrollViews.count == 1, app.navigationBars.count == 1,
+                  element("editor.placeholder", in: app).exists,
+                  !app.navigationBars["Photos"].exists,
+                  !element("preview.image", in: app).exists,
+                  !element("preview.done", in: app).exists else { break }
+            let scrollView = app.scrollViews.element
+            let scrollFrame = scrollView.frame
+            guard isFinitePositive(scrollFrame), isFinitePositive(app.frame) else { break }
+            print("INTERACTION-VERIFY[gallery] session=\(session): bounded drag to instantiate the gallery "
+                + "(attempt \(instantiationAttempts + 1), scroll=\(scrollFrame))")
+            scrollView.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.7))
+                .press(forDuration: 0.1,
+                       thenDragTo: scrollView.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3)),
+                       withVelocity: .slow, thenHoldForDuration: 0.2)
+            instantiationAttempts += 1
+        }
+        print("INTERACTION-VERIFY[gallery] session=\(session): gallery instantiation attempts="
+            + "\(instantiationAttempts) thumbnailExists=\(thumbnail.exists)")
         print("INTERACTION-VERIFY[gallery] session=\(session): after preparation "
             + "thumbnailExists=\(thumbnail.exists)")
         attachFullAppScreenshot(app, named: "INTERACTION-VERIFY[gallery] after preparation (\(session))")
