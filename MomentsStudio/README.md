@@ -1,5 +1,7 @@
 # Moments Studio — 构建、运行与测试
 
+**2026-10-10 02:31 当前交付：**DSH实现/补正与Architect[独立原生复审](../.ai/reviews/STAGE-04-05-NATIVE-FINAL-2026-10-10.md)完成，源码`fe17ac0d00db53629228f3ff972b5b83d563b551`；[完整186项测试](https://github.com/Icatly/moments-studio/actions/runs/37969910797)通过、[同源设备包](https://github.com/Icatly/moments-studio/actions/runs/37973412193)核验通过。Stage04/05 WAITING_FOR_USER，手机仍Stage03，新包签名安装/本人验收尚未执行；以下旧运行说明仅为历史。新源码只能使用Stage05完整186项入口，不能派发旧Stage04固定155项入口。
+
 Swift/SwiftUI、iPhone优先。Stage04已冻结（commit edeca4dd）并交原生验证（run37957684567 只对应该冻结commit，不覆盖当前工作树），其本地确定性布局、三照片预览/内置搜索/Apply保存代码已在工作区，完整155项Xcode测试与新IPA仍由Architect组织。当前Stage05已按所有者指令实现并完成 Review 补正01：逐图只读光色分析（`Photo summary`），本地READY_FOR_ARCHITECT_REVIEW，源码清单为176单元＋10 UI＝186项，**未运行**。手机仍是Stage03 source68864c2；历史138/138及首组三项本人正常不证明Stage04/05。
 
 完整产品为“导入及可改建议 → 三方向参考图/预设＋可选搜索 → 选定后AI生成整组 → 微调 → 保存相册”，见[产品基线](../docs/产品与架构基线.md)。Stage04当前仅是单画布构图基础；AI自适应、多页图组及相册导出仍未实现。

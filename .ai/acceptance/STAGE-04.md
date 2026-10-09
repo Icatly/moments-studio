@@ -1,5 +1,7 @@
 # Stage04验收清单
 
+**2026-10-10 02:31 当前：WAITING_FOR_USER。** [原生复审](../reviews/STAGE-04-05-NATIVE-FINAL-2026-10-10.md)确认同源完整186/186通过和设备包校验；签名安装与本人验收尚未执行。先按[简明真机步骤](STAGE-04-05-PHYSICAL-DEVICE.md)体验，再按本清单分别反馈。下方先前运行状态为历史，不能外推本人批准。
+
 2026-10-10当前CHANGES_REQUESTED：冻结edeca4d真实原生155项运行、153通过、2 UI失败、0跳过，146单元全通过且设备Release编译/产品校验通过，不能称Stage04通过。DSH按[原生Review](../reviews/STAGE-04-NATIVE-ROUND-01-2026-10-10.md)修图库实例化和搜索键盘/视口路径，最终Stage05完整scheme保留旧155项回归两阶段；尚无新设备包/本人验收，不能用Stage03包验收新布局。范围见[架构](../../docs/architecture/STAGE-04-DETERMINISTIC-LAYOUT.md)。
 
 - 空画布导入至少两张照片后，打开Layouts，三个预设均有本人照片预览，构图有区别；布局名称是临时功能名。

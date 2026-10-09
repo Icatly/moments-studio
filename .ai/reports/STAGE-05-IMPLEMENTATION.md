@@ -1,5 +1,7 @@
 # Stage05 本地实现报告 — 2026-10-10
 
+**2026-10-10 02:31 Architect追加验证记录（DSH原报告历史保留）：**已冻结推送`fe17ac0d00db53629228f3ff972b5b83d563b551`，[完整原生186项](https://github.com/Icatly/moments-studio/actions/runs/37969910797)真实全通过，[同源设备包](https://github.com/Icatly/moments-studio/actions/runs/37973412193)已校验；Stage04/05 WAITING_FOR_USER，签名安装与本人验收仍无。下方“未推送/未触发/未重跑”描述仅对应DSH本地交付时点，不是当前远端状态。最终依据[独立技术复审](../reviews/STAGE-04-05-NATIVE-FINAL-2026-10-10.md)。
+
 角色：DSH（Implementation Engineer，实施/工程/测试）；Architect 负责规格与独立 Review，不代写实现。授权：所有者 2026-10-09“把 stage04 和 stage05 都做了”；Stage04 技术检查点已留存（[STAGE-04-DSH-CHECKPOINT-2026-10-10](../reviews/STAGE-04-DSH-CHECKPOINT-2026-10-10.md)），Stage04 冻结基线 commit `edeca4ddaba03c727a7779bbbf042d899e408222`。范围：[STAGE-05-PHOTO-ANALYSIS](../../docs/architecture/STAGE-05-PHOTO-ANALYSIS.md)、[任务](../tasks/STAGE-05-IMPLEMENT-01.md)。
 
 **状态：READY_FOR_ARCHITECT_REVIEW。** 本报告覆盖首版本地实现与 Review FIX01–FIX07。**两次真实 Stage05 原生运行已发生**：`37964463618` 测试 target 编译失败（0 项执行，FIX06 已修）；`37966461191` **186 执行 / 184 通过 / 2 UI 失败 / 0 跳过**（176 单元全通过），两个 UI 失败已按 FIX07 修复（真实产品布局回归 + 自行加入的错误 label 前提），**修复后尚未重跑**；**没有** 新 IPA/真机/本人验收，也没有 git 提交/推送、工作流派发、付费或账户设置更改。Stage06 未开始。Stage04 原生 run `37957684567` 的输入是冻结 commit `edeca4d`；Stage05 两次运行输入分别为 `bc166d45…` 与 `5369354c…`，均与本文档当前工作树不同。
