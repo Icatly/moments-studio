@@ -34,3 +34,15 @@
 唯一失败为Stage03编辑链line217：first layer's select button did not appear。上一行layerCount=1已成功，说明添加按钮修正生效；尚未进入重叠/锁定回归。现有导出没有该失败时完整AX，不能认定最终根因。行VStack带identifier但未建立独立AX容器，可能覆盖子按钮标识；添加原生accessibilityElement(children: .contain)，保留原行/按钮标识和真实完整label。测试继续只按真实app.buttons和完整UUID查找，不换查询、放宽断言或用序号替代身份；失败时补充完整AX及截图，下一轮用于确认。
 
 实际耗时证明18分钟无法容纳完整成功链及诊断收集，job上限改30分钟；仍标准macos-26、完整138、无only-testing/skip/retry。无接口/序列化/导航/依赖变化，无付款或预算改动。下一轮须真实跑完后再形成新包，手机仍旧6bd2fbf、Stage03 CHANGES_REQUESTED。
+
+## 第三轮实际启动（2026-10-09 12:02）
+
+精确4文件正常推送46be2a74a693646cf501e1612dcfec5793d7e1ac，单次派发[run37881959932](https://github.com/Icatly/moments-studio/actions/runs/37881959932)，attempt1，in_progress；完整138/标准macos-26/30分钟上限。当前尚无第三轮结果，新IPA未构建/安装。
+
+## 第三轮结束与滚动修正（2026-10-09 12:20）
+
+第三轮run37881959932真实failure，138执行/137 passed/1 failed/0 skipped/0 expected failures，未超时。artifact11594519856、153958530 bytes、SHA256 aefc99d718f1f19c3fc4d2a9c6975e07b774f630df378db215ea002fbbf52dcf，与GitHub digest匹配；原始xcresult/附件已私密留存。两层真实UUID/顺序label和上层锁定均已通过，拖锁层后transform及UUID集合/count=2保持，说明行AX容器修正有效。下层拖动尚未执行。
+
+唯一失败line279为select lower photo beneath locked upper photo never became hittable。实际操作日志为上滑→下滑→上滑，同一个目标反复被全幅惯性滑动越过。仅修改共享UI测试滚动helper：按实测超出viewport的距离加16点余量移动，单次24至viewport高度45%，两个端点均从真实scrollView/viewport几何换算为element-relative位置；原生slow拖动并停留0.2秒再松手，仍最多3次且必须整个按钮可见和hittable后才点击。每次记录真实frame/viewport/distance，便于下轮定位。App和所有旧断言/138方法不变，不增retry、不skip、不伪造UUID。原生API核对：[Apple XCUICoordinate文档](https://developer.apple.com/documentation/xcuiautomation/xcuicoordinate/press%28forduration%3Athendragto%3Awithvelocity%3Athenholdforduration%3A%29)。
+
+第四轮准备只推helper及本报告，完整30分钟macos-26入口保持；下层拖动/持久化完整链、新IPA和本人复测仍待，Stage03 CHANGES_REQUESTED。

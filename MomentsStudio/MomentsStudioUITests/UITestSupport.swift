@@ -420,9 +420,9 @@ extension XCTestCase {
     /// viewport is that scroll view intersected with the app window and reduced by
     /// the area the Editor navigation bar covers. The target frame and the viewport
     /// are re-read on every pass: only a target that reaches past the bottom edge
-    /// swipes up, only one that reaches past the top edge swipes down, and a target
+    /// drags up, only one that reaches past the top edge drags down, and a target
     /// inside the usable viewport that still cannot be hit (or whose frame is not
-    /// finite) fails instead of guessing a direction. At most three native swipes;
+    /// finite) fails instead of guessing a direction. At most three native drags;
     /// a fully visible, hittable target never sees a gesture.
     func scrollEditorToMakeHittable(_ target: XCUIElement, in app: XCUIApplication) -> Bool {
         guard target.exists else { return false }
@@ -467,18 +467,30 @@ extension XCTestCase {
             if viewport.contains(targetFrame) { return target.isHittable }
             guard attempt < 3 else { return false }
 
-            // Any part of the target reaching past an edge needs a gesture, so a
-            // partially overflowing target (observed Import at y=786.7 with height
-            // 125.3) is handled as well. A target fully inside the usable viewport
-            // that still cannot be hit has no justified direction, so it fails
-            // instead of guessing.
+            // Full swipes oscillated past the lower layer in run 37881959932.
+            // Move only the measured overflow plus a small inset, slowly, and
+            // hold before lifting to avoid momentum. Both endpoints stay inside
+            // the proven viewport and are relative to the actual scroll element.
+            let overflow: CGFloat
+            let direction: CGFloat
             if targetFrame.maxY > viewport.maxY {
-                scrollView.swipeUp()
+                overflow = targetFrame.maxY - viewport.maxY
+                direction = -1
             } else if targetFrame.minY < viewport.minY {
-                scrollView.swipeDown()
+                overflow = viewport.minY - targetFrame.minY
+                direction = 1
             } else {
                 return false
             }
+            let distance = min(max(24, overflow + 16), viewport.height * 0.45)
+            let startY = (viewport.midY - scrollFrame.minY) / scrollFrame.height
+            let endY = startY + direction * distance / scrollFrame.height
+            print("INTERACTION-VERIFY[editor-scroll] attempt=\(attempt) target=\(target.identifier) "
+                + "frame=\(targetFrame) viewport=\(viewport) distance=\(distance)")
+            scrollView.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: startY))
+                .press(forDuration: 0.05,
+                       thenDragTo: scrollView.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: endY)),
+                       withVelocity: .slow, thenHoldForDuration: 0.2)
         }
         return false
     }
