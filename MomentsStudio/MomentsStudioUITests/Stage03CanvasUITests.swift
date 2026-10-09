@@ -113,7 +113,15 @@ final class Stage03CanvasUITests: XCTestCase {
             if distinctSelectLayerUUIDs(in: app).count == expected { return true }
             Thread.sleep(forTimeInterval: 0.25)
         }
-        return distinctSelectLayerUUIDs(in: app).count == expected
+        let matched = distinctSelectLayerUUIDs(in: app).count == expected
+        if !matched {
+            let hierarchy = XCTAttachment(string: app.debugDescription)
+            hierarchy.name = "Stage03 missing layer identities"
+            hierarchy.lifetime = .keepAlways
+            add(hierarchy)
+            attachFullAppScreenshot(app, named: "Stage03 missing layer identities")
+        }
+        return matched
     }
 
     /// The ordinal the app itself puts into its accessibility label

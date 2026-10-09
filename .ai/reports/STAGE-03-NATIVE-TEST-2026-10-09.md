@@ -22,3 +22,15 @@
 已从真实jobs API观察：Xcode26+选择、接线与清单、iOS26+模拟器选择、iphoneos Release编译与设备产物校验均success。具体版本与完整日志待运行结束下载，不臆测。当前运行进行中、合成测试素材/模拟器准备中，完整138测试结果尚未产生；不等于测试通过。测试失败时保留真实诊断，继续限定修正后才运行新版本，不删断言、不跳方法、不自动重跑同版本。
 
 手机仍为6bd2fbf旧包，新版IPA与真机复测、Final Review未发生。Stage03保持CHANGES_REQUESTED，Stage04未授权。原生测试完成后的结果和证据追加于本报告。
+
+## 第二轮实际启动（2026-10-09 11:35）
+
+限定4文件正常推送75b68a7bd5ea5e51321b491ae244e52399d1a370；无强推、未纳入其他未提交文件。单次派发[run37879961931](https://github.com/Icatly/moments-studio/actions/runs/37879961931)，job113657139239，attempt1；完整138方法与标准macos-26/18分钟均不变。当前in_progress，尚无第二轮测试结果。
+
+## 第二轮结束与再次限定修正（2026-10-09 12:00）
+
+第二轮真实summary为138执行、137 passed / 1 failed / 0 skipped / 0 expected failures；job最终cancelled（18分钟上限），不记整轮success。原始xcresult和附件已保留并下载：artifact11594402110、145225871 bytes、SHA256 53f487fb120a438674d7c118e5c471a405e8ffb3f492ad4260059c077b006955，匹配GitHub digest。Stage02预览/取消与确认移除/重新导入/重启链240.281秒通过，130 unit及Done UI均通过。
+
+唯一失败为Stage03编辑链line217：first layer's select button did not appear。上一行layerCount=1已成功，说明添加按钮修正生效；尚未进入重叠/锁定回归。现有导出没有该失败时完整AX，不能认定最终根因。行VStack带identifier但未建立独立AX容器，可能覆盖子按钮标识；添加原生accessibilityElement(children: .contain)，保留原行/按钮标识和真实完整label。测试继续只按真实app.buttons和完整UUID查找，不换查询、放宽断言或用序号替代身份；失败时补充完整AX及截图，下一轮用于确认。
+
+实际耗时证明18分钟无法容纳完整成功链及诊断收集，job上限改30分钟；仍标准macos-26、完整138、无only-testing/skip/retry。无接口/序列化/导航/依赖变化，无付款或预算改动。下一轮须真实跑完后再形成新包，手机仍旧6bd2fbf、Stage03 CHANGES_REQUESTED。

@@ -129,6 +129,7 @@ struct EditorLayerListView: View {
             .disabled(blocked)
         }
         .background(layer.id == selectedLayerID ? Color.accentColor.opacity(0.12) : .clear)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("editor.layerRow.\(layer.id.uuidString)")
     }
 
