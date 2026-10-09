@@ -38,10 +38,11 @@ final class Stage04LayoutUITests: XCTestCase {
     ///
     /// The navigation bar is **not** counted app-wide: the Editor behind the sheet
     /// owns its own bar, so `app.navigationBars.count == 1` would describe the whole
-    /// app rather than this sheet. The sheet's own bar is the one this sheet already
-    /// carries through its real `navigationTitle("Layouts")` — no new identifier is
-    /// invented for the test. The exact `Layouts` bar must be unique and must be the
-    /// bar that owns the sheet's Cancel/Apply toolbar items.
+    /// app rather than this sheet. The sheet's own bar is located by its exact
+    /// `Layouts` identifier — the native mapping of the sheet's real
+    /// `navigationTitle("Layouts")`, which run 37966461191 confirmed resolves to
+    /// exactly one bar — and it must own the sheet's Cancel/Apply toolbar items.
+    /// No label/title equality is required: that bar's native `label` is empty.
     private func usableViewport(in app: XCUIApplication) -> CGRect? {
         let scrolls = app.scrollViews.matching(identifier: "layout.scroll")
         let sheetNavigationBars = app.navigationBars.matching(identifier: "Layouts")
@@ -63,11 +64,12 @@ final class Stage04LayoutUITests: XCTestCase {
             XCTFail("Non-finite sheet navigation frame \(navigationFrame)")
             return nil
         }
-        // The identified bar must really be the layout sheet's own bar: its label is
-        // the real navigation title "Layouts" and it owns the sheet's Cancel/Apply
-        // toolbar items. This keeps the scope from silently pointing at some other bar.
-        XCTAssertEqual(sheetNavigationBar.label, "Layouts",
-                       "The identified bar is not the Layouts sheet navigation bar")
+        // The identified bar must be the layout sheet's own bar: the exact `Layouts`
+        // identifier resolved to exactly one bar that owns the sheet's Cancel/Apply
+        // toolbar items. No label/title precondition is asserted: native run
+        // 37966461191 found that bar with `label == ""` (the SwiftUI navigation title
+        // maps to the native identifier, not the bar label), and that added check was
+        // never one of the frozen original 155 behavior assertions.
         for identifier in ["layout.cancel", "layout.apply"] {
             guard sheetNavigationBar.buttons.matching(identifier: identifier).firstMatch.exists else {
                 XCTFail("The identified sheet navigation bar does not own \(identifier)")

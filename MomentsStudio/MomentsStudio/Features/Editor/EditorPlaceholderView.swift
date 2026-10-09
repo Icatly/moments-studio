@@ -98,21 +98,28 @@ struct EditorPlaceholderView: View {
                             .accessibilityIdentifier("editor.status")
                     }
 
-                    Button("Layouts") {
-                        navigation.present(.collageLayout(projectID: projectID))
-                    }
-                    .frame(minHeight: Layout.minimumTapTarget)
-                    .disabled(isEditingDisabled || !photoImport.isReady || projectStore.photos(for: projectID).isEmpty)
-                    .accessibilityIdentifier("editor.layouts")
-                    .accessibilityHint("Preview three layouts before applying one")
+                    // The two optional photo tools share one row: a separate
+                    // "Photo summary" row pushed the primary "Import Photos" entry
+                    // to y=872.3...916.3 in the 0...874 window (run 37966461191), so
+                    // the import entry could not be tapped at all. Same buttons, same
+                    // targets, identifiers, disabled rules and routes, one row.
+                    HStack(alignment: .firstTextBaseline, spacing: Spacing.small) {
+                        Button("Layouts") {
+                            navigation.present(.collageLayout(projectID: projectID))
+                        }
+                        .frame(minHeight: Layout.minimumTapTarget)
+                        .disabled(isEditingDisabled || !photoImport.isReady || projectStore.photos(for: projectID).isEmpty)
+                        .accessibilityIdentifier("editor.layouts")
+                        .accessibilityHint("Preview three layouts before applying one")
 
-                    Button("Photo summary") {
-                        navigation.present(.photoAnalysis(projectID: projectID))
+                        Button("Photo summary") {
+                            navigation.present(.photoAnalysis(projectID: projectID))
+                        }
+                        .frame(minHeight: Layout.minimumTapTarget)
+                        .disabled(isEditingDisabled || !photoImport.isReady || projectStore.photos(for: projectID).isEmpty)
+                        .accessibilityIdentifier("editor.photoSummary")
+                        .accessibilityHint("Estimates light and colour for each imported photo")
                     }
-                    .frame(minHeight: Layout.minimumTapTarget)
-                    .disabled(isEditingDisabled || !photoImport.isReady || projectStore.photos(for: projectID).isEmpty)
-                    .accessibilityIdentifier("editor.photoSummary")
-                    .accessibilityHint("Estimates light and colour for each imported photo")
 
                     EditorLayerListView(
                         projectID: projectID,
