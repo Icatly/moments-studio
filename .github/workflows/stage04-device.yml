@@ -1,0 +1,102 @@
+# Stage04 device-package preparation only. Owner prefers iPhone acceptance.
+# MANUAL ONLY: do not dispatch until current free allowance and source are verified.
+# A successful build packages the app; it does NOT execute unit/UI tests or device acceptance.
+# This packages an UNSIGNED device build; local signing and installation remain unverified.
+name: Stage 04 physical-device package
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: macos-15
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Record source and build environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p stage04-device-artifacts
+          git rev-parse HEAD > stage04-device-artifacts/source-commit.txt
+          xcodebuild -version > stage04-device-artifacts/xcode-version.txt
+          xcrun --sdk iphoneos --show-sdk-version > stage04-device-artifacts/device-sdk-version.txt
+          printf '%s\n' 'UNSIGNED device IPA. Requires local Apple-account signing before installation. Building is not device testing or owner acceptance.' > stage04-device-artifacts/INSTALLATION-STATUS.txt
+      - name: Build for physical iOS devices without account credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild build -project MomentsStudio/MomentsStudio.xcodeproj \
+            -scheme MomentsStudio -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/Stage04DeviceDerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee stage04-device-artifacts/xcodebuild-device.log
+      - name: Validate device product and package an unsigned IPA
+        shell: bash
+        run: |
+          set -euo pipefail
+          stage04_device_app="$RUNNER_TEMP/Stage04DeviceDerivedData/Build/Products/Release-iphoneos/MomentsStudio.app"
+          test -d "$stage04_device_app"
+          python3 - "$stage04_device_app/Info.plist" <<'PY'
+          import plistlib, sys
+          from pathlib import Path
+          data = plistlib.loads(Path(sys.argv[1]).read_bytes())
+          assert data['CFBundleIdentifier'] == 'com.example.MomentsStudio', data
+          assert data['CFBundleExecutable'] == 'MomentsStudio', data
+          assert data['CFBundleSupportedPlatforms'] == ['iPhoneOS'], data
+          assert data['DTPlatformName'] == 'iphoneos', data
+          assert data['MinimumOSVersion'] == '17.0', data
+          Path('stage04-device-artifacts/Info.plist').write_bytes(Path(sys.argv[1]).read_bytes())
+          PY
+          lipo "$stage04_device_app/MomentsStudio" -verify_arch arm64
+          xcrun vtool -show-build "$stage04_device_app/MomentsStudio" > stage04-device-artifacts/macho-build-version.txt
+          python3 - <<'PY'
+          from pathlib import Path
+          lines = Path('stage04-device-artifacts/macho-build-version.txt').read_text().splitlines()
+          assert any(line.split() == ['platform', 'IOS'] for line in lines), lines
+          assert not any('IOSSIMULATOR' in line for line in lines), lines
+          PY
+          mkdir -p "$RUNNER_TEMP/Stage04DevicePayload/Payload"
+          ditto "$stage04_device_app" "$RUNNER_TEMP/Stage04DevicePayload/Payload/MomentsStudio.app"
+          ditto -c -k --keepParent "$RUNNER_TEMP/Stage04DevicePayload/Payload" stage04-device-artifacts/MomentsStudio-device-unsigned.ipa
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          package = Path('stage04-device-artifacts/MomentsStudio-device-unsigned.ipa')
+          with ZipFile(package) as archive:
+              names = archive.namelist()
+              assert 'Payload/MomentsStudio.app/MomentsStudio' in names, names
+              assert 'Payload/MomentsStudio.app/Info.plist' in names, names
+              assert not any(name.endswith('.xctest/') or '.xctest/' in name for name in names), names
+          PY
+          shasum -a 256 stage04-device-artifacts/MomentsStudio-device-unsigned.ipa > stage04-device-artifacts/ipa-sha256.txt
+      - name: Check evidence storage before upload
+        id: evidence_guard
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          folder = Path('stage04-device-artifacts')
+          allowed = {'source-commit.txt', 'xcode-version.txt', 'device-sdk-version.txt',
+                     'INSTALLATION-STATUS.txt', 'xcodebuild-device.log', 'Info.plist',
+                     'macho-build-version.txt', 'MomentsStudio-device-unsigned.ipa', 'ipa-sha256.txt'}
+          files = list(folder.rglob('*'))
+          assert folder.is_dir() and files, 'No evidence produced'
+          assert all(p.is_file() and not p.is_symlink() and p.name in allowed and p.parent == folder for p in files), files
+          size = sum(p.stat().st_size for p in files)
+          assert size <= 100 * 1024 * 1024, f'Evidence exceeds 100 MiB: {size}'
+          print(f'Evidence upload size: {size} bytes')
+          PY
+      - name: Preserve device packaging evidence even on failure
+        if: always() && steps.evidence_guard.outcome == 'success'
+        uses: actions/upload-artifact@v7
+        with:
+          name: stage04-device-package-and-evidence
+          path: stage04-device-artifacts/
+          retention-days: 2
+          if-no-files-found: error

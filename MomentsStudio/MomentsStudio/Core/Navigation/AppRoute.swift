@@ -20,6 +20,7 @@ enum AppRoute: Hashable {
 enum SheetRoute: Identifiable, Hashable {
     case about
     case photoPreview(projectID: UUID, assetID: UUID)
+    case collageLayout(projectID: UUID)
 
     var id: Self { self }
 }

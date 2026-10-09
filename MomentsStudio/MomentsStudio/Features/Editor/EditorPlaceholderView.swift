@@ -98,6 +98,14 @@ struct EditorPlaceholderView: View {
                             .accessibilityIdentifier("editor.status")
                     }
 
+                    Button("Layouts") {
+                        navigation.present(.collageLayout(projectID: projectID))
+                    }
+                    .frame(minHeight: Layout.minimumTapTarget)
+                    .disabled(isEditingDisabled || !photoImport.isReady || projectStore.photos(for: projectID).isEmpty)
+                    .accessibilityIdentifier("editor.layouts")
+                    .accessibilityHint("Preview three layouts before applying one")
+
                     EditorLayerListView(
                         projectID: projectID,
                         document: project.document,

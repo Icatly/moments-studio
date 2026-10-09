@@ -305,6 +305,10 @@ final class PhotoImportModel {
             let message = Self.message(for: error)
             editMessages[projectID] = message
             return .rejected(message)
+        } catch let error as CollageLayoutError {
+            let message = error.localizedDescription
+            editMessages[projectID] = message
+            return .rejected(message)
         } catch {
             let message = Self.message(for: error)
             editMessages[projectID] = "Not saved: \(message)"
@@ -340,6 +344,7 @@ final class PhotoImportModel {
         case move(x: Double, y: Double)
         case scaleBy(Double)
         case rotateBy(Double)
+        case layout(CollagePreset)
     }
 
     /// A change that was edited but could not be written.
@@ -399,6 +404,10 @@ final class PhotoImportModel {
             return try apply(.transform(transform), to: document, layerID: layerID)
         case .add(let assetID):
             throw CanvasEditError.assetAlreadyMissing(assetID)
+        case .layout:
+            // Layouts, like adding assets, need project photo metadata. The
+            // instance dispatcher below handles these document-wide intents.
+            throw CollageLayoutError.noPhotos
         }
     }
 
@@ -427,6 +436,9 @@ final class PhotoImportModel {
 
     private func apply(_ draft: CanvasDraft, to document: CanvasDocument) throws -> CanvasDocument {
         if case .save = draft.intent { return document }
+        if case .layout(let preset) = draft.intent {
+            return try CollageLayout.arrange(preset, document: document, photos: store.photos(for: draft.projectID))
+        }
         if case .add(let assetID) = draft.intent {
             guard let photo = store.photos(for: draft.projectID).first(where: { $0.asset.id == assetID }) else {
                 throw CanvasEditError.assetAlreadyMissing(assetID)

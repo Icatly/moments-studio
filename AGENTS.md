@@ -4,6 +4,14 @@
 
 ## 1. 角色与权限
 
+### 2026-10-09所有者明确分工与两阶段授权（当前执行规则）
+
+所有者原话：“把分工详细卸载交接表和工作须知里然后把stage04和stage05都做了”（“卸载”按上下文理解为“写在”）。详细职责表见[工作须知](工作须知.md)与[交接表](项目要求与上下文交接.md)。Architect不再直接编写App、测试或工程/工作流实现，发现问题形成明确任务交DSH修复，再独立复审；DSH负责实施、工程、测试执行及报告，不自行批准架构或阶段。已有Architect直接写入的Stage04本地改动保留、标明来源，交DSH接手核验，不能改记DSH交付。
+
+本次明确授权完成Stage04和Stage05，取代下文“Stage05未批准”和必须在Stage04本人批准后才允许开始Stage05的旧执行限制。按顺序推进：Stage04技术检查点与基线留存 → Stage05实现/测试/Review → 同源可运行包 → 所有者分别验收两阶段。不再重复询问两阶段开始许可；授权推进不等于阶段APPROVED，Stage04/05本人验收缺口如实保留。Stage06及以后仍未授权；费用、依赖、公开契约、公开提交隐私边界不变。
+
+任务分派给既有同工作区DeepSeek Harness是本次明确分工与实施请求的一部分；不以Codex子代理冒充DSH。不新建Codex聊天、不改DSH模型/账户设置。当前技术实现由DSH负责，Architect可以只读复核源码、执行独立验证、审查和操作既已授权的构建交付；确需改变实现时由DSH落地。
+
 ### ChatGPT — Product Architect / Technical Architect / Design Reviewer
 
 - 拥有产品方向、阶段边界、模块边界、公开数据契约与技术选型的决定权。
@@ -63,8 +71,9 @@
 - 一次只推进一个 Stage。未获批准不得开始新功能、新 Stage，也不得开始 `TASKS.md` 路线图中的下一步。
 - Stage01已于2026-10-03由项目所有者明确确认验收（原话：“确认验收 继续下一阶段任务”），状态APPROVED。
 - Stage02于2026-10-06按所有者最新指令“进入stage03”记APPROVED。所有者已亲自体验照片路径并反馈正常；旧版录屏已复审。最新云第三轮/设备构建/还原等仍未验证，批准不等于补测通过，具体见 `.ai/reviews/STAGE-02-OWNER-CLOSEOUT-2026-10-06.md`。
-- 当前 Stage：**Stage 03 — Editable Canvas and Layer System**；已获所有者开始授权，执行范围以 `docs/architecture/STAGE-03-EDITABLE-CANVAS-LAYERS.md` 和 `.ai/tasks/STAGE-03-IMPLEMENT-01.md` 为准。Stage03尚未交付验收，DSH仅可推进到READY_FOR_ARCHITECT_REVIEW。
-- `TASKS.md` 中的 Stage04–15是**未批准、可调整的路线图草案**，不是待执行队列。
+- Stage03于2026-10-09按所有者“进入stage04”指令记APPROVED。新版安装、旧照片/Done/重开位置本人正常，原生138/138通过；其余新版真机验证缺口保留，见 `.ai/reviews/STAGE-03-OWNER-CLOSEOUT-2026-10-09.md`，批准不等于补测通过。
+- 当前 Stage：**Stage04 — Deterministic Layout and Three Preset Previews**；所有者明确授权开始，范围以 `docs/architecture/STAGE-04-DETERMINISTIC-LAYOUT.md` 和 `.ai/tasks/STAGE-04-IMPLEMENT-01.md` 为准。仅当前画布确定性排版、三预设真实照片预览与基本搜索/保存；不自动扩大为AI、多页、导出或付费。
+- Stage05已按第1节2026-10-09所有者最新指令明确授权，范围见`docs/architecture/STAGE-05-PHOTO-ANALYSIS.md`，Stage04技术检查点留存后推进；Stage06–15仍未授权。两阶段完整测试、Review、可运行版本与本人验收均需真实记录，DSH仅可推进到READY_FOR_ARCHITECT_REVIEW。
 
 ## 7. 性能原则
 
@@ -97,3 +106,4 @@
 | 2026-10-03 | Stage01所有者批准 / Stage02启动 | 所有者明确确认验收并要求继续；Architect定义照片导入和素材管线范围，Stage03仍未批准 |
 | 2026-10-05 | 所有者当日免逐项审批 / Stage02持续推进 | 原话及临时执行范围见第5节；技术结论仍基于实际证据，不伪称本人验收；Stage03和Apple暂停边界不变 |
 | 2026-10-06 | Stage02所有者收尾 / Stage03启动 | 所有者在已体验且获告知取证失败后明确“进入stage03”；保留验证缺口，不伪称云测试通过。Architect定义画布/图层契约，Stage04仍未批准 |
+| 2026-10-09 | Stage03所有者收尾 / Stage04启动 | 所有者明确“进入stage04”；Stage03未完真机项保留。Architect定义确定性排版与三真实照片预设预览，不放宽费用、依赖或验收规则 |

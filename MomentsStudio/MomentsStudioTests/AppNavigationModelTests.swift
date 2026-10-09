@@ -59,4 +59,17 @@ final class AppNavigationModelTests: XCTestCase {
         navigation.dismissSheet()
         XCTAssertNil(navigation.sheet)
     }
+
+    @MainActor
+    func testLayoutSheetKeepsEditorPathAndProjectIdentity() async {
+        let navigation = AppNavigationModel()
+        let projectID = UUID()
+        navigation.push(.editor(projectID: projectID))
+        navigation.present(.collageLayout(projectID: projectID))
+        XCTAssertEqual(navigation.sheet, .collageLayout(projectID: projectID))
+        XCTAssertNotEqual(navigation.sheet, .collageLayout(projectID: UUID()))
+        navigation.dismissSheet()
+        XCTAssertNil(navigation.sheet)
+        XCTAssertEqual(navigation.path, [.editor(projectID: projectID)])
+    }
 }

@@ -30,6 +30,10 @@
 			"isa" = "PBXBuildFile";
 			"fileRef" = "3EDB9B119C7BC47F798ED1EB";
 		};
+		A4218AFA70227E073A321838 /* CollageLayoutSheet.swift in Sources */ = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "DA3247AC80EA41E5F3085677";
+		};
 		702B958E9FA752C082A7D068 /* EditorCanvasView.swift in Sources */ = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "8685D25F440E38EBFBEE6A97";
@@ -81,6 +85,10 @@
 		0951C856D8E2ECE4054F035D /* CanvasGeometry.swift in Sources */ = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "540CEFF020B2BA7CE398DAB9";
+		};
+		EEFB1A8B846AD85CF0DA41FA /* CollageLayout.swift in Sources */ = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "5E60FD0DA47BF3006B6B2D93";
 		};
 		BB198655568EB098EDBFA121 /* ImportedPhoto.swift in Sources */ = {
 			"isa" = "PBXBuildFile";
@@ -170,6 +178,14 @@
 			"isa" = "PBXBuildFile";
 			"fileRef" = "B78B866CCFB5AC7FD7B2F179";
 		};
+		6487D66F4591EA146D410B0B /* Stage04LayoutTests.swift in Sources */ = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "9BC612C618E6FAF2540B82E0";
+		};
+		E2BA5ABA57B0AA209DF4C94F /* Stage04StorageTests.swift in Sources */ = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "79205BB91984035DF9746C91";
+		};
 		948476B7F983716C24CA82E9 /* SyntheticImageFactory.swift in Sources */ = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "735468D8CA374F016BA56C67";
@@ -189,6 +205,10 @@
 		96B65612CECF3DBA6ECEED62 /* Stage03CanvasUITests.swift in Sources */ = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "4B5E58BB63F41B6FD8F9A3DA";
+		};
+		CDED6DCEB7FA7FF3555B133B /* Stage04LayoutUITests.swift in Sources */ = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "E123B9454A0D40FF97ED5178";
 		};
 		06E34E9333CBB0038192DC30 /* UITestSupport.swift in Sources */ = {
 			"isa" = "PBXBuildFile";
@@ -246,6 +266,12 @@
 			"isa" = "PBXFileReference";
 			"lastKnownFileType" = "sourcecode.swift";
 			"path" = "InfoRow.swift";
+			"sourceTree" = "<group>";
+		};
+		DA3247AC80EA41E5F3085677 /* CollageLayoutSheet.swift */ = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "CollageLayoutSheet.swift";
 			"sourceTree" = "<group>";
 		};
 		8685D25F440E38EBFBEE6A97 /* EditorCanvasView.swift */ = {
@@ -324,6 +350,12 @@
 			"isa" = "PBXFileReference";
 			"lastKnownFileType" = "sourcecode.swift";
 			"path" = "CanvasGeometry.swift";
+			"sourceTree" = "<group>";
+		};
+		5E60FD0DA47BF3006B6B2D93 /* CollageLayout.swift */ = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "CollageLayout.swift";
 			"sourceTree" = "<group>";
 		};
 		ED1146015D7AB39E63D8E8C5 /* ImportedPhoto.swift */ = {
@@ -458,6 +490,18 @@
 			"path" = "Stage03StorageCoordinatorTests.swift";
 			"sourceTree" = "<group>";
 		};
+		9BC612C618E6FAF2540B82E0 /* Stage04LayoutTests.swift */ = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "Stage04LayoutTests.swift";
+			"sourceTree" = "<group>";
+		};
+		79205BB91984035DF9746C91 /* Stage04StorageTests.swift */ = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "Stage04StorageTests.swift";
+			"sourceTree" = "<group>";
+		};
 		735468D8CA374F016BA56C67 /* SyntheticImageFactory.swift */ = {
 			"isa" = "PBXFileReference";
 			"lastKnownFileType" = "sourcecode.swift";
@@ -486,6 +530,12 @@
 			"isa" = "PBXFileReference";
 			"lastKnownFileType" = "sourcecode.swift";
 			"path" = "Stage03CanvasUITests.swift";
+			"sourceTree" = "<group>";
+		};
+		E123B9454A0D40FF97ED5178 /* Stage04LayoutUITests.swift */ = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "Stage04LayoutUITests.swift";
 			"sourceTree" = "<group>";
 		};
 		CF8333EB1D44AE92B8C3EE3F /* UITestSupport.swift */ = {
@@ -578,6 +628,7 @@
 		BBDCDACBCC2C1C98E5C9E86F /* Features/Editor */ = {
 			"isa" = "PBXGroup";
 			"children" = (
+				"DA3247AC80EA41E5F3085677",
 				"8685D25F440E38EBFBEE6A97",
 				"6CB95493D4CA67ACEF05C190",
 				"3E19CBA561CB3EAB3A2CF5DE",
@@ -630,6 +681,7 @@
 				"68C48193058FD6DFA55A0ECF",
 				"19BE43B153F9820FA84133E0",
 				"540CEFF020B2BA7CE398DAB9",
+				"5E60FD0DA47BF3006B6B2D93",
 				"ED1146015D7AB39E63D8E8C5",
 				"4F4B7255F0EE176281819B20",
 				"DE88005CA0487C1B532F7B9B",
@@ -695,6 +747,8 @@
 				"FD75D778CBE5A96616FA70FC",
 				"50937F5001F169A1D29F7428",
 				"B78B866CCFB5AC7FD7B2F179",
+				"9BC612C618E6FAF2540B82E0",
+				"79205BB91984035DF9746C91",
 				"735468D8CA374F016BA56C67",
 				"F17B86A26E1E8B85B69B56F8",
 			);
@@ -707,6 +761,7 @@
 				"74B445F60172AD2631042992",
 				"5379B13C9D440E55C1B1614D",
 				"4B5E58BB63F41B6FD8F9A3DA",
+				"E123B9454A0D40FF97ED5178",
 				"CF8333EB1D44AE92B8C3EE3F",
 			);
 			"path" = "MomentsStudioUITests";
@@ -863,6 +918,7 @@
 				"B636E4DDE4A4DFC2E44A1FC0",
 				"DAAAAA80FD091DFF6CC728EA",
 				"3C05E486F866BF26C877778B",
+				"A4218AFA70227E073A321838",
 				"702B958E9FA752C082A7D068",
 				"2DEF16AEB924A581FEA4500B",
 				"49DDB28A430BB291155C4EC0",
@@ -876,6 +932,7 @@
 				"890FFB5FF73EC69FD3E11618",
 				"4BF132B13A72D9D27C985736",
 				"0951C856D8E2ECE4054F035D",
+				"EEFB1A8B846AD85CF0DA41FA",
 				"BB198655568EB098EDBFA121",
 				"7797C394240577E4882521E5",
 				"F6E7423B8497BB80F6355279",
@@ -904,6 +961,8 @@
 				"C3804EC4738B275A7A89F3C8",
 				"D1C154F1199D9AE74CDD0DC6",
 				"949B17AE76E49BF2A01A8601",
+				"6487D66F4591EA146D410B0B",
+				"E2BA5ABA57B0AA209DF4C94F",
 				"948476B7F983716C24CA82E9",
 				"0A32706444EC1DB0EC70858B",
 			);
@@ -916,6 +975,7 @@
 				"83D1140271FC5A43C7A2B8D1",
 				"7F59F325EB8C740C94C5C7A8",
 				"96B65612CECF3DBA6ECEED62",
+				"CDED6DCEB7FA7FF3555B133B",
 				"06E34E9333CBB0038192DC30",
 			);
 			"runOnlyForDeploymentPostprocessing" = "0";
