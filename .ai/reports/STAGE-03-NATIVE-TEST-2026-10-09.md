@@ -1,6 +1,14 @@
 # Stage03 公开仓库原生测试
 
-## 当前结果与限定修正（2026-10-09 11:33）
+## 最新结果（2026-10-09 12:49）
+
+第四轮原生XCTest已全部通过：138执行/138 passed/0 failed/0 skipped/0 expected failures，130 unit+8 UI；锁层重叠下层拖动、不增层、完整编辑/调序/强制结束重启恢复/删除保留素材及Done保存回首页均真实通过。source b436590b560da378687fbae1f2b4290a5f465224，run37883613668；整体workflow仍failure，原因是结果门禁残留旧“frozen-7 / 7”拆分，与真实130/8不符，不能把红workflow写success。
+
+原始summary/xcresult及附件已核验：artifact11596436195，141276170 bytes，SHA256 f9b1dff674d4eeb4853bf14f2660944e97916d27dbc76c001b5f9e02fe740f65，匹配GitHub digest；清单14份含测试方法的源码逐字SHA匹配Git commit。修正门禁从EXPECTED_UNIT_TEST_COUNT/EXPECTED_UI_TEST_COUNT读取130/8，并检查拆分和总数一致；保留清单、设备、138全通过、0失败/跳过/expected failure等严格条件。已对真实成功证据及9项失败反例执行实际门禁，10/10符合预期，没有修改原证据。
+
+下一步仅推workflow门禁/真实报告；App和所有测试源码保持。再运行完整GitHub入口验证后续流程；设备IPA允许同步准备，前提是新head的MomentsStudio树与已138通过的b436590完全相同。新版手机安装、偶发复制真机多次复测、组合双指/显示与可访问性仍未完成；不宣称所有者Stage03批准或进入Stage04。
+
+## 首轮结果与限定修正（2026-10-09 11:33）
 
 第一轮结束为 failure，非超时：138 实际执行，136 passed / 2 failed / 0 skipped / 0 expected failures。全部130 unit和6 UI通过；Done空项目保存、回首页和重启恢复通过。iPhone17 Pro arm64模拟器，iOS26.5（23F77），macOS26.6.2。设备Release编译成功。
 
@@ -46,3 +54,7 @@
 唯一失败line279为select lower photo beneath locked upper photo never became hittable。实际操作日志为上滑→下滑→上滑，同一个目标反复被全幅惯性滑动越过。仅修改共享UI测试滚动helper：按实测超出viewport的距离加16点余量移动，单次24至viewport高度45%，两个端点均从真实scrollView/viewport几何换算为element-relative位置；原生slow拖动并停留0.2秒再松手，仍最多3次且必须整个按钮可见和hittable后才点击。每次记录真实frame/viewport/distance，便于下轮定位。App和所有旧断言/138方法不变，不增retry、不skip、不伪造UUID。原生API核对：[Apple XCUICoordinate文档](https://developer.apple.com/documentation/xcuiautomation/xcuicoordinate/press%28forduration%3Athendragto%3Awithvelocity%3Athenholdforduration%3A%29)。
 
 第四轮准备只推helper及本报告，完整30分钟macos-26入口保持；下层拖动/持久化完整链、新IPA和本人复测仍待，Stage03 CHANGES_REQUESTED。
+
+## 第四轮实际启动（2026-10-09 12:23）
+
+精确2文件正常推送b436590b560da378687fbae1f2b4290a5f465224，单次[run37883613668](https://github.com/Icatly/moments-studio/actions/runs/37883613668)，attempt1，in_progress；完整138/标准macos-26/30分钟上限，尚无第四轮结果。App与第三轮一致，无新IPA或本人修后验收。

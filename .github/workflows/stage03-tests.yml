@@ -553,6 +553,8 @@ jobs:
           from pathlib import Path
 
           frozen = int(os.environ["EXPECTED_TEST_COUNT"])
+          frozen_unit = int(os.environ["EXPECTED_UNIT_TEST_COUNT"])
+          frozen_ui = int(os.environ["EXPECTED_UI_TEST_COUNT"])
           expected = int(os.environ.get("STAGE03_EXPECTED_TOTAL", frozen))
           manifest_unit = int(os.environ.get("STAGE03_UNIT_TEST_COUNT", "0"))
           manifest_ui = int(os.environ.get("STAGE03_UI_TEST_COUNT", "0"))
@@ -567,7 +569,9 @@ jobs:
               raise SystemExit("No pre-test manifest was produced; the source list under test is unknown.")
           manifest_methods = [line for line in manifest_path.read_text().splitlines()
                               if line and not line.startswith("#")]
-          if (len(manifest_methods), manifest_unit, manifest_ui, expected) != (frozen, frozen - 7, 7, frozen):
+          if (frozen_unit + frozen_ui != frozen
+                  or (len(manifest_methods), manifest_unit, manifest_ui, expected)
+                  != (frozen, frozen_unit, frozen_ui, frozen)):
               raise SystemExit(
                   f"The pre-test manifest does not match the frozen Stage 03 boundary {frozen}: "
                   f"methods={len(manifest_methods)} unit={manifest_unit} ui={manifest_ui} expected={expected}"
