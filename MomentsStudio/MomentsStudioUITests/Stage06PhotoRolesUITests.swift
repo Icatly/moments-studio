@@ -132,12 +132,21 @@ final class Stage06PhotoRolesUITests: XCTestCase {
     }
 
     /// The currently shown role of one row's picker, or `nil` for Automatic.
+    ///
+    /// SwiftUI's native `Picker` reports a fixed `Role, ` prefix before the selected
+    /// option's own label (run 38026510813: actual `Role, Primary photo`). Only that
+    /// exact prefix is removed — the remaining text is still compared as a whole role
+    /// title, so an unknown or different label still fails instead of being accepted by
+    /// a `contains` check or replaced by a constant.
     private func shownRole(_ assetID: UUID, in app: XCUIApplication) -> String? {
         let picker = element("roles.picker.\(assetID.uuidString)", in: app)
-        let value = (picker.value as? String) ?? ""
-        let label = picker.label
-        for candidate in [value, label] where !candidate.isEmpty && candidate != "Role" {
-            return candidate
+        let candidates = [(picker.value as? String) ?? "", picker.label]
+        for candidate in candidates where !candidate.isEmpty {
+            let normalized = candidate.hasPrefix("Role, ")
+                ? String(candidate.dropFirst("Role, ".count))
+                : candidate
+            guard normalized != "Role", !normalized.isEmpty else { continue }
+            return normalized
         }
         return picker.buttons["Automatic"].exists ? "Automatic" : nil
     }

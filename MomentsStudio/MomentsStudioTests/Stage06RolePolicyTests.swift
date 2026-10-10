@@ -205,22 +205,41 @@ final class Stage06RolePolicyTests: XCTestCase {
     }
 
     /// An untouched captured value is kept only when it is the user's own manual
-    /// choice; a captured `automatic` role is recomputed and refreshed.
+    /// choice; a captured `automatic` role is recomputed and refreshed by this pass.
     func testUntouchedCapturedChoiceIsKeptOnlyWhenItWasManual() {
         let manual = UUID()
         let automatic = UUID()
+        // `manual` is a saved manual supporting photo (no primary anywhere), and
+        // `automatic` is a saved automatic supporting photo whose stored choice does
+        // **not** constrain this pass: it has real scene evidence, so the automatic
+        // suggestion legitimately promotes it to primary. The captured dictionary
+        // therefore describes an already-valid package (no primary, no duplicates),
+        // and the outcome comes from `suggest(...)` — not from a hand-made outcome.
         let candidates = [
-            candidate(manual, index: 0, manual: .primary),
-            candidate(automatic, index: 1, manual: .supporting)
+            candidate(manual, index: 0, manual: .supporting, sceneScore: 0.2),
+            candidate(automatic, index: 1, sceneScore: 0.9)
         ]
         let outcome = PhotoRolePolicy.suggest(candidates)
+        XCTAssertEqual(role(outcome, automatic), .role(.primary),
+                       "the photo with the strongest evidence is the automatic primary")
+        XCTAssertEqual(role(outcome, manual), .role(.supporting))
+
+        let captured: [UUID: PhotoRoleChoice?] = [
+            manual: .manual(.supporting),
+            automatic: .automatic(.supporting)
+        ]
+        // The captured package is legal: at most one primary (none here).
+        XCTAssertEqual(captured.values.filter { $0?.role == .primary }.count, 0,
+                       "the fixture must not pretend to hold two primaries")
+
         let choices = PhotoRolePolicy.choices(
             candidates: candidates,
             draft: [:],
-            capturedRoles: [manual: .manual(.primary), automatic: .automatic(.supporting)],
+            capturedRoles: captured,
             outcome: outcome
         )
-        XCTAssertEqual(choices[manual], .manual(.primary))
+        XCTAssertEqual(choices[manual], .manual(.supporting),
+                       "a captured manual choice keeps its role and its manual source")
         XCTAssertEqual(choices[automatic], .automatic(.primary),
                        "a captured automatic role is refreshed by this pass, not frozen")
     }
