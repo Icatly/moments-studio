@@ -2,20 +2,20 @@
 
 ## 当前状态
 
-**2026-10-10 12:29最新状态：**所有者“进行stage06”，明确授权Photo Role Suggestions and Saved Choices。真实DSH已完成任务01与FIX05–07，Architect[最终源码预审](.ai/reviews/STAGE-06-SOURCE-REVIEW-2026-10-10.md)通过，独立结构/语法/冻结旧186及256方法清单通过；准备完整原生验证，尚无Stage06 Xcode/IPA/本人验收。先获得本地角色建议，可改用途并保存，下一次显式布局应用尊重主图和留作拼贴/不用的选择。Stage07及以后未授权。下方10:40收尾状态是历史。
+**2026-10-10 17:35 当前交付：**Stage06 **WAITING_FOR_USER**。源码 `321fdfbf1e330c6d66104aaf7d4f92eacfda5fe4`，完整[256/256原生测试](https://github.com/Icatly/moments-studio/actions/runs/38039391177)（245单元+11UI，零失败/跳过）及[同源设备构建](https://github.com/Icatly/moments-studio/actions/runs/38041676943)均已独立核原始证据；[最终技术复审](.ai/reviews/STAGE-06-NATIVE-FINAL-2026-10-10.md)完成。IPA858693bytes/hash `e8a26edef8d5060ce6222abd0c7fae856ca0cf279cc25b747b882e3c74ec3f0d`，本机交付及英文安装副本均核。签名安装/本人三组验收未执行，不APPROVED，Stage07未授权。开发停止，准备AltServer同账户更新与真机验收；不卸载旧App。以下旧快照均为历史。
 
 **已批准基线与分工：**2026-10-10 10:40所有者在新版真机对三组实际操作分别回复“正常”，Stage04/05均APPROVED，见[收尾](.ai/reviews/STAGE-04-05-OWNER-CLOSEOUT-2026-10-10.md)。Architect负责规格、独立Review及交付，真实DSH负责实现，所有者负责最终验收；详见[工作须知](工作须知.md)及[根交接](项目要求与上下文交接.md)。Stage06已授权，Stage07–15未授权。
 
-已验收基线：Stage04构图预览/搜索/Apply及Stage05只读光色分析均实现。源码fe17ac0完整186/186原生通过，同源设备包已校验并完成本人三组验收，两阶段APPROVED；历史失败及未测限制保留。Stage06初稿尚未原生验证。
+已验收基线：Stage04构图预览/搜索/Apply及Stage05只读光色分析均实现。源码fe17ac0完整186/186原生通过，同源设备包已校验并完成本人三组验收，两阶段APPROVED；历史失败及未测限制保留。Stage06完整原生256/256与同源IPA已核验，等待本人验收。
 
 | 项 | 值 |
 | --- | --- |
 | 当前 Stage | **Stage06 — Photo Role Suggestions and Saved Choices** |
-| Stage 状态 | READY_FOR_ARCHITECT_REVIEW；源码预审通过，原生验证与最终技术Review/本人验收仍待执行 |
+| Stage 状态 | WAITING_FOR_USER；独立Review/原生256/同源IPA完成，本人验收未执行 |
 | 本地代码 | 原生缩略图角色建议/四用途人工选择/角色保存/显式布局集成及来源一致；当前单画布，完整AI整组与导出尚未实现 |
-| Xcode 构建 / 测试 | [原生run37969910797](https://github.com/Icatly/moments-studio/actions/runs/37969910797)完整176单元+10 UI=186/186通过，0失败/跳过；源码fe17ac0。旧失败保留，见[技术复审](.ai/reviews/STAGE-04-05-NATIVE-FINAL-2026-10-10.md) |
+| Xcode 构建 / 测试 | [Stage06完整256/256](https://github.com/Icatly/moments-studio/actions/runs/38039391177)，245单元+11UI、零失败/跳过；source321fdfb；旧失败保持 |
 | 当前手机包 | Stage04/05 sourcefe17ac0；新版两个入口可见，三组实际操作获本人正常反馈 |
-| 下一步 | 冻结精确已审源码，完整256项原生验证；真实通过后同源设备交付 |
+| 下一步 | AltServer使用同一Apple账户更新，所有者按三组真机清单体验后反馈；Stage07未授权 |
 
 Stage 01 的详细任务见 [.ai/tasks/STAGE-01-TASKS.md](.ai/tasks/STAGE-01-TASKS.md)，验收清单见 [.ai/acceptance/STAGE-01.md](.ai/acceptance/STAGE-01.md)。
 

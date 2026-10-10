@@ -1,6 +1,6 @@
 # Stage06 真机交付与三组验收
 
-当前：待完整原生测试结果、同源 IPA 校验和实际安装。不是本人已通过。
+当前：**WAITING_FOR_USER**，完整原生256/256、最终Review和同源IPA校验完成；签名安装/本人验收未执行。
 
 范围：可选 Photo roles（照片角色）入口；本地照片建议、用户选择与现有布局衔接。本阶段尚不包含一键整组生成、自适应滤镜、抠图、导出或热点监测。
 
@@ -28,8 +28,8 @@
 
 ## 证据记录
 
-- 完整云测试：第五轮run38036555619/source2625988实际255通过/1新UI失败/0跳过，245单元与旧186全过；角色保存/重启已走过，Focus首次选择未滚到视口失败。FIX12新源待完整245单元+11UI=256全部通过、零失败/跳过，尚无Stage06成功全测试。
-- 同源设备包：尚待构建与校验；成功构建不等于安装成功。
-- 实际安装：未执行。
+- 完整云测试：第六轮[run38039391177](https://github.com/Icatly/moments-studio/actions/runs/38039391177)/source321fdfbf1e330c6d66104aaf7d4f92eacfda5fe4完整245单元+11UI=256/256，0失败/跳过/预期失败。角色保存/重启、真实Focus主位与重复Apply均通过；前五轮失败保持。
+- 同源设备包：[run38041676943](https://github.com/Icatly/moments-studio/actions/runs/38041676943)成功，arm64/iPhoneOS/iOS17+/Xcode26.6/SDK26.5/同源/hash均校验；[安装包](../../outputs/Stage06-2026-10-10/MomentsStudio.ipa)858693bytes，SHA256 e8a26edef8d5060ce6222abd0c7fae856ca0cf279cc25b747b882e3c74ec3f0d。成功构建不等于安装成功。
+- 实际安装：未执行。AltServer安装菜单实际显示“No Connected Devices”；已请所有者用USB连接并解锁，等待设备识别，尚未选取IPA或出现Apple登录弹窗。
 - 所有者三组反馈：未取得；只有本人明确反馈后才能 APPROVED。
 - 原生失败记录与未验证限制如实保留；Stage07未授权。

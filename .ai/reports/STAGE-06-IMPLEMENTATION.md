@@ -1,5 +1,7 @@
 # Stage06 本地实现报告 — 2026-10-10
 
+**Architect 17:35交付补记（优先于下方DSH16:45历史报告）：**第六轮source321fdfbf1e330c6d66104aaf7d4f92eacfda5fe4/run38039391177完整245单元+11UI=256/256原生通过，零失败/跳过；同源device38041676943与IPA858693bytes/SHA256 e8a26edef8d5060ce6222abd0c7fae856ca0cf279cc25b747b882e3c74ec3f0d已核验。[最终Review](../reviews/STAGE-06-NATIVE-FINAL-2026-10-10.md)完成，阶段WAITING_FOR_USER；签名安装/本人验收尚未执行。下方DSH状态、未执行说明、源hash与五轮失败均为当时历史，不追改为成功；实现由DSH完成，后续提交/云运行/交付由Architect执行。Stage07未授权。
+
 角色：DSH（Implementation Engineer，实施/工程/测试）；Architect 负责规格与独立 Review，不代写实现。授权：所有者 2026-10-10“进行stage06”；Stage04/05 已按本人新版真机三组“正常”收尾（[收尾记录](../reviews/STAGE-04-05-OWNER-CLOSEOUT-2026-10-10.md)）。范围：[STAGE-06-PHOTO-ROLES](../../docs/architecture/STAGE-06-PHOTO-ROLES.md)、[实施任务01](../tasks/STAGE-06-IMPLEMENT-01.md)，并按实现中独立 Review 补正 01–04 全部修复。基线：`fe17ac0d00db53629228f3ff972b5b83d563b551`（完整186/186）。
 
 **状态：READY_FOR_ARCHITECT_REVIEW。** 本报告覆盖首版本地实现与 Review FIX01–FIX12；多轮独立 Review 退回后已按 [FIX05](../tasks/STAGE-06-FIX-05.md)、[FIX05 补充](../tasks/STAGE-06-FIX-05-SUPPLEMENT.md)、[FIX06](../tasks/STAGE-06-FIX-06.md)、[FIX07](../tasks/STAGE-06-FIX-07.md)、[FIX08](../tasks/STAGE-06-FIX-08-NATIVE.md)、[FIX09](../tasks/STAGE-06-FIX-09-NATIVE-TESTS.md)、[FIX10](../tasks/STAGE-06-FIX-10-NATIVE-BEHAVIOR.md)、[FIX11](../tasks/STAGE-06-FIX-11-SAVE-REACHABILITY.md) 与 [FIX12](../tasks/STAGE-06-FIX-12-FOCUS-SCROLL.md) 全部修复。**已执行的五轮 Stage06 原生运行结果如下（第三、四、五轮都真实执行了全部 256 项）**：
@@ -166,10 +168,10 @@
 | 文件 | 方法数 | 覆盖 |
 | --- | --- | --- |
 | `MomentsStudioTests/Stage06RoleChoiceTests.swift` | 7 | 契约与兼容：`nil` 不新增键、缺键/`null` 读作 nil、全 role/source 往返、未知 role/source/类型/自动collage拒绝、单 primary 校验、schema1 读回 |
-| `MomentsStudioTests/Stage06RolePolicyTests.swift` | 14 | manual 优先、唯一 primary、非参与角色不自动分配、limited 成功是真候选、仅两路都失败才无建议、NaN/Inf/超界舍弃、面积/导入顺序 tie、captured manual 保留 vs automatic 刷新、**焦点只首个同 asset 层 + 直接 arrange（多层/隐藏/顺序/z-order/重复 Apply）**、参与集合与“全部不可参与”提示 |
+| `MomentsStudioTests/Stage06RolePolicyTests.swift` | 19 | manual 优先、唯一 primary、非参与角色不自动分配、limited 成功是真候选、仅两路都失败才无建议、NaN/Inf/超界舍弃、面积/导入顺序 tie、captured manual 保留 vs automatic 刷新、**焦点只首个同 asset 层 + 直接 arrange（多层/隐藏/顺序/z-order/重复 Apply）**、参与集合与“全部不可参与”提示 |
 | `MomentsStudioTests/Stage06RolesRunTests.swift` | 10 | 签名含 roleChoice 且与 `PhotoLibrary.roleSnapshot` 一致、仅角色变化即拒绝、旧 token/跨项目/换 sheet/删除照片拒绝、错 asset 与错 display 尺寸拒绝、`beginRequest` 边界、候选面积与溢出/非法尺寸、损坏元数据不成为候选 |
-| `MomentsStudioTests/Stage06RolesSheetModelTests.swift` | 12 | **实际 UI 值模型**：人工草稿物化为 manual、未触碰 manual 保留、captured automatic 参与重算、明确 Automatic 清除/刷新、**role+source 变化可保存**、新主图降已存 manual primary（不误降 automatic）、`Use suggested roles` 语义 |
-| `MomentsStudioTests/Stage06RoleStorageTests.swift` | 14 | 真实文件：保存+重开、原图/派生图字节不变、**全清/部分清**、部分失败混合、同 asset 角色变化拒绝、加照片后 stale 拒绝、跨项目拒绝、非法组合不写盘、**Vision 失败保留成功测量且不伪造**、全透明跳过 Vision、注入词表降减与打分、后续 canvas 保存与删除照片保留其他选择 |
+| `MomentsStudioTests/Stage06RolesSheetModelTests.swift` | 18 | **实际 UI 值模型**：人工草稿物化为 manual、未触碰 manual 保留、captured automatic 参与重算、明确 Automatic 清除/刷新、**role+source 变化可保存**、新主图降已存 manual primary（不误降 automatic）、`Use suggested roles` 语义 |
+| `MomentsStudioTests/Stage06RoleStorageTests.swift` | 15 | 真实文件：保存+重开、原图/派生图字节不变、**全清/部分清**、部分失败混合、同 asset 角色变化拒绝、加照片后 stale 拒绝、跨项目拒绝、非法组合不写盘、**Vision 失败保留成功测量且不伪造**、全透明跳过 Vision、注入词表降减与打分、后续 canvas 保存与删除照片保留其他选择 |
 | `MomentsStudioUITests/Stage06PhotoRolesUITests.swift` | 1 | 真实导入2张 → Roles 完成检查 → 人工选 Primary → Save → **重开显示真实值** → 改动+Cancel 仍旧值 → Automatic 清除 → 换主图 → 重启保留 → Focus 预览+Apply 后 layer 恰 2 不复制 → 角色仍保存 |
 
 修改（App）：

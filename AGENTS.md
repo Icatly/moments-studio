@@ -68,6 +68,8 @@
 
 ## 6. 阶段（Stage）规则
 
+- 2026-10-10 17:35当前Stage06 **WAITING_FOR_USER**：完整245单元+11UI=256/256原生与同源设备IPA、Architect最终Review均完成，见`.ai/reviews/STAGE-06-NATIVE-FINAL-2026-10-10.md`。签名安装与本人验收尚未执行，不能APPROVED；开发停止，Stage07未授权，原有职责与闸门不放宽。
+
 - 一次只推进一个 Stage。未获批准不得开始新功能、新 Stage，也不得开始 `TASKS.md` 路线图中的下一步。
 - Stage01已于2026-10-03由项目所有者明确确认验收（原话：“确认验收 继续下一阶段任务”），状态APPROVED。
 - Stage02于2026-10-06按所有者最新指令“进入stage03”记APPROVED。所有者已亲自体验照片路径并反馈正常；旧版录屏已复审。最新云第三轮/设备构建/还原等仍未验证，批准不等于补测通过，具体见 `.ai/reviews/STAGE-02-OWNER-CLOSEOUT-2026-10-06.md`。
