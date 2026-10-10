@@ -145,13 +145,12 @@ final class Stage06RoleStorageTests: XCTestCase {
     func testPartialFailureLeavesThatPhotoWithoutAChoiceAndOthersSaved() async throws {
         let library = PhotoLibrary(rootURL: rootURL)
         let (model, committed) = try await makeModel(library)
-        let first = committed.photos[0]
         let second = committed.photos[1]
 
         let snapshot = model.roleSnapshot(for: committed.id)
-        // The first photo had no usable evidence at all, so it is absent; the second
-        // one keeps a real suggestion. Batch storage must not turn that into
-        // "the first photo is not needed".
+        // The first photo (index 0) had no usable evidence at all, so it is absent from
+        // the batch; the second one keeps a real suggestion. Batch storage must not turn
+        // that into "the first photo is not needed".
         let choices: [UUID: PhotoRoleChoice] = [second.id: .automatic(.primary)]
         let outcome = await model.saveRoleChoices(
             projectID: committed.id, choices: choices, expecting: snapshot

@@ -1,6 +1,6 @@
 # Stage06 真机验收清单（待交付）
 
-当前CHANGES_REQUESTED：初稿独立Review已退回，DSH正在FIX05。所有者已授权开始，尚无Stage06原生结果、设备包或本人验收；不把Stage04/05手机结果外推。实施/契约见[规格](../../docs/architecture/STAGE-06-PHOTO-ROLES.md)。
+当前 READY_FOR_ARCHITECT_REVIEW（原生验证待重跑）：首轮 run 38024488499 App 编译失败；FIX08 后提交 b0ac2dd917560f663d3ea854dabfff42a9327339 的第二轮 run 38025499129 已通过 iphoneos Release 编译，但新增测试目标编译失败，XCTest 未执行。真实 DSH 已交付 FIX09 并完成源码预审，完整 245 单元 + 11 UI = 256 门禁不变。尚无 Stage06 成功测试结论、设备包或本人验收；不把 Stage04/05 手机结果外推。实施/契约见[规格](../../docs/architecture/STAGE-06-PHOTO-ROLES.md)。
 
 1. 同一Apple账户更新后，原项目照片、图层、锁定/隐藏及变换仍保留；Photo roles入口可见。用至少两张风景照与一张人像/已修照片检查建议和照片对应，提示不声称美颜或照片优劣。
 2. 对可分析照片默认得到一个主图及配图建议；将另一张设为主图、再将一张设为拼贴素材或暂不使用，只有一个主图。先保存一个人工主图，重开后改另一张为主图并保存，旧主图成为配图。Automatic回到当前建议；人工选择在重新分析后保留。把相同角色的系统建议改成人工选择也能保存来源。

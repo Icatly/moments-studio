@@ -53,14 +53,14 @@ final class Stage06RolesSheetModelTests: XCTestCase {
         let manualB = photo()
         let photos = [automaticA, manualB]
         let draft: [UUID: PhotoRoleDraft] = [manualB.id: .role(.primary)]
-        let captured = captured(photos)
+        let capturedRoles = captured(photos)
 
         XCTAssertEqual(
-            PhotoRolesSheet.pickerSelection(draft: draft, capturedRoles: captured, photo: manualB), .primary,
+            PhotoRolesSheet.pickerSelection(draft: draft, capturedRoles: capturedRoles, photo: manualB), .primary,
             "an explicit manual pick is the only thing shown as a specific role"
         )
         XCTAssertNil(
-            PhotoRolesSheet.pickerSelection(draft: draft, capturedRoles: captured, photo: automaticA),
+            PhotoRolesSheet.pickerSelection(draft: draft, capturedRoles: capturedRoles, photo: automaticA),
             "a captured automatic role must show Automatic, not its stored role"
         )
 
@@ -77,7 +77,7 @@ final class Stage06RolesSheetModelTests: XCTestCase {
                 PhotoRolePolicy.Candidate(assetID: manualB.id, importIndex: 1, manualRole: .primary,
                                           sceneScore: 0.9, analysisSucceeded: true, adequateSample: true, pixelArea: 1000)
             ],
-            draft: draft, capturedRoles: captured, outcome: outcome
+            draft: draft, capturedRoles: capturedRoles, outcome: outcome
         )
         XCTAssertEqual(stored[manualB.id], .manual(.primary))
         XCTAssertEqual(stored[automaticA.id], .automatic(.supporting),
@@ -89,27 +89,27 @@ final class Stage06RolesSheetModelTests: XCTestCase {
     func testUntouchedCapturedManualChoiceStillShowsItsRole() {
         let manual = photo(roleChoice: .manual(.collageMaterial))
         let automatic = photo(roleChoice: .automatic(.supporting))
-        let captured = captured([manual, automatic])
+        let capturedRoles = captured([manual, automatic])
         XCTAssertEqual(
-            PhotoRolesSheet.pickerSelection(draft: [:], capturedRoles: captured, photo: manual), .collageMaterial,
+            PhotoRolesSheet.pickerSelection(draft: [:], capturedRoles: capturedRoles, photo: manual), .collageMaterial,
             "an untouched manual choice keeps its role"
         )
         XCTAssertNil(
-            PhotoRolesSheet.pickerSelection(draft: [:], capturedRoles: captured, photo: automatic),
+            PhotoRolesSheet.pickerSelection(draft: [:], capturedRoles: capturedRoles, photo: automatic),
             "an untouched automatic choice shows Automatic"
         )
     }
 
     func testExplicitAutomaticDraftAndExplicitManualDraftBothShowCorrectly() {
         let stored = photo(roleChoice: .manual(.primary))
-        let captured = captured([stored])
-        XCTAssertNil(PhotoRolesSheet.pickerSelection(draft: [stored.id: .automatic], capturedRoles: captured, photo: stored))
+        let capturedRoles = captured([stored])
+        XCTAssertNil(PhotoRolesSheet.pickerSelection(draft: [stored.id: .automatic], capturedRoles: capturedRoles, photo: stored))
         XCTAssertEqual(
-            PhotoRolesSheet.pickerSelection(draft: [stored.id: .role(.supporting)], capturedRoles: captured, photo: stored),
+            PhotoRolesSheet.pickerSelection(draft: [stored.id: .role(.supporting)], capturedRoles: capturedRoles, photo: stored),
             .supporting
         )
         XCTAssertEqual(
-            PhotoRolesSheet.pickerSelection(draft: [:], capturedRoles: captured, photo: stored), .primary,
+            PhotoRolesSheet.pickerSelection(draft: [:], capturedRoles: capturedRoles, photo: stored), .primary,
             "the stored manual role is still shown before any draft"
         )
     }
@@ -130,31 +130,31 @@ final class Stage06RolesSheetModelTests: XCTestCase {
     func testPolicyRoleConstrainedByAManualChoiceIsNotCalledASuggestion() {
         let manual = photo(roleChoice: .manual(.primary))
         let other = photo()
-        let captured = captured([manual, other])
-        let suggestions: [UUID: PhotoRolePolicy.Suggestion] = [
-            manual.id: .role(.primary), other.id: .role(.supporting)
-        ]
+        // Named `capturedRoles`, not `captured`: a local named `captured` shadows the
+        // `captured(...)` helper below and makes later `captured([...])` calls fail to
+        // compile as "cannot call value of non-function type".
+        let capturedRoles = captured([manual, other])
         // The picker keeps the manual role, and the row's advice must not present the
         // stored manual role as a device suggestion.
         XCTAssertEqual(
-            PhotoRolesSheet.pickerSelection(draft: [:], capturedRoles: captured, photo: manual), .primary
+            PhotoRolesSheet.pickerSelection(draft: [:], capturedRoles: capturedRoles, photo: manual), .primary
         )
-        XCTAssertEqual(PhotoRolesSheet.advice(for: manual, draft: [:], capturedRoles: captured,
+        XCTAssertEqual(PhotoRolesSheet.advice(for: manual, draft: [:], capturedRoles: capturedRoles,
                                               suggestion: .role(.primary)),
                        .keptManualChoice(.primary))
-        XCTAssertEqual(PhotoRolesSheet.advice(for: other, draft: [:], capturedRoles: captured,
+        XCTAssertEqual(PhotoRolesSheet.advice(for: other, draft: [:], capturedRoles: capturedRoles,
                                               suggestion: .role(.supporting)),
                        .suggestion(.supporting))
     }
 
     func testAdviceForExplicitAndFailedCases() {
         let stored = photo(roleChoice: .automatic(.primary))
-        let captured = captured([stored])
+        let storedRoles = captured([stored])
         XCTAssertEqual(PhotoRolesSheet.advice(for: stored, draft: [stored.id: .role(.supporting)],
-                                              capturedRoles: captured, suggestion: .role(.primary)),
+                                              capturedRoles: storedRoles, suggestion: .role(.primary)),
                        PhotoRolesSheet.Advice.none)
         XCTAssertEqual(PhotoRolesSheet.advice(for: stored, draft: [stored.id: .automatic],
-                                              capturedRoles: captured, suggestion: .role(.primary)),
+                                              capturedRoles: storedRoles, suggestion: .role(.primary)),
                        .suggestion(.primary))
 
         let failed = photo()
@@ -235,7 +235,7 @@ final class Stage06RolesSheetModelTests: XCTestCase {
     func testFreshAutomaticRoleOrClearFromRecomputeIsSaveable() {
         let stored = photo(roleChoice: .automatic(.primary))
         XCTAssertTrue(hasChanges([stored], draft: [:], suggestions: suggestions([(stored.id, .supporting)])))
-        XCTAssertTrue(hasChanges([stored], draft: [:], suggestions: []))
+        XCTAssertTrue(hasChanges([stored], draft: [:], suggestions: [:]))
 
         let fresh = photo()
         XCTAssertTrue(hasChanges([fresh], draft: [:], suggestions: suggestions([(fresh.id, .primary)])))

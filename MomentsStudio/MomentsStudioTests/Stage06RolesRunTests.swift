@@ -102,7 +102,7 @@ final class Stage06RolesRunTests: XCTestCase {
 
     func testObservationIsRefusedWhenOnlyTheSavedRoleChoiceChanged() {
         let assetID = UUID()
-        let captured = photo(assetID: assetID, roleChoice: .manual(.primary))
+        let savedManualChoice = photo(assetID: assetID, roleChoice: .manual(.primary))
         var run = PhotoRolesRun(projectID: projectID)
         let token = run.token
 
@@ -110,23 +110,24 @@ final class Stage06RolesRunTests: XCTestCase {
         // saved Automatic in another sheet). The observation must not be shown.
         let changed = photo(assetID: assetID, roleChoice: .automatic(.supporting))
         XCTAssertFalse(run.accept(
-            observation(of: captured), observedFor: captured, current: changed,
+            observation(of: savedManualChoice), observedFor: savedManualChoice, current: changed,
             token: token, currentProjectID: projectID, isProjectAvailable: true
         ))
         XCTAssertNil(run.observation(for: changed, currentProjectID: projectID))
-        XCTAssertNotEqual(PhotoRolesRun.signature(of: captured), PhotoRolesRun.signature(of: changed))
+        XCTAssertNotEqual(PhotoRolesRun.signature(of: savedManualChoice),
+                          PhotoRolesRun.signature(of: changed))
     }
 
     func testObservationIsRefusedWhenTheSavedChoiceChangedUnderIt() {
         let assetID = UUID()
-        let captured = photo(assetID: assetID, roleChoice: .manual(.primary))
+        let savedManualChoice = photo(assetID: assetID, roleChoice: .manual(.primary))
         var run = PhotoRolesRun(projectID: projectID)
         let token = run.token
 
         // Another save changed this photo's stored choice while the pass ran.
         let changed = photo(assetID: assetID, roleChoice: .manual(.excluded))
         XCTAssertFalse(run.accept(
-            observation(of: captured), observedFor: captured, current: changed,
+            observation(of: savedManualChoice), observedFor: savedManualChoice, current: changed,
             token: token, currentProjectID: projectID, isProjectAvailable: true
         ))
         XCTAssertNil(run.observation(for: changed, currentProjectID: projectID))
@@ -221,7 +222,7 @@ final class Stage06RolesRunTests: XCTestCase {
         let tiny = photo(width: 0, height: 240)
         let negative = photo(width: 320, height: -1)
         let overflow = photo(width: Int.max, height: 2)
-        var run = PhotoRolesRun(projectID: projectID)
+        let run = PhotoRolesRun(projectID: projectID)
 
         for broken in [tiny, negative, overflow] {
             XCTAssertNil(run.candidate(for: broken, importIndex: 0, manualRole: nil, sceneScore: 0.9),

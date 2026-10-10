@@ -2,7 +2,11 @@
 
 角色：DSH（Implementation Engineer，实施/工程/测试）；Architect 负责规格与独立 Review，不代写实现。授权：所有者 2026-10-10“进行stage06”；Stage04/05 已按本人新版真机三组“正常”收尾（[收尾记录](../reviews/STAGE-04-05-OWNER-CLOSEOUT-2026-10-10.md)）。范围：[STAGE-06-PHOTO-ROLES](../../docs/architecture/STAGE-06-PHOTO-ROLES.md)、[实施任务01](../tasks/STAGE-06-IMPLEMENT-01.md)，并按实现中独立 Review 补正 01–04 全部修复。基线：`fe17ac0d00db53629228f3ff972b5b83d563b551`（完整186/186）。
 
-**状态：READY_FOR_ARCHITECT_REVIEW。** 本报告覆盖首版本地实现与 Review FIX01–FIX08。多轮独立 Review 退回后已按 [FIX05](../tasks/STAGE-06-FIX-05.md)、[FIX05 补充](../tasks/STAGE-06-FIX-05-SUPPLEMENT.md)、[FIX06](../tasks/STAGE-06-FIX-06.md)、[FIX07](../tasks/STAGE-06-FIX-07.md) 与 [FIX08](../tasks/STAGE-06-FIX-08-NATIVE.md) 全部修复。**首轮 Stage06 原生运行已真实发生并失败**：`run 38024488499` / source `198c755145e818bc9f2c7945c896fa72c21d3b48` 的 iphoneos Release 编译失败（XCTest 未执行、无 IPA），FIX08 已修根因但**尚未重新原生运行**（见 §0.0b）。本轮只做本地修复、测试编码与静态检查：**没有** 成功编译、**没有** XCTest 运行、**没有** Stage06 IPA/真机/本人验收，也**没有** git 提交/推送、工作流派发、付费或账户设置更改。Stage07 未开始。
+**状态：READY_FOR_ARCHITECT_REVIEW。** 本报告覆盖首版本地实现与 Review FIX01–FIX09；多轮独立 Review 退回后已按 [FIX05](../tasks/STAGE-06-FIX-05.md)、[FIX05 补充](../tasks/STAGE-06-FIX-05-SUPPLEMENT.md)、[FIX06](../tasks/STAGE-06-FIX-06.md)、[FIX07](../tasks/STAGE-06-FIX-07.md)、[FIX08](../tasks/STAGE-06-FIX-08-NATIVE.md) 与 [FIX09](../tasks/STAGE-06-FIX-09-NATIVE-TESTS.md) 全部修复。**已执行的两轮 Stage06 原生运行都未通过**：
+- 第一轮 `run 38024488499` / source `198c755145e818bc9f2c7945c896fa72c21d3b48`：**iphoneos Release 编译失败**（exit 65、XCTest 未执行、无 IPA）→ FIX08 修复（§0.0b）。
+- 第二轮 `run 38025499129` / source `b0ac2dd917560f663d3ea854dabfff42a9327339`：**iphoneos Release 编译成功，但测试 target 编译失败、XCTest 未执行**（summary 0，不是 256 项失败、无 IPA）→ FIX09 修复（§0.0c）。
+
+**FIX09 当前源码尚未原生重跑**：没有任何一次 Stage06 原生运行完成编译并执行测试；因此 **没有** 成功编译过的测试 target、**没有** 256 项 XCTest 结果、**没有** 成功执行测试的 Stage06 xcresult/IPA/真机/本人验收。本轮只做本地修复、测试编码与静态检查；DSH **未** git 提交/推送、**未** 派发工作流、未付费或改账户设置。Stage07 未开始。
 
 ## 0.0 FIX06（FIX05 交付后的剩余缺口，2026-10-10 12:0x）
 
@@ -35,6 +39,20 @@
 | 5 | 报告状态 | 本报告与根交接按真实 source/hash 记录“已执行真编译失败、XCTest 未执行”，保留全部 256 测试及意图，不把修复编码等同原生通过 |
 
 **FIX08 本机核验**：`verify_project.py` PASS（192 objects、70 Swift **18050 行**）；tree-sitter 70/70 文件 0 ERROR；重复测试方法名 none；`suggestions[...].role` 未解包模式 0 处；Stage06 测试 `XCTSkip` 0；**workflow 内嵌真实清单 rc=0**：`unit=245 ui=11 total=256`，`manifest_sha256=13ef38db970ba7c7…537efd4`；stage06 两个 workflow 内嵌 Python 全部 compile 通过；Stage01–05 四个冻结 workflow SHA 逐字节未变；源聚合 `2243954a9dac9020…1c1c0ce`。
+
+## 0.0c FIX09（第二轮原生：测试 target 编译失败后的最小修复，2026-10-10 13:0x）
+
+**第二轮 Stage06 原生运行真实结果**：[run 38025499129](https://github.com/Icatly/moments-studio/actions/runs/38025499129)，source `b0ac2dd917560f663d3ea854dabfff42a9327339`：**`iphoneos` Release 编译成功**，但**测试 target 编译失败，XCTest 未执行**（summary 0，不是 256 项失败），无 IPA/本人验收。原始私密证据 `.ai/build/stage06-run-38025499129-20261010-125917/evidence/xcodebuild-test.log`（archive SHA256 `6b7f23f0…7601`）。
+
+| 项 | 真实诊断（log） | 修复 |
+| --- | --- | --- |
+| 1 | `Stage06RolePolicyTests.swift:426` `cannot assign to property: 'opacity' setter is inaccessible` | 改调用既有 `setOpacity(0.6)`；**未开放生产 setter**，非参与层完整值不变断言保留 |
+| 2 | `Stage06RolesSheetModelTests.swift:162/166` `cannot call value of non-function type '[UUID: PhotoRoleChoice?]'`（局部 `captured` 遮蔽 `captured(...)` helper） | 三处局部改名 `capturedRoles`/`storedRoles`，并同步全部实参引用；失败与人工失败两条文案断言保留 |
+| 3 | 同文件 `:238` `use [:] to get an empty dictionary literal` | `suggestions: []` → `suggestions: [:]`；清空自动选择变更断言保留 |
+| 4 | 同轮新测试 warnings：`Stage06RolesRunTests:224` `var` 未 mutate；`RolesSheetModelTests:134` 未用 `suggestions`；`RoleStorageTests:148` 未用索引变量 | 三处最小清理（224 改 `let`；删除未用字面量；148 直接删除未用 `first`，**保留 `makeModel` 真实调用**）。旧 `PhotoAnalysisSheet` 三处 warning 不扩大 |
+| 5 | 自查与报告 | 全 Stage06 新测试扫描：`suggestions: []`、私有 setter 赋值、`captured` 遮蔽、helper 当字典传参均为 **0**；`Stage06RolesRunTests` 两处 `let captured` 亦改名；**245 unit + 11 UI = 256**、旧 186 原字节不动；报告如实写“二轮测试 target 编译失败、XCTest 未执行”，不称通过 |
+
+**FIX09 本机静态证据**：`verify_project.py` PASS（192 objects、70 Swift 18050 行）；tree-sitter 70/70 文件 0 ERROR；重复测试方法名 none；**workflow 内嵌真实清单 rc=0**：`unit=245 ui=11 total=256`，`manifest_sha256=9bcd242eb4059a10…eb7f11d`；stage06 两 workflow 内嵌 Python 全部 compile 通过；Stage01–05 四个冻结 workflow SHA 逐字节未变；源聚合 `4c8eddcfec733903…e2f4d97`。
 
 ## 0.1 FIX05（第一轮 Review 退回全部阻断）逐项回应
 

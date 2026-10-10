@@ -423,7 +423,7 @@ final class Stage06RolePolicyTests: XCTestCase {
             assetID: collage.id, baseSize: CanvasSize(width: 210, height: 160), to: .empty
         )
         document.layers[0].transform = LayerTransform(translationX: 11, translationY: 22, scale: 0.4, rotationRadians: 0.2)
-        document.layers[0].opacity = 0.6
+        document.layers[0].setOpacity(0.6)
         let collageLayerBefore = document.layers[0]
 
         document = try CanvasEditor.addingLayer(
