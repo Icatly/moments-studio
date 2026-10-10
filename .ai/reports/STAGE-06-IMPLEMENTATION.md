@@ -2,13 +2,14 @@
 
 角色：DSH（Implementation Engineer，实施/工程/测试）；Architect 负责规格与独立 Review，不代写实现。授权：所有者 2026-10-10“进行stage06”；Stage04/05 已按本人新版真机三组“正常”收尾（[收尾记录](../reviews/STAGE-04-05-OWNER-CLOSEOUT-2026-10-10.md)）。范围：[STAGE-06-PHOTO-ROLES](../../docs/architecture/STAGE-06-PHOTO-ROLES.md)、[实施任务01](../tasks/STAGE-06-IMPLEMENT-01.md)，并按实现中独立 Review 补正 01–04 全部修复。基线：`fe17ac0d00db53629228f3ff972b5b83d563b551`（完整186/186）。
 
-**状态：READY_FOR_ARCHITECT_REVIEW。** 本报告覆盖首版本地实现与 Review FIX01–FIX11；多轮独立 Review 退回后已按 [FIX05](../tasks/STAGE-06-FIX-05.md)、[FIX05 补充](../tasks/STAGE-06-FIX-05-SUPPLEMENT.md)、[FIX06](../tasks/STAGE-06-FIX-06.md)、[FIX07](../tasks/STAGE-06-FIX-07.md)、[FIX08](../tasks/STAGE-06-FIX-08-NATIVE.md)、[FIX09](../tasks/STAGE-06-FIX-09-NATIVE-TESTS.md)、[FIX10](../tasks/STAGE-06-FIX-10-NATIVE-BEHAVIOR.md) 与 [FIX11](../tasks/STAGE-06-FIX-11-SAVE-REACHABILITY.md) 全部修复。**已执行的四轮 Stage06 原生运行结果如下（第三、四轮都真实执行了全部 256 项）**：
+**状态：READY_FOR_ARCHITECT_REVIEW。** 本报告覆盖首版本地实现与 Review FIX01–FIX12；多轮独立 Review 退回后已按 [FIX05](../tasks/STAGE-06-FIX-05.md)、[FIX05 补充](../tasks/STAGE-06-FIX-05-SUPPLEMENT.md)、[FIX06](../tasks/STAGE-06-FIX-06.md)、[FIX07](../tasks/STAGE-06-FIX-07.md)、[FIX08](../tasks/STAGE-06-FIX-08-NATIVE.md)、[FIX09](../tasks/STAGE-06-FIX-09-NATIVE-TESTS.md)、[FIX10](../tasks/STAGE-06-FIX-10-NATIVE-BEHAVIOR.md)、[FIX11](../tasks/STAGE-06-FIX-11-SAVE-REACHABILITY.md) 与 [FIX12](../tasks/STAGE-06-FIX-12-FOCUS-SCROLL.md) 全部修复。**已执行的五轮 Stage06 原生运行结果如下（第三、四、五轮都真实执行了全部 256 项）**：
 - 第一轮 `run 38024488499` / source `198c755145e818bc9f2c7945c896fa72c21d3b48`：**iphoneos Release 编译失败**（exit 65、XCTest 未执行、无 IPA）→ FIX08 修复（§0.0b）。
 - 第二轮 `run 38025499129` / source `b0ac2dd917560f663d3ea854dabfff42a9327339`：**iphoneos Release 编译成功，但测试 target 编译失败、XCTest 未执行**（summary 0，无 IPA）→ FIX09 修复（§0.0c）。
-- 第三轮 `run 38026510813` / source `7c3f08d7230214fef3cbd1675ec734b70b025bc7`：**测试 target 编译成功并真实执行全部 256 项 → 252 通过 / 4 失败 / 0 跳过 / 0 预期失败**；旧 Stage01–05 的 186 项全部通过；4 项失败均为新增测试（3 unit + 1 UI）→ FIX10 修复（§0.0d）。
-- 第四轮 `run 38028987350` / source `090bebfc4679f88a624ebe447ff8245be30728b4`：**完整 256 项真实执行 → 255 通过 / 1 UI 失败 / 0 跳过 / 0 预期失败**；**245 单元与旧 186 全部通过**；唯一失败是新增 UI 首次 Save 时找不到 `roles.save`（FIX10 的三个 unit 失败已消失）→ FIX11 修复（§0.0e）。**本轮仍不是通过**：无 IPA、无真机、无本人验收。
+- 第三轮 `run 38026510813` / source `7c3f08d7230214fef3cbd1675ec734b70b025bc7`：**256 项真实执行 → 252 通过 / 4 失败 / 0 跳过**；旧 186 全部通过 → FIX10 修复（§0.0d）。
+- 第四轮 `run 38028987350` / source `090bebfc4679f88a624ebe447ff8245be30728b4`：**256 项真实执行 → 255 通过 / 1 UI 失败 / 0 跳过**；245 单元与旧 186 全部通过；唯一失败是首次 Save 找不到 `roles.save` → FIX11 修复（§0.0e）。
+- 第五轮 `run 38036555619` / source `2625988c5c33f687247d7e6c40180a2afce81c1d`：**256 项真实执行 → 255 通过 / 1 新 UI 失败 / 0 跳过**；245 单元与旧 186 全部通过；失败是 `layout.choose.focus` 在屏幕外未被真实滚动（AX `y=974.3`，窗口高 874）→ FIX12 修复（§0.0f）。**本轮仍不是通过**：无 IPA、无真机、无本人验收。
 
-**FIX11 当前源码尚未原生重跑**：第四轮执行的是 `090bebfc` 的源码，FIX11 修复后的工作树**还没有**任何原生结果；因此**没有** FIX11 源码的 256 项 XCTest 结果、**没有**成功的 Stage06 xcresult/IPA/真机/本人验收。本轮只做本地修复、测试编码与静态检查；DSH **未** git 提交/推送、**未** 派发工作流、未付费或改账户设置。Stage07 未开始。
+**FIX12 当前源码尚未原生重跑**：第五轮执行的是 `2625988c` 的源码，FIX12 修复后的工作树**还没有**任何原生结果；因此**没有** FIX12 源码的 256 项 XCTest 结果、**没有**成功的 Stage06 xcresult/IPA/真机/本人验收。本轮只做本地修复、测试编码与静态检查；DSH **未** git 提交/推送、**未** 派发工作流、未付费或改账户设置。Stage07 未开始。
 
 ## 0.0 FIX06（FIX05 交付后的剩余缺口，2026-10-10 12:0x）
 
@@ -85,6 +86,25 @@
 | 5 | 取证补充（只加诊断附件，不改断言/方法数）：在**首次 Primary + source 断言通过之后、首次 `saveChoices` 之前**新增 `attachFullAppScreenshot("Stage06 roles first manual pick before first save")`，作为 Photo roles 整页的真实视觉证据（角色/来源/Save 控件）；测试末尾原有截图是 Layouts 预览，不能当 roles 页证据。另加“save 缺失/不可点”两张诊断截图，且都在失败断言**之前**采集 |
 
 **FIX11 本机静态证据**：`verify_project.py` PASS（192 objects、70 Swift **18178 行**）；tree-sitter 70/70 文件 0 ERROR；重复测试方法名 none；`PhotoRolesSheet` 的 `ToolbarItem` 恰 2 个，`roles.cancel`/`roles.save`/`roles.analyzeAgain`/`roles.reload`/`roles.useSuggested` 各声明 1 次；`Stage06PhotoRolesUITests` 的真实截图 4 张（save 缺失/diag、save 不可点/diag、首次人工选择整页、末尾 Layouts 预览）；**workflow 内嵌真实清单 rc=0**：`unit=245 ui=11 total=256`，`manifest_sha256=6a89bfcdccfddf3f…848b07d`；stage06 两 workflow 内嵌 Python 全部 compile 通过；Stage01–05 四个冻结 workflow SHA 逐字节未变；源聚合 `a5798835da6339df…80cabe14`。改动文件仅 `PhotoRolesSheet.swift`（37324 bytes / `9800a7abda86a90c`）与 `Stage06PhotoRolesUITests.swift`（23531 bytes / `1577a77832e0ff5b`）。
+
+## 0.0f FIX12（第五轮真实 255/256：新 UI 必须真实滚动到 Focus，2026-10-10 16:4x）
+
+**第五轮 Stage06 原生运行真实结果**：[run 38036555619](https://github.com/Icatly/moments-studio/actions/runs/38036555619)，source `2625988c5c33f687247d7e6c40180a2afce81c1d`，Xcode 26.6 / SDK 26.5，iPhone 17 Pro / iOS 26.5：**完整 256 项真实执行 → 255 通过 / 1 新 UI 失败 / 0 跳过 / 0 预期失败**；**245 单元与旧 Stage01–05 的 186 项全部通过**。原始私密证据 `.ai/build/stage06-run-38036555619-20261010-163551/evidence/`（archive 328155039 bytes，SHA256 `8d469da6…28f095f`）。Architect 已实际查看两份真实附件：`3AE7DF26-…png`（角色页：Cancel/Save choices 完整可见、辅助动作竖排、两张缩略图与 Automatic/人工 Primary 来源分别显示、无文字交叠；仍是合成照片与默认字号，不是最终品牌或本人验收）与 `C16AD83E-…png`（Layouts：Focus 在 Grid 之后，选择按钮在视口下方，与 AX 一致）。
+
+唯一失败：`Stage06PhotoRolesUITests.swift:57`（旧 `tapLayoutSheet`）—— `layout.choose.focus` 的 AX frame 为 `(16, 974.3, 108.7, 20.3)`，窗口 402×874，**明确在屏幕外**；旧 helper 只等 enabled/hittable，**没有真实滚动**。本轮新 UI 已真实完成首次 Save/重开、Cancel 不写、替换人工主图并降旧主图、Automatic 清人工来源、结束 App 重开后角色与来源保留；Focus 首次选择失败，之后的 Apply/几何/repeat 与末尾角色不变断言**未执行**，不能外推通过。
+
+| 项 | 修复（仅 `Stage06PhotoRolesUITests.swift` 与本报告；生产 App 本轮不改） |
+| --- | --- |
+| 1 | 拆成 `layoutUsableViewport`（唯一 `layout.scroll` ∩ app 窗口，再裁掉本 sheet 的 `Layouts` 导航栏与真实键盘，所有值要求有限正值）+ `tapLayoutSheetContent`：目标**完整进可用视口且 enabled/hittable**才 tap；未进视口才按当前溢出方向在 `layout.scroll` 自身坐标空间做**有界慢速**原生拖动（最多 6 次，端点归一化在 `0...1`）；已在视口却不可点直接失败并取证，不盲点、不无限等 |
+| 1a | 交付前复审修正：该私有 frame 校验改名为 **`layoutGeometryIsFiniteAndPositive`**，不再与 `UITestSupport.swift` 里 `XCTestCase` 扩展的同签名 helper 重名（旧文件未改；含 Stage06 在内的 6 个 UI 测试类与该扩展冲突扫描为 0） |
+| 1b | `focusChoice`/`layoutApply` 不再「先等 30 秒再 fallback」：两者直接用既有通用 `element(_:in:)`（`.any`）返回真实 query，等待只发生在真正使用处——避免 Apply 已消失后再调 `layoutApply(...).waitForDisappearance` 先空等一次不存在的出现 |
+| 1c | `tapLayoutSheetToolbar` 由「只确认 `Layouts` 导航栏唯一」改为**在该 bar 自己的后代里**按 identifier 解析控件（`navigationBars["Layouts"].descendants(matching: .any)[identifier]`），并用 `XCTAssertEqual(count, 1)` 断言唯一，因此同一 identifier 出现在 App 其他位置也不能冒充；scope/frame 有界滚动与全部业务断言保持不变 |
+| 2 | `layout.apply` 走新的 `tapLayoutSheetToolbar`：它是 sheet **自己的导航栏动作**，只要求同一 sheet 的唯一 `Layouts` 导航栏存在并等待真实 enabled/hittable，**不要求进内容视口、不滚 Editor**；Apply 消失断言保留 |
+| 3 | 未修改 `Stage04LayoutUITests.swift`（旧 186 字节不动），未提取共享 helper，也未用 Editor scroll helper 滚布局页；两个 locator 直接使用既有通用 `element` 返回真实 query，不预等出现 |
+| 4 | 诊断在 `XCTFail` 之前：目标在视口内不可点、或 6 次拖动后仍未进视口时，先 `attachFullAppScreenshot`（`…not hittable` / `…never entered the viewport`）并打印真实 target/viewport/scroll，再断言失败 |
+| 5 | 所有原角色保存/Cancel/替换/Automatic/重启、Focus 真 y/scale、repeat 层 ID/数量/transform、末尾角色不变断言**完整保留**；256 门禁、旧 186、4 冻结 workflow、生产契约/存储/策略均未改 |
+
+**FIX12 本机静态证据**：`verify_project.py` PASS（192 objects、70 Swift **18332 行**）；tree-sitter 70/70 文件 0 ERROR；重复测试方法名 none；**UI 测试类与 `UITestSupport` 扩展的 helper 冲突扫描 0**；**workflow 内嵌真实清单 rc=0**：`unit=245 ui=11 total=256`，`manifest_sha256=44d795f7d9eb860a…679de04`；stage06 两 workflow 内嵌 Python 全部 compile 通过；Stage01–05 四个冻结 workflow SHA 逐字节未变；源聚合 `dda1d5cfa10ce1b3…c76ec4`。改动文件仅 `Stage06PhotoRolesUITests.swift`（32942 bytes / `376fc79b172b58e6`）。**FIX12 源码尚未原生重跑**，不能称通过。
 
 ## 0.1 FIX05（第一轮 Review 退回全部阻断）逐项回应
 
@@ -204,10 +224,10 @@
 
 ## 5. 未执行 / 不得冒充
 
-- **本机Windows无Xcode/模拟器，云端结果分别见§0.0b–e**：第一、二轮编译失败未执行XCTest；第三轮实际252/256；第四轮实际255/256（245单元全过，仅新UI首次Save失败）。FIX11交付源码尚未原生重跑，不能用第四轮结果替代新源完整通过。没有Stage06成功原生、IPA、真机或本人验收；手机已验收基线仍是Stage04/05 source `fe17ac0d`。本机语法与清单不能代替Swift类型编译或XCTest执行。
+- **本机Windows无Xcode/模拟器，云端结果分别见§0.0b–f**：第一、二轮编译失败未执行XCTest；第三轮实际252/256；第四轮实际255/256（首次Save失败）；第五轮实际255/256（角色保存/重启已走过，首次Focus选择未滚到屏幕外按钮失败）。FIX12交付源码尚未原生重跑，不能用第五轮结果替代新源完整通过。没有Stage06成功原生、IPA、真机或本人验收；手机已验收基线仍是Stage04/05 source `fe17ac0d`。本机语法与清单不能代替Swift类型编译或XCTest执行。
 - 因此**未在本机验证**：Swift 类型/actor 隔离、Vision 真实词表与 revision 行为、`CGContext` 透明行为、SwiftUI `Picker`/`.searchable`/AX 合并与 `.task(id:)` 时序、`roles.*`/`editor.photoRoles` 在原生层级的真实暴露、真实照片的建议观感与文案。
 - 静态检查（工程接线、语法树、YAML/内嵌 Python、清单门禁）**不等于** Xcode 通过；§4 的清单是编码清单。
-- **当前FIX11交付源码尚未原生执行**：DSH未做提交/推送/派发、费用或账户动作；Architect组织精确源码交付与后续完整测试。第一至第四轮真实源及失败证据保留，四个Stage04/05工作流冻结。
+- **当前FIX12交付源码尚未原生执行**：DSH未做提交/推送/派发、费用或账户动作；Architect组织精确源码交付与后续完整测试。第一至第五轮真实源及失败证据保留，四个Stage04/05工作流冻结。
 - 已知限制（如实）：① `sceneScore` 阈值 0.5 是工程策略，不是准确率；② 建议只做 primary/supporting，`collageMaterial`/`excluded` 完全靠用户；③ 全透明照片无自动建议（保留真实失败与人工选择）；④ 旧版 App 读附加键可以，但旧版再写可能丢角色选择，**不宣称降级写入保留**；⑤ `invalidMetadata` 在包契约下不可达（`ProjectPackage.validate` 已保证为正尺寸/合法方向），只在直接调用 analyzer 时可达。
 - 布局/存储的既有实现（Stage04 排版、Stage05 分析）在 `analyzePhoto` 上只做了等价重构（共用 `loadThumbnail`），Stage05 的 31 项与断言未改。
 

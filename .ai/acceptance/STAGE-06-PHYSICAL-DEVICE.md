@@ -14,7 +14,7 @@
 
 1. 把一张设为 Primary photo，保存后重新打开。
 2. 再把另一张设为 Primary photo，旧人工主图应改为 Supporting photo，保存成功且仅一个主图。
-3. 把一张设为 Collage material 或 Excluded；Analyze again 后人工选择仍在。将它改回 Automatic 可恢复当前建议，只有 Save choices 才写入项目。
+3. 把一张设为 Collage material（拼贴素材）或 Not for layout（不参与排版）；Analyze again 后人工选择仍在。将它改回 Automatic 可恢复当前建议，只有 Save choices 才写入项目。
 
 ## 第二组：取消与持久化
 
@@ -24,11 +24,11 @@
 
 在可编辑且可见的层中，将较后导入照片设主图，打开 Layouts 的 Focus 预览并 Apply，主图应占主位；重复 Apply 不增加图层。现有锁定/隐藏及拼贴素材/排除照片的图层应保持位置，不删除照片。
 
-可另建临时空画布项目：照片设为 Collage material/Excluded 后 Apply，不应自动加这些层；全部为非参与照片时应提示去 Photo roles 改角色，照片仍在。恢复至少一张 Primary/Supporting 后能够排版。
+可另建临时空画布项目：照片设为 Collage material/Not for layout 后 Apply，不应自动加这些层；全部为非参与照片时应提示去 Photo roles 改角色，照片仍在。恢复至少一张 Primary/Supporting 后能够排版。
 
 ## 证据记录
 
-- 完整云测试：第三轮 run38026510813 已实际执行256，252通过/4失败/0跳过；当前FIX10，不满足交付要求。要求245单元+11UI=256全部通过、零失败/跳过。
+- 完整云测试：第五轮run38036555619/source2625988实际255通过/1新UI失败/0跳过，245单元与旧186全过；角色保存/重启已走过，Focus首次选择未滚到视口失败。FIX12新源待完整245单元+11UI=256全部通过、零失败/跳过，尚无Stage06成功全测试。
 - 同源设备包：尚待构建与校验；成功构建不等于安装成功。
 - 实际安装：未执行。
 - 所有者三组反馈：未取得；只有本人明确反馈后才能 APPROVED。

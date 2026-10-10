@@ -48,15 +48,167 @@ final class Stage06PhotoRolesUITests: XCTestCase {
         item.tap()
     }
 
-    /// Taps one control that belongs to the **layout sheet**, checked inside the
-    /// sheet's own identified scroll container.
-    private func tapLayoutSheet(_ item: XCUIElement, in app: XCUIApplication) {
+    /// True when a rect is finite, non-empty and has a positive size.
+    private func layoutGeometryIsFiniteAndPositive(_ rect: CGRect) -> Bool {
+        rect.origin.x.isFinite && rect.origin.y.isFinite
+            && rect.size.width.isFinite && rect.size.height.isFinite
+            && !rect.isEmpty && rect.width > 0 && rect.height > 0
+    }
+
+    /// The viewport actually usable inside the layout sheet: the **unique**
+    /// `layout.scroll`, clipped by the app window, that sheet's own `Layouts`
+    /// navigation bar and the real keyboard.
+    ///
+    /// This is the minimum of the already-verified Stage 04 rule, re-implemented here
+    /// on purpose: modifying the frozen Stage 04 file or extracting a shared helper
+    /// would change its bytes. Every value is validated as finite and positive, and a
+    /// non-unique scope fails instead of being guessed.
+    private func layoutUsableViewport(in app: XCUIApplication) -> CGRect? {
+        let scrolls = app.scrollViews.matching(identifier: "layout.scroll")
+        let sheetNavigationBars = app.navigationBars.matching(identifier: "Layouts")
+        guard scrolls.count == 1, sheetNavigationBars.count == 1 else {
+            XCTFail("Expected exactly one layout.scroll and one Layouts sheet navigation bar, "
+                + "found scrolls=\(scrolls.count) sheetNavigationBars=\(sheetNavigationBars.count)")
+            return nil
+        }
+        let scrollFrame = scrolls.element.frame
+        let appFrame = app.frame
+        guard layoutGeometryIsFiniteAndPositive(scrollFrame), layoutGeometryIsFiniteAndPositive(appFrame) else {
+            XCTFail("Non-finite layout geometry: scroll=\(scrollFrame) app=\(appFrame)")
+            return nil
+        }
+        var viewport = scrollFrame.intersection(appFrame)
+        let navigationFrame = sheetNavigationBars.element.frame
+        guard layoutGeometryIsFiniteAndPositive(navigationFrame) else {
+            XCTFail("Non-finite sheet navigation frame \(navigationFrame)")
+            return nil
+        }
+        if viewport.intersects(navigationFrame) {
+            let minY = max(viewport.minY, navigationFrame.maxY)
+            viewport = CGRect(x: viewport.minX, y: minY,
+                              width: viewport.width, height: viewport.maxY - minY)
+        }
+        if app.keyboards.count > 0 {
+            let keyboardFrame = app.keyboards.element.frame
+            guard layoutGeometryIsFiniteAndPositive(keyboardFrame) else {
+                XCTFail("Non-finite keyboard frame \(keyboardFrame)")
+                return nil
+            }
+            if viewport.intersects(keyboardFrame) {
+                viewport = CGRect(x: viewport.minX, y: viewport.minY,
+                                  width: viewport.width,
+                                  height: min(viewport.maxY, keyboardFrame.minY) - viewport.minY)
+            }
+        }
+        guard layoutGeometryIsFiniteAndPositive(viewport) else {
+            XCTFail("No usable layout viewport after clipping: \(viewport)")
+            return nil
+        }
+        return viewport
+    }
+
+    /// Taps one control inside the layout sheet's **scroll content** (the three
+    /// previews and their choices), scrolling it into the usable viewport first.
+    ///
+    /// The layout page stacks three previews vertically, so `layout.choose.focus` is a
+    /// normal scroll-away target: this performs bounded slow native drags in
+    /// `layout.scroll`'s own coordinate space, and only taps when the whole control is
+    /// inside the usable viewport and enabled/hittable. A target already inside the
+    /// viewport that still cannot be tapped fails with diagnostics instead of being
+    /// blind-tapped, and nothing is force-tapped by coordinates.
+    private func tapLayoutSheetContent(_ item: XCUIElement, in app: XCUIApplication) {
         XCTAssertTrue(item.waitForExistence(timeout: 30))
-        let sheetScroll = app.scrollViews.matching(identifier: "layout.scroll").firstMatch
-        XCTAssertTrue(sheetScroll.waitForExistence(timeout: 30))
+        let scroll = app.scrollViews.matching(identifier: "layout.scroll").firstMatch
+        XCTAssertTrue(scroll.waitForExistence(timeout: 30))
+
+        for _ in 0..<6 {
+            guard let viewport = layoutUsableViewport(in: app) else { return }
+            let target = item.frame
+            guard layoutGeometryIsFiniteAndPositive(target) else {
+                XCTFail("Non-finite target frame \(target) for \(item.identifier)")
+                return
+            }
+            if viewport.contains(target) {
+                guard item.isHittable else {
+                    attachFullAppScreenshot(app, named: "Stage06 layout target inside viewport but not hittable")
+                    XCTFail("\(item.identifier) is inside the usable viewport \(viewport) but not hittable: \(target)")
+                    return
+                }
+                XCTAssertTrue(item.waitUntilEnabledAndHittable(),
+                              "\(item.identifier) never became enabled and hittable")
+                item.tap()
+                return
+            }
+
+            let scrollFrame = scroll.frame
+            guard layoutGeometryIsFiniteAndPositive(scrollFrame) else {
+                XCTFail("Non-finite layout scroll frame \(scrollFrame)")
+                return
+            }
+            let downward = target.maxY > viewport.maxY
+            let overflow = downward ? target.maxY - viewport.maxY : viewport.minY - target.minY
+            let travel = min(viewport.height * 0.3, max(viewport.height * 0.08, overflow + viewport.height * 0.05))
+            let startY = downward ? viewport.maxY - viewport.height * 0.2 : viewport.minY + viewport.height * 0.2
+            let endY = downward ? max(viewport.minY + 4, startY - travel) : min(viewport.maxY - 4, startY + travel)
+            let normalizedX = (viewport.midX - scrollFrame.minX) / scrollFrame.width
+            let normalizedStartY = (startY - scrollFrame.minY) / scrollFrame.height
+            let normalizedEndY = (endY - scrollFrame.minY) / scrollFrame.height
+            guard (0...1).contains(normalizedX),
+                  (0...1).contains(normalizedStartY),
+                  (0...1).contains(normalizedEndY) else {
+                XCTFail("Layout drag endpoints are not inside layout.scroll: "
+                    + "x=\(normalizedX) startY=\(normalizedStartY) endY=\(normalizedEndY) "
+                    + "viewport=\(viewport) scroll=\(scrollFrame)")
+                return
+            }
+            let start = scroll.coordinate(withNormalizedOffset: CGVector(dx: normalizedX, dy: normalizedStartY))
+            let end = scroll.coordinate(withNormalizedOffset: CGVector(dx: normalizedX, dy: normalizedEndY))
+            start.press(forDuration: 0.12, thenDragTo: end,
+                        withVelocity: .slow, thenHoldForDuration: 0.2)
+        }
+        let viewport = layoutUsableViewport(in: app) ?? .zero
+        attachFullAppScreenshot(app, named: "Stage06 layout target never entered the viewport")
+        XCTFail("\(item.identifier) never entered the usable layout viewport: "
+            + "frame=\(item.frame) viewport=\(viewport) "
+            + "scroll=\(app.scrollViews.matching(identifier: "layout.scroll").firstMatch.frame)")
+    }
+
+    /// Taps one control that belongs to the layout sheet's own **navigation bar**
+    /// (Cancel/Apply). Those are toolbar actions, not scroll content: they must never be
+    /// required to enter the content viewport or be dragged into it.
+    ///
+    /// The control is resolved **inside the sheet's own bar** (`navigationBars["Layouts"]
+    /// .descendants(matching: .any)[identifier]`), so a same-identifier element elsewhere
+    /// in the app can never satisfy it. The exact `Layouts` identifier is the native
+    /// mapping of this sheet's real title — the same anchor Stage 04 verified — and the
+    /// element is matched by identifier only, not by accessibility type.
+    private func tapLayoutSheetToolbar(_ identifier: String, in app: XCUIApplication) {
+        let sheetNavigationBars = app.navigationBars.matching(identifier: "Layouts")
+        XCTAssertEqual(sheetNavigationBars.count, 1,
+                       "Expected exactly one Layouts sheet navigation bar, found \(sheetNavigationBars.count)")
+        let item = sheetNavigationBars.firstMatch
+            .descendants(matching: .any)
+            .matching(identifier: identifier)
+            .firstMatch
+        XCTAssertTrue(item.waitForExistence(timeout: 30),
+                      "\(identifier) is not owned by the layout sheet's own navigation bar")
         XCTAssertTrue(item.waitUntilEnabledAndHittable(),
-                      "\(item.identifier) must be usable inside the layout sheet")
+                      "\(identifier) must be usable in the layout sheet navigation bar")
         item.tap()
+    }
+
+    /// The Focus choice inside the layout sheet's scroll content: one real query by
+    /// identifier (any accessibility type). Waiting happens only where the control is
+    /// actually used, so a disappearance check cannot first wait for a re-appearance.
+    private func focusChoice(in app: XCUIApplication) -> XCUIElement {
+        element("layout.choose.focus", in: app)
+    }
+
+    /// The sheet's Apply toolbar action: one real query by identifier (any accessibility
+    /// type), without a pre-wait, so `.waitForDisappearance` observes the real
+    /// disappearance instead of timing out on an appearance that will not happen again.
+    private func layoutApply(in app: XCUIApplication) -> XCUIElement {
+        element("layout.apply", in: app)
     }
 
     /// Distinct imported thumbnails in the **editor's own order** (the AX tree order of
@@ -101,7 +253,7 @@ final class Stage06PhotoRolesUITests: XCTestCase {
         var attempts = 0
         while identifiers.count < count, attempts < 6 {
             let scrollView = app.scrollViews.element
-            guard isFinitePositive(scrollView.frame) else { break }
+            guard layoutGeometryIsFiniteAndPositive(scrollView.frame) else { break }
             scrollView.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.7))
                 .press(forDuration: 0.1,
                        thenDragTo: scrollView.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3)),
@@ -380,12 +532,13 @@ final class Stage06PhotoRolesUITests: XCTestCase {
         //    even though it is the second-imported photo, and applying twice must be
         //    stable: the same layer set, never a duplicate.
         tapEditor(element("editor.layouts", in: app), in: app)
-        XCTAssertTrue(app.buttons.matching(identifier: "layout.choose.focus").firstMatch.waitForExistence(timeout: 30))
+        XCTAssertTrue(focusChoice(in: app).waitForExistence(timeout: 30))
         XCTAssertTrue(element("layout.preview.focus", in: app).waitForExistence(timeout: 30))
         attachFullAppScreenshot(app, named: "Stage06 roles saved choice after restart")
-        tapLayoutSheet(app.buttons.matching(identifier: "layout.choose.focus").firstMatch, in: app)
-        tapLayoutSheet(app.buttons["layout.apply"], in: app)
-        XCTAssertTrue(app.buttons["layout.apply"].waitForDisappearance(timeout: 60))
+        tapLayoutSheetContent(focusChoice(in: app), in: app)
+        tapLayoutSheetToolbar("layout.apply", in: app)
+        XCTAssertTrue(layoutApply(in: app).waitForDisappearance(timeout: 60),
+                      "Apply must dismiss the layout sheet after a real apply")
 
         let afterFirstApply = layerSnapshot(in: app)
         XCTAssertEqual(afterFirstApply.count, 2, "Focus must not invent or duplicate layers")
@@ -409,9 +562,10 @@ final class Stage06PhotoRolesUITests: XCTestCase {
                           "the hero cell and the remaining cells use different scales")
 
         tapEditor(element("editor.layouts", in: app), in: app)
-        tapLayoutSheet(app.buttons.matching(identifier: "layout.choose.focus").firstMatch, in: app)
-        tapLayoutSheet(app.buttons["layout.apply"], in: app)
-        XCTAssertTrue(app.buttons["layout.apply"].waitForDisappearance(timeout: 60))
+        tapLayoutSheetContent(focusChoice(in: app), in: app)
+        tapLayoutSheetToolbar("layout.apply", in: app)
+        XCTAssertTrue(layoutApply(in: app).waitForDisappearance(timeout: 60),
+                      "Apply must dismiss the layout sheet after a real apply")
         XCTAssertEqual(layerSnapshot(in: app), afterFirstApply,
                        "the same preset applied twice must not add, drop or rename a layer")
         XCTAssertEqual(transform(ofLayer: secondImported, in: app).y, primaryTransform.y, accuracy: 0.5,
