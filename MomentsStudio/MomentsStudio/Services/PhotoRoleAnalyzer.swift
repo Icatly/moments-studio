@@ -236,11 +236,13 @@ enum PhotoRoleAnalyzer {
         try perform([classifyRequest, faceRequest], on: thumbnail)
         try checkCancellation()
 
-        let classifications = (classifyRequest.results ?? []).compactMap { observation -> (String, Double)? in
-            guard let classification = observation as? VNClassificationObservation else { return nil }
-            return (classification.identifier, Double(classification.confidence))
+        // The request results are already typed (`[VNClassificationObservation]` /
+        // `[VNFaceObservation]`), so no conditional cast is needed — and none is written,
+        // because a cast that always succeeds is noise rather than a check.
+        let classifications = (classifyRequest.results ?? []).map { classification in
+            (classification.identifier, Double(classification.confidence))
         }
-        let faces = (faceRequest.results ?? []).compactMap { $0 as? VNFaceObservation }
+        let faces = faceRequest.results ?? []
 
         return PhotoRoleObservation(
             assetID: assetID,

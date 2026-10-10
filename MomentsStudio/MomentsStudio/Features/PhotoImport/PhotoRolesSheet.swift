@@ -380,7 +380,7 @@ struct PhotoRolesSheet: View {
     @ViewBuilder
     private func sourceLine(_ photo: ImportedPhoto) -> some View {
         let stored = capturedRoles[photo.id] ?? nil
-        let suggestion = suggestions[photo.id].role
+        let suggestion = suggestions[photo.id]?.role
         switch PhotoRoleDraft.value(in: draft, for: photo.id) {
         case .role(let role):
             Text("Your choice: \(role.title). Saved as manual when you tap Save choices.")
@@ -532,7 +532,7 @@ struct PhotoRolesSheet: View {
         if !draft.isEmpty { return true }
         return photos.contains { photo in
             if capturedRoles[photo.id] ?? nil != nil { return true }
-            return suggestions[photo.id].role != nil
+            return suggestions[photo.id]?.role != nil
         }
     }
 

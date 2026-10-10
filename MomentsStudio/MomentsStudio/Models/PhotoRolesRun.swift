@@ -39,6 +39,12 @@ struct PhotoRolesRun: Equatable {
     /// Invalidates the run in place: every previous value is dropped and the old
     /// token stops matching. Called on recompute and on close, before any new task
     /// exists, so an in-flight request can never write into newer state.
+    ///
+    /// `@discardableResult`: the sheet's "invalidate now" calls are statements, and
+    /// marking this one run's own API keeps those calls warning-free without touching
+    /// the frozen Stage 05 `PhotoAnalysisRun` (whose unused results are recorded known
+    /// warnings).
+    @discardableResult
     mutating func invalidate() -> UUID {
         token = UUID()
         entries = [:]

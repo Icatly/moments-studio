@@ -535,7 +535,7 @@ jobs:
             echo '::warning::No result bundle was produced; the test command failed before writing results.'
           fi
 
-      - name: Assert the Stage 06 176 + 10 = 186 test contract
+      - name: Assert the Stage 06 245 + 11 = 256 test contract
         if: always()
         shell: bash
         run: |

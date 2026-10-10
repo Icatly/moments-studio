@@ -121,7 +121,10 @@ enum PhotoRolePolicy {
         for candidate in ordered {
             if candidate.manualNonParticipating {
                 // The user said this photo is not for layout: no automatic opinion.
-                suggestions[candidate.assetID] = .none
+                // Spelled out because a bare `.none` here would be read as
+                // `Optional<Suggestion>.none` (which removes the key) instead of the
+                // `Suggestion.none` value this policy means.
+                suggestions[candidate.assetID] = Suggestion.none
                 continue
             }
             if let manualPrimary, candidate.assetID == manualPrimary.assetID {

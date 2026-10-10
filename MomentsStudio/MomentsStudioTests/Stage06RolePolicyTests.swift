@@ -28,8 +28,15 @@ final class Stage06RolePolicyTests: XCTestCase {
         )
     }
 
+    /// Convenience reader for tests that only care about the *value*.
+    ///
+    /// The fallback is **not** an existence check: `outcome.suggestions[id] ?? X`
+    /// returns the same value for "the dictionary holds `X`" and "the key is absent",
+    /// so this helper proves nothing about whether the policy actually stored a
+    /// `Suggestion.none` entry. Tests that need that distinction assert on the raw
+    /// subscript (see `testManualNonParticipatingPhotosAreNeverAutoAssigned`).
     private func role(_ outcome: PhotoRolePolicy.Outcome, _ id: UUID) -> PhotoRolePolicy.Suggestion {
-        outcome.suggestions[id] ?? .none
+        outcome.suggestions[id] ?? PhotoRolePolicy.Suggestion.none
     }
 
     // MARK: - One primary
@@ -73,6 +80,16 @@ final class Stage06RolePolicyTests: XCTestCase {
         XCTAssertEqual(role(outcome, excluded), PhotoRolePolicy.Suggestion.none)
         XCTAssertEqual(role(outcome, collage), PhotoRolePolicy.Suggestion.none)
         XCTAssertEqual(role(outcome, plain), .role(.primary))
+
+        // The two assertions above read through a helper that falls back to the same
+        // value, so they cannot tell "stored Suggestion.none" from "key missing".
+        // The raw subscripts pin the real dictionary semantics: the policy stores the
+        // `Suggestion.none` **value** for a manually excluded/collage photo (rather
+        // than dropping the key, which the ambiguous `.none` spelling would have done).
+        XCTAssertEqual(outcome.suggestions[excluded], .some(PhotoRolePolicy.Suggestion.none),
+                       "a non-participating photo must carry an explicit Suggestion.none entry")
+        XCTAssertEqual(outcome.suggestions[collage], .some(PhotoRolePolicy.Suggestion.none),
+                       "a collage-material photo must carry an explicit Suggestion.none entry")
     }
 
     // MARK: - Limited but successful sampling

@@ -580,7 +580,9 @@ final class PhotoImportModel {
 
     /// The exact photo identity the sheet must describe before it may save.
     func roleSnapshot(for projectID: UUID) -> [UUID: String] {
-        guard let project = store.openProject(id: projectID) else { return [:] }
+        // The project's existence is what makes `store.photos` meaningful, so the check
+        // is a guard without binding a value that is never used.
+        guard store.openProject(id: projectID) != nil else { return [:] }
         return Dictionary(uniqueKeysWithValues: store.photos(for: projectID).map { photo in
             (photo.asset.id, PhotoLibrary.roleSnapshot(of: photo))
         })

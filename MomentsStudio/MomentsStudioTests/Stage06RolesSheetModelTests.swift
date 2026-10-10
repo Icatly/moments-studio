@@ -152,7 +152,7 @@ final class Stage06RolesSheetModelTests: XCTestCase {
         let captured = captured([stored])
         XCTAssertEqual(PhotoRolesSheet.advice(for: stored, draft: [stored.id: .role(.supporting)],
                                               capturedRoles: captured, suggestion: .role(.primary)),
-                       .none)
+                       PhotoRolesSheet.Advice.none)
         XCTAssertEqual(PhotoRolesSheet.advice(for: stored, draft: [stored.id: .automatic],
                                               capturedRoles: captured, suggestion: .role(.primary)),
                        .suggestion(.primary))
