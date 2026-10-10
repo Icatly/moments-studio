@@ -24,6 +24,13 @@ struct ImportedPhoto: Identifiable, Codable, Equatable, Hashable {
     var orientation: Int
     /// UTI ImageIO detected for the received file, e.g. `public.jpeg`.
     var contentType: String
+    /// The saved Stage 06 role choice, or `nil` when the user has saved nothing.
+    ///
+    /// Additive and optional by contract: a package without the key decodes to
+    /// `nil`, and a `nil` value is **not** encoded at all, so a project that never
+    /// used Photo roles keeps byte-compatible schema 2 output. The value is
+    /// validated on decode and by `ProjectPackage.validate` before every write.
+    var roleChoice: PhotoRoleChoice?
 
     /// Photo identity is its asset identity.
     var id: UUID { asset.id }
@@ -44,6 +51,8 @@ struct ImportedPhoto: Identifiable, Codable, Equatable, Hashable {
         case pixelHeight
         case orientation
         case contentType
+        /// Stage 06 additive key. Absent, `null` and `nil` all mean "no choice".
+        case roleChoice
     }
 
     init(
@@ -53,7 +62,8 @@ struct ImportedPhoto: Identifiable, Codable, Equatable, Hashable {
         pixelWidth: Int,
         pixelHeight: Int,
         orientation: Int,
-        contentType: String
+        contentType: String,
+        roleChoice: PhotoRoleChoice? = nil
     ) {
         self.asset = asset
         self.thumbnailReference = thumbnailReference
@@ -62,5 +72,39 @@ struct ImportedPhoto: Identifiable, Codable, Equatable, Hashable {
         self.pixelHeight = pixelHeight
         self.orientation = orientation
         self.contentType = contentType
+        self.roleChoice = roleChoice
+    }
+
+    /// Decodes the frozen Stage 01/02/03 shape and the additive Stage 06 key.
+    ///
+    /// An absent key, an explicit `null` and a corrupt/unknown `roleChoice` object
+    /// behave differently on purpose: absent or `null` is "no saved choice", while
+    /// an unknown role/source or an impossible automatic choice throws instead of
+    /// being silently dropped or guessed.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.asset = try container.decode(Asset.self, forKey: .asset)
+        self.thumbnailReference = try container.decode(String.self, forKey: .thumbnailReference)
+        self.previewReference = try container.decode(String.self, forKey: .previewReference)
+        self.pixelWidth = try container.decode(Int.self, forKey: .pixelWidth)
+        self.pixelHeight = try container.decode(Int.self, forKey: .pixelHeight)
+        self.orientation = try container.decode(Int.self, forKey: .orientation)
+        self.contentType = try container.decode(String.self, forKey: .contentType)
+        self.roleChoice = try container.decodeIfPresent(PhotoRoleChoice.self, forKey: .roleChoice)
+    }
+
+    /// Writes the Stage 01/02/03 keys exactly as before. `roleChoice` is only
+    /// emitted when a choice is actually saved, so an untouched project keeps its
+    /// previous schema 2 bytes.
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(asset, forKey: .asset)
+        try container.encode(thumbnailReference, forKey: .thumbnailReference)
+        try container.encode(previewReference, forKey: .previewReference)
+        try container.encode(pixelWidth, forKey: .pixelWidth)
+        try container.encode(pixelHeight, forKey: .pixelHeight)
+        try container.encode(orientation, forKey: .orientation)
+        try container.encode(contentType, forKey: .contentType)
+        try container.encodeIfPresent(roleChoice, forKey: .roleChoice)
     }
 }

@@ -556,6 +556,112 @@ final class PhotoImportModel {
         return try await library.analyzePhoto(projectID: projectID, assetID: assetID)
     }
 
+    // MARK: - Photo roles (Stage 06)
+
+    /// What happened to one role-save request.
+    enum RoleSaveOutcome: Equatable {
+        case saved
+        case rejected(String)
+        case saveFailed(String)
+        case busy
+    }
+
+    /// Read-only bridge for the Photo roles sheet.
+    ///
+    /// Like the Photo summary bridge it takes no part in the mutation gate and
+    /// writes nothing: the Vision pass and the Stage 05 statistics happen inside
+    /// the `PhotoLibrary` actor and only the value result crosses back to the UI.
+    func observeRole(projectID: UUID, assetID: UUID) async throws -> PhotoRoleObservation {
+        guard store.openProject(id: projectID) != nil else {
+            throw PhotoRoleObservationFailure.missing
+        }
+        return try await library.observeRole(projectID: projectID, assetID: assetID)
+    }
+
+    /// The exact photo identity the sheet must describe before it may save.
+    func roleSnapshot(for projectID: UUID) -> [UUID: String] {
+        guard let project = store.openProject(id: projectID) else { return [:] }
+        return Dictionary(uniqueKeysWithValues: store.photos(for: projectID).map { photo in
+            (photo.asset.id, PhotoLibrary.roleSnapshot(of: photo))
+        })
+    }
+
+    /// The single entry point for saving Photo roles.
+    ///
+    /// It reuses the **same** `mutationToken`, `isSavingEdits` flag and atomic
+    /// manifest writer as import, removal and canvas edits, so it can never run
+    /// beside another mutation, and it refuses while a canvas gesture owns the gate
+    /// or an unresolved canvas draft exists. `choices` is a **total** map for the
+    /// snapshot the sheet was showing: an absent asset is cleared, a value is saved.
+    /// The request also carries the photo snapshot (metadata **and** the currently
+    /// saved choice); the library compares it with the committed package and refuses
+    /// a stale request instead of writing the choices onto a changed project — which
+    /// is what stops an old sheet from overwriting a newer manual selection. An
+    /// impossible draft is a rejection; a real write failure leaves the store and
+    /// manifest untouched and reports `saveFailed`, so the sheet can keep its draft
+    /// and retry or cancel.
+    @discardableResult
+    func saveRoleChoices(
+        projectID: UUID,
+        choices: [UUID: PhotoRoleChoice],
+        expecting snapshot: [UUID: String]
+    ) async -> RoleSaveOutcome {
+        guard !isCanvasGestureActive else { return .busy }
+        guard failedDraft(for: projectID) == nil else {
+            return .rejected("Retry or discard this project's unsaved edit first.")
+        }
+        guard store.openProject(id: projectID) != nil else {
+            return .rejected("This project is not available in the current session.")
+        }
+        guard mutationToken == nil, importingProjectID == nil, !isSavingEdits else { return .busy }
+        guard !snapshot.isEmpty else { return .rejected("Reload Photo roles and try again.") }
+
+        let token = UUID()
+        mutationToken = token
+        isSavingEdits = true
+        defer {
+            if mutationToken == token {
+                mutationToken = nil
+                isSavingEdits = false
+            }
+        }
+
+        do {
+            let result = try await library.saveRoleChoices(
+                projectID: projectID,
+                choices: choices,
+                expecting: snapshot,
+                at: Date()
+            )
+            guard mutationToken == token else { return .busy }
+            store.apply(result.package)
+            appendWarnings(result.warnings)
+            return .saved
+        } catch let error as PhotoRoleSaveError {
+            return .rejected(Self.message(for: error))
+        } catch is CancellationError {
+            return .rejected("Saving was interrupted. Your choices are still here — try again.")
+        } catch {
+            return .saveFailed("Not saved: \(Self.message(for: error))")
+        }
+    }
+
+    /// User-facing wording for the role-save rejections. Stale data asks for a
+    /// reload instead of silently writing a choice that no longer describes this
+    /// package.
+    private static func message(for error: PhotoRoleSaveError) -> String {
+        switch error {
+        case .projectMissing:
+            return "This project is not available in the current session."
+        case .photosChanged:
+            return "These photos changed. Reload Photo roles and choose again."
+        case .impossible:
+            return "Those roles cannot be saved together."
+        case .busy:
+            return "Another photo operation is still running. Try again in a moment."
+        }
+    }
+
     // MARK: - Images
 
     /// Loads one generated derivative for display. Returns `nil` (and records a

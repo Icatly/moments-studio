@@ -22,6 +22,8 @@ enum SheetRoute: Identifiable, Hashable {
     case photoPreview(projectID: UUID, assetID: UUID)
     case collageLayout(projectID: UUID)
     case photoAnalysis(projectID: UUID)
+    /// Stage 06: optional per-photo role suggestion and saved choices.
+    case photoRoles(projectID: UUID)
 
     var id: Self { self }
 }

@@ -42,6 +42,18 @@ struct EditorPlaceholderView: View {
                 .accessibilityIdentifier("editor.done")
                 .accessibilityHint("Saves this project and returns to Home")
             }
+            // Stage 06: the optional Photo roles entry lives in the navigation bar,
+            // not in the import tool area, so the primary Import Photos entry keeps
+            // its geometry (adding a row there pushed it out of the window before).
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Photo roles") {
+                    navigation.present(.photoRoles(projectID: projectID))
+                }
+                .frame(minHeight: Layout.minimumTapTarget)
+                .disabled(isEditingDisabled || !photoImport.isReady || projectStore.photos(for: projectID).isEmpty)
+                .accessibilityIdentifier("editor.photoRoles")
+                .accessibilityHint("Suggests a role for each photo and saves your choices")
+            }
         }
         .onDisappear {
             // Leaving the editor stops the remaining work of a running batch;

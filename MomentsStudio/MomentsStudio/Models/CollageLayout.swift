@@ -42,6 +42,10 @@ enum CollageLayoutError: Error, Equatable, LocalizedError {
     case invalidPhoto(UUID)
     case invalidLayers
     case noPhotos
+    /// Photos exist, but every one of them is saved as collage material or "not for
+    /// layout", so there is nothing a layout may arrange. This is about the saved
+    /// roles — not about importing photos the user already has.
+    case noEligiblePhotos
     case noEditableLayers
     case tooManyLayers
     case cannotFit
@@ -52,6 +56,7 @@ enum CollageLayoutError: Error, Equatable, LocalizedError {
         case .invalidPhoto: return "A photo needed for this layout is missing or has an unusable size."
         case .invalidLayers: return "This canvas has invalid or duplicate layers."
         case .noPhotos: return "Import photos before choosing a layout."
+        case .noEligiblePhotos: return "Every photo is saved as collage material or not for layout. Set at least one photo to Primary or Supporting in Photo roles, then choose a layout."
         case .noEditableLayers: return "There are no visible, unlocked photo layers to arrange."
         case .tooManyLayers: return "A layout can use at most \(ProjectPackage.layerLimit) layers."
         case .cannotFit: return "These photos cannot fit this layout within the editing limits. Try another layout."
@@ -99,9 +104,20 @@ enum CollageLayout {
         }
 
         var result = document
+        // Stage 06: only photos that take part in the layout are ever added. A
+        // decision the user saved as collage material or "not for layout" is kept
+        // in the library and on the canvas, and an untouched project (every
+        // `roleChoice` nil) behaves exactly as before.
+        let participating = PhotoRoleLayoutPlan.participatingPhotoIDs(photos)
+        let layoutPhotos = photos.filter { participating.contains($0.id) }
         if result.layers.isEmpty {
-            guard !photos.isEmpty else { throw CollageLayoutError.noPhotos }
-            for photo in photos {
+            guard !layoutPhotos.isEmpty else {
+                // Distinguish "no photos at all" from "photos exist but the user saved
+                // every one of them as not for layout": the second case must tell the
+                // user to change a role, not to import photos they already have.
+                throw photos.isEmpty ? CollageLayoutError.noPhotos : CollageLayoutError.noEligiblePhotos
+            }
+            for photo in layoutPhotos {
                 let display = photo.displayPixelSize
                 guard let baseSize = CanvasGeometry.fittedBaseSize(
                     displayWidth: display.width, displayHeight: display.height, canvasSize: size
@@ -119,10 +135,25 @@ enum CollageLayout {
                 throw CollageLayoutError.invalidPhoto(layer.assetID ?? layer.id)
             }
         }
-        let movable = CanvasGeometry.orderedBackToFront(result.layers).filter {
-            $0.isBoundToAsset && !$0.isHidden && !$0.isLocked
+        // Collage material and excluded photos keep their current transform, order,
+        // lock and visibility: they are simply not part of the movable set. Only
+        // Focus gives the saved primary photo the computed hero position; Grid and
+        // Offset keep their frozen Stage 04 order (see `arrangementOrder`).
+        let movable = PhotoRoleLayoutPlan.arrangementOrder(
+            CanvasGeometry.orderedBackToFront(result.layers).filter {
+                $0.isBoundToAsset && !$0.isHidden && !$0.isLocked
+                    && (($0.assetID.map { participating.contains($0) }) ?? false)
+            },
+            preset: preset,
+            primaryAssetID: PhotoRoleLayoutPlan.primaryPhotoID(photos)
+        )
+        guard !movable.isEmpty else {
+            // A canvas whose only layers belong to photos the user saved as collage
+            // material / not for layout is a role problem, not "nothing editable".
+            throw (photos.isEmpty || !participating.isEmpty)
+                ? CollageLayoutError.noEditableLayers
+                : CollageLayoutError.noEligiblePhotos
         }
-        guard !movable.isEmpty else { throw CollageLayoutError.noEditableLayers }
         guard movable.allSatisfy({ layer in
             guard let base = layer.baseSize else { return false }
             return base.width.isFinite && base.height.isFinite && base.width > 0 && base.height > 0

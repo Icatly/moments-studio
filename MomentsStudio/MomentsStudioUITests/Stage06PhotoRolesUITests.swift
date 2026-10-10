@@ -1,0 +1,383 @@
+import XCTest
+
+/// One real end-to-end path through the optional Photo roles sheet.
+///
+/// It imports two synthetic photos through the production picker flow, opens the
+/// sheet from the real editor entry and waits for the real local evidence pass, then
+/// proves actual behaviour with real values and real transforms:
+/// * a saved manual choice and its **source** are shown when the sheet reopens;
+/// * a draft change followed by Cancel leaves the stored choice alone;
+/// * promoting another photo while an earlier manual primary exists demotes it;
+/// * the saved choice survives an app restart;
+/// * the real Focus preview/Apply puts the saved primary's layer in the hero cell
+///   even when that photo is **not** the first one, and applying twice does not add,
+///   drop or reshape a layer.
+///
+/// It imports only `XCTest`: the UI target never links the app module, and the shared
+/// `XCTestCase` helpers in `UITestSupport.swift` provide every locator rule.
+@MainActor
+final class Stage06PhotoRolesUITests: XCTestCase {
+    override func setUp() {
+        super.setUp()
+        continueAfterFailure = false
+    }
+
+    // MARK: - Local helpers (this class only)
+
+    /// Waits until an element's label reaches an exact value.
+    private func waitForLabel(_ item: XCUIElement, _ label: String, timeout: TimeInterval = 45) -> Bool {
+        let expectation = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "label == %@", label), object: item
+        )
+        return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
+    }
+
+    /// Taps one editor control.
+    ///
+    /// The element decides: an already-usable control is tapped directly, and only a
+    /// control that cannot be tapped goes through the shared editor-scroll gate. That
+    /// helper is **never** used for the layout sheet's own controls, and no whole-app
+    /// navigation assumption is made.
+    private func tapEditor(_ item: XCUIElement, in app: XCUIApplication) {
+        XCTAssertTrue(item.waitForExistence(timeout: 30))
+        if !item.isHittable {
+            XCTAssertTrue(scrollEditorToMakeHittable(item, in: app),
+                          "\(item.identifier) never became reachable in the editor")
+        }
+        XCTAssertTrue(item.waitUntilEnabledAndHittable())
+        item.tap()
+    }
+
+    /// Taps one control that belongs to the **layout sheet**, checked inside the
+    /// sheet's own identified scroll container.
+    private func tapLayoutSheet(_ item: XCUIElement, in app: XCUIApplication) {
+        XCTAssertTrue(item.waitForExistence(timeout: 30))
+        let sheetScroll = app.scrollViews.matching(identifier: "layout.scroll").firstMatch
+        XCTAssertTrue(sheetScroll.waitForExistence(timeout: 30))
+        XCTAssertTrue(item.waitUntilEnabledAndHittable(),
+                      "\(item.identifier) must be usable inside the layout sheet")
+        item.tap()
+    }
+
+    /// Distinct imported thumbnails in the **editor's own order** (the AX tree order of
+    /// `editor.photo.*` buttons), which is the import order shown to the user.
+    ///
+    /// The shared `importedThumbnailIdentifiers` returns a UUID-sorted set, so it is
+    /// used only to prove the count; the ordered list comes from the real query.
+    private func orderedThumbnailIdentifiers(in app: XCUIApplication) -> [String] {
+        var ordered: [String] = []
+        var seen = Set<String>()
+        for identifier in importedThumbnailIdentifiers(in: app) {
+            if seen.insert(identifier).inserted { ordered.append(identifier) }
+        }
+        // The shared helper sorts by UUID; re-read the live query for the real order.
+        let query = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "editor.photo."))
+        var live: [String] = []
+        var liveSeen = Set<String>()
+        for index in 0..<query.count {
+            let identifier = query.element(boundBy: index).identifier
+            guard identifier.hasPrefix("editor.photo."), liveSeen.insert(identifier).inserted else { continue }
+            live.append(identifier)
+        }
+        return live.isEmpty ? ordered : live
+    }
+
+    /// Waits until the real lazy editor gallery has exposed `count` distinct photo
+    /// thumbnails, scrolling the unique editor container with bounded slow drags.
+    ///
+    /// The shared `prepareEditorGallery` freezes its expectation to exactly one photo
+    /// (the already-verified Stage02 boundary), so this case cannot reuse it as-is: it
+    /// first scrolls the committed count into the viewport (which is what makes the
+    /// grid instantiate) and then waits for both identifiers.
+    private func instantiateGallery(expecting count: Int, in app: XCUIApplication) -> [String] {
+        let anchor = element("editor.photoCount", in: app)
+        XCTAssertTrue(anchor.waitForExistence(timeout: 30))
+        _ = scrollEditorToMakeHittable(anchor, in: app)
+        let expected = "\(count) of 20 photos"
+        XCTAssertTrue(waitForLabel(anchor, expected),
+                      "the editor count never reached \(expected): \(anchor.label)")
+
+        var identifiers = orderedThumbnailIdentifiers(in: app)
+        var attempts = 0
+        while identifiers.count < count, attempts < 6 {
+            let scrollView = app.scrollViews.element
+            guard isFinitePositive(scrollView.frame) else { break }
+            scrollView.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.7))
+                .press(forDuration: 0.1,
+                       thenDragTo: scrollView.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3)),
+                       withVelocity: .slow, thenHoldForDuration: 0.2)
+            identifiers = orderedThumbnailIdentifiers(in: app)
+            attempts += 1
+        }
+        XCTAssertEqual(identifiers.count, count,
+                       "the lazy gallery never exposed \(count) thumbnails: \(identifiers)")
+        return identifiers
+    }
+
+    private func assetID(_ identifier: String) -> UUID? {
+        UUID(uuidString: String(identifier.dropFirst("editor.photo.".count)))
+    }
+
+    private func roleOption(_ title: String, in app: XCUIApplication) -> XCUIElement {
+        app.buttons.matching(NSPredicate(format: "label == %@", title)).firstMatch
+    }
+
+    private func choose(_ role: String, for assetID: UUID, in app: XCUIApplication) {
+        let picker = element("roles.picker.\(assetID.uuidString)", in: app)
+        XCTAssertTrue(picker.waitForExistence(timeout: 30))
+        picker.tap()
+        let option = roleOption(role, in: app)
+        XCTAssertTrue(option.waitUntilEnabledAndHittable(), "role option \(role) never became usable")
+        option.tap()
+    }
+
+    /// The currently shown role of one row's picker, or `nil` for Automatic.
+    private func shownRole(_ assetID: UUID, in app: XCUIApplication) -> String? {
+        let picker = element("roles.picker.\(assetID.uuidString)", in: app)
+        let value = (picker.value as? String) ?? ""
+        let label = picker.label
+        for candidate in [value, label] where !candidate.isEmpty && candidate != "Role" {
+            return candidate
+        }
+        return picker.buttons["Automatic"].exists ? "Automatic" : nil
+    }
+
+    /// The real source text a row currently shows.
+    private func sourceText(_ assetID: UUID, in app: XCUIApplication) -> String {
+        let label = app.staticTexts.matching(
+            NSPredicate(format: "identifier == %@", "roles.source.\(assetID.uuidString)")
+        ).firstMatch
+        XCTAssertTrue(label.waitForExistence(timeout: 30), "row \(assetID) shows no source line")
+        return label.label
+    }
+
+    private func waitForChecked(_ app: XCUIApplication, count: Int) {
+        let status = element("roles.status", in: app)
+        XCTAssertTrue(status.waitForExistence(timeout: 30))
+        let ready = NSPredicate(format: "label BEGINSWITH %@", "Checked \(count) of \(count)")
+        XCTAssertEqual(
+            XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: ready, object: status)], timeout: 90),
+            .completed,
+            "the role pass did not finish: \(status.label)"
+        )
+    }
+
+    private func openRoles(_ app: XCUIApplication) {
+        tapEditor(element("editor.photoRoles", in: app), in: app)
+        XCTAssertTrue(element("roles.scroll", in: app).waitForExistence(timeout: 30))
+    }
+
+    private func closeRolesWithCancel(_ app: XCUIApplication) {
+        app.buttons["roles.cancel"].tap()
+        XCTAssertTrue(element("roles.scroll", in: app).waitForDisappearance(timeout: 30))
+    }
+
+    private func saveChoices(_ app: XCUIApplication) {
+        let save = app.buttons["roles.save"]
+        XCTAssertTrue(save.waitUntilEnabledAndHittable())
+        save.tap()
+        XCTAssertTrue(app.buttons["roles.save"].waitForDisappearance(timeout: 60),
+                      "a successful save closes the sheet")
+    }
+
+    private func layerSnapshot(in app: XCUIApplication) -> [String] {
+        let query = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "editor.selectLayer."))
+        return (0..<query.count).map { query.element(boundBy: $0).identifier }.sorted()
+    }
+
+    /// Selects one layer by its real layer identity and reads the editor's own
+    /// transform text (`x 12, y 34, 56%, 7°`).
+    ///
+    /// An empty-canvas layout reuses the photo identity as the layer identity, so the
+    /// saved primary photo's layer is addressable by that identity — no name
+    /// inference and no dependence on the UUID-sorted shared helper.
+    private func transform(ofLayer layerID: UUID, in app: XCUIApplication) -> (x: Double, y: Double, scale: Double) {
+        let row = element("editor.selectLayer.\(layerID.uuidString)", in: app)
+        XCTAssertTrue(row.waitForExistence(timeout: 30), "the layer row for \(layerID) is missing")
+        tapEditor(row, in: app)
+        let text = element("editor.layerTransform", in: app)
+        XCTAssertTrue(text.waitForExistence(timeout: 30))
+        return parseTransform(text.label)
+    }
+
+    /// Parses `x %.0f, y %.0f, %.0f%%, %.0f°`.
+    private func parseTransform(_ label: String) -> (x: Double, y: Double, scale: Double) {
+        let pattern = #"x\s*(-?\d+(?:\.\d+)?),\s*y\s*(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)%"#
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: label, range: NSRange(label.startIndex..., in: label)),
+              match.numberOfRanges == 4,
+              let xRange = Range(match.range(at: 1), in: label),
+              let yRange = Range(match.range(at: 2), in: label),
+              let scaleRange = Range(match.range(at: 3), in: label),
+              let x = Double(label[xRange]),
+              let y = Double(label[yRange]),
+              let scale = Double(label[scaleRange]) else {
+            XCTFail("the editor transform text is not the expected shape: '\(label)'")
+            return (0, 0, 0)
+        }
+        return (x, y, scale)
+    }
+
+    // MARK: - The path
+
+    func testRolesSheetSavesManualChoiceSurvivesRestartAndFocusUsesIt() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        let create = element("home.createProject", in: app)
+        XCTAssertTrue(create.waitUntilEnabledAndHittable())
+        let beforeProjects = homeProjectIdentifiers(in: app)
+        create.tap()
+        XCTAssertTrue(app.otherElements["editor.canvas"].waitForExistence(timeout: 45))
+        let back = editorBackButton(in: app)
+        XCTAssertTrue(back.waitUntilEnabledAndHittable())
+        back.tap()
+        XCTAssertTrue(create.waitUntilEnabledAndHittable())
+        let newProjects = homeProjectIdentifiers(in: app).subtracting(beforeProjects)
+        XCTAssertEqual(newProjects.count, 1)
+        let projectID = try XCTUnwrap(newProjects.first)
+        let row = element(projectID, in: app)
+        XCTAssertTrue(row.waitUntilEnabledAndHittable())
+        row.tap()
+
+        // Two photos, so a role choice can actually change the composition. Each newly
+        // imported asset identity is captured as it appears, which is the real import
+        // order (the shared helper's set is UUID-sorted).
+        var importOrder: [UUID] = []
+        for (index, expected) in ["1 of 20 photos", "2 of 20 photos"].enumerated() {
+            tapEditor(element("editor.importPhotos", in: app), in: app)
+            XCTAssertTrue(waitForPickerToOpen(in: app))
+            let selection = selectFirstPhotoCell(in: app, session: "stage06 roles import \(index)")
+            XCTAssertTrue(selection.succeeded, selection.diagnostic)
+            let confirmation = tapPickerAddButton(in: app)
+            XCTAssertTrue(confirmation.succeeded, confirmation.diagnostic)
+            XCTAssertTrue(waitForLabel(element("editor.photoCount", in: app), expected))
+            let identifiers = instantiateGallery(expecting: index + 1, in: app)
+            let assets = identifiers.compactMap(assetID)
+            importOrder = assets
+        }
+        XCTAssertEqual(importOrder.count, 2, "both imported photos must be listed in import order")
+        let firstImported = importOrder[0]
+        let secondImported = importOrder[1]
+        XCTAssertNotEqual(firstImported, secondImported)
+
+        // 1. Save the SECOND-imported photo as the manual primary first, so promoting
+        //    the first-imported one later has to collide with a saved manual primary.
+        openRoles(app)
+        waitForChecked(app, count: 2)
+        choose("Primary photo", for: secondImported, in: app)
+        XCTAssertEqual(shownRole(secondImported, in: app), "Primary photo")
+        XCTAssertTrue(sourceText(secondImported, in: app).hasPrefix("Your choice:"),
+                      "an explicit pick must display its manual source")
+        saveChoices(app)
+
+        // 2. Reopening shows the stored choice and the real stored source.
+        openRoles(app)
+        waitForChecked(app, count: 2)
+        XCTAssertEqual(shownRole(secondImported, in: app), "Primary photo")
+        XCTAssertTrue(sourceText(secondImported, in: app).contains("Saved earlier as your choice"),
+                      "a stored manual choice must display its manual source: \(sourceText(secondImported, in: app))")
+
+        // 3. Modify a draft and Cancel: the stored choice must be unchanged.
+        choose("Supporting photo", for: secondImported, in: app)
+        closeRolesWithCancel(app)
+        openRoles(app)
+        waitForChecked(app, count: 2)
+        XCTAssertEqual(shownRole(secondImported, in: app), "Primary photo",
+                       "Cancel must not change the saved choice")
+        XCTAssertTrue(sourceText(secondImported, in: app).contains("Saved earlier as your choice"))
+
+        // 4. Promote the FIRST-imported photo directly while the second still has a
+        //    saved manual primary: that primary must be demoted, so one primary is kept.
+        choose("Primary photo", for: firstImported, in: app)
+        saveChoices(app)
+        openRoles(app)
+        waitForChecked(app, count: 2)
+        XCTAssertEqual(shownRole(firstImported, in: app), "Primary photo")
+        XCTAssertEqual(shownRole(secondImported, in: app), "Supporting photo",
+                       "the previously saved manual primary must be demoted, not kept as a second primary")
+        XCTAssertTrue(sourceText(secondImported, in: app).contains("Saved earlier as your choice"),
+                      "the demotion is stored as the user's own manual supporting choice")
+
+        // 5. Explicit Automatic must really clear the stored role and its manual source.
+        choose("Automatic", for: firstImported, in: app)
+        saveChoices(app)
+        openRoles(app)
+        waitForChecked(app, count: 2)
+        XCTAssertFalse(sourceText(firstImported, in: app).contains("Saved earlier as your choice"),
+                       "Automatic must clear the saved manual role, not keep its manual source")
+
+        // 6. Save the SECOND-imported photo as the primary again and keep it across a
+        //    restart, so the Focus check below is about a photo that is NOT first.
+        choose("Primary photo", for: secondImported, in: app)
+        saveChoices(app)
+
+        app.terminate()
+        app.launch()
+        XCTAssertTrue(create.waitUntilEnabledAndHittable())
+        let restored = element(projectID, in: app)
+        XCTAssertTrue(restored.waitUntilEnabledAndHittable())
+        restored.tap()
+        XCTAssertTrue(waitForLabel(element("editor.photoCount", in: app), "2 of 20 photos"))
+        let restoredOrder = instantiateGallery(expecting: 2, in: app).compactMap(assetID)
+        XCTAssertEqual(restoredOrder.count, 2, "no photo is lost by saving a role")
+        XCTAssertEqual(restoredOrder, importOrder, "the import order is preserved across a restart")
+
+        openRoles(app)
+        waitForChecked(app, count: 2)
+        XCTAssertEqual(shownRole(secondImported, in: app), "Primary photo",
+                       "the saved primary must survive an app restart (including its source)")
+        XCTAssertTrue(sourceText(secondImported, in: app).contains("Saved earlier as your choice"))
+        closeRolesWithCancel(app)
+
+        // 7. The real Focus preview/Apply must give the SAVED primary the hero position,
+        //    even though it is the second-imported photo, and applying twice must be
+        //    stable: the same layer set, never a duplicate.
+        tapEditor(element("editor.layouts", in: app), in: app)
+        XCTAssertTrue(app.buttons.matching(identifier: "layout.choose.focus").firstMatch.waitForExistence(timeout: 30))
+        XCTAssertTrue(element("layout.preview.focus", in: app).waitForExistence(timeout: 30))
+        attachFullAppScreenshot(app, named: "Stage06 roles saved choice after restart")
+        tapLayoutSheet(app.buttons.matching(identifier: "layout.choose.focus").firstMatch, in: app)
+        tapLayoutSheet(app.buttons["layout.apply"], in: app)
+        XCTAssertTrue(app.buttons["layout.apply"].waitForDisappearance(timeout: 60))
+
+        let afterFirstApply = layerSnapshot(in: app)
+        XCTAssertEqual(afterFirstApply.count, 2, "Focus must not invent or duplicate layers")
+        XCTAssertTrue(waitForLabel(element("editor.layerCount", in: app), "2 of 20 layers"),
+                      "the editor itself must report exactly the two photo layers")
+
+        // Real transform values. An empty-canvas layout reuses the photo identity as the
+        // layer identity, so the saved primary's layer is read directly: Focus must give
+        // it the hero cell (smaller y, i.e. higher on the canvas) even though it is the
+        // second-imported photo, while the other layer keeps the rest of the layout.
+        XCTAssertTrue(element("editor.selectLayer.\(secondImported.uuidString)", in: app)
+                        .waitForExistence(timeout: 30))
+        XCTAssertTrue(element("editor.selectLayer.\(firstImported.uuidString)", in: app)
+                        .waitForExistence(timeout: 30))
+        let primaryTransform = transform(ofLayer: secondImported, in: app)
+        let otherTransform = transform(ofLayer: firstImported, in: app)
+        XCTAssertLessThan(primaryTransform.y, otherTransform.y,
+                          "the saved second-imported primary must take the Focus hero cell "
+                          + "(primary \(primaryTransform), other \(otherTransform))")
+        XCTAssertNotEqual(primaryTransform.scale, otherTransform.scale,
+                          "the hero cell and the remaining cells use different scales")
+
+        tapEditor(element("editor.layouts", in: app), in: app)
+        tapLayoutSheet(app.buttons.matching(identifier: "layout.choose.focus").firstMatch, in: app)
+        tapLayoutSheet(app.buttons["layout.apply"], in: app)
+        XCTAssertTrue(app.buttons["layout.apply"].waitForDisappearance(timeout: 60))
+        XCTAssertEqual(layerSnapshot(in: app), afterFirstApply,
+                       "the same preset applied twice must not add, drop or rename a layer")
+        XCTAssertEqual(transform(ofLayer: secondImported, in: app).y, primaryTransform.y, accuracy: 0.5,
+                       "repeating Apply must not move the hero layer")
+        XCTAssertEqual(transform(ofLayer: firstImported, in: app).y, otherTransform.y, accuracy: 0.5,
+                       "repeating Apply must not move the other layer")
+
+        // The roles choice is still stored after the layout was applied twice.
+        openRoles(app)
+        waitForChecked(app, count: 2)
+        XCTAssertEqual(shownRole(secondImported, in: app), "Primary photo",
+                       "applying a layout must not change the saved role choice")
+        closeRolesWithCancel(app)
+    }
+}

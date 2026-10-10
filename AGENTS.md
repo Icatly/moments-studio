@@ -72,8 +72,8 @@
 - Stage01已于2026-10-03由项目所有者明确确认验收（原话：“确认验收 继续下一阶段任务”），状态APPROVED。
 - Stage02于2026-10-06按所有者最新指令“进入stage03”记APPROVED。所有者已亲自体验照片路径并反馈正常；旧版录屏已复审。最新云第三轮/设备构建/还原等仍未验证，批准不等于补测通过，具体见 `.ai/reviews/STAGE-02-OWNER-CLOSEOUT-2026-10-06.md`。
 - Stage03于2026-10-09按所有者“进入stage04”指令记APPROVED。新版安装、旧照片/Done/重开位置本人正常，原生138/138通过；其余新版真机验证缺口保留，见 `.ai/reviews/STAGE-03-OWNER-CLOSEOUT-2026-10-09.md`，批准不等于补测通过。
-- 当前 Stage：**Stage04 — Deterministic Layout and Three Preset Previews**；所有者明确授权开始，范围以 `docs/architecture/STAGE-04-DETERMINISTIC-LAYOUT.md` 和 `.ai/tasks/STAGE-04-IMPLEMENT-01.md` 为准。仅当前画布确定性排版、三预设真实照片预览与基本搜索/保存；不自动扩大为AI、多页、导出或付费。
-- Stage05已按第1节2026-10-09所有者最新指令明确授权，范围见`docs/architecture/STAGE-05-PHOTO-ANALYSIS.md`，Stage04技术检查点留存后推进；Stage06–15仍未授权。两阶段完整测试、Review、可运行版本与本人验收均需真实记录，DSH仅可推进到READY_FOR_ARCHITECT_REVIEW。
+- Stage04、Stage05于2026-10-10按所有者新版真机三组逐次反馈“正常”记APPROVED（第5节通过的等价表述）；技术复审、同源186/186原生和设备IPA证据保持，未额外人工测试项不外推通过，见`.ai/reviews/STAGE-04-05-OWNER-CLOSEOUT-2026-10-10.md`。Stage04范围为确定性单画布排版/三用户照片预设预览/搜索/保存；Stage05范围为可选只读光色分析基础，不扩大为AI、多页、导出或付费。
+- Stage06已获2026-10-10所有者“进行stage06”明确开始授权，范围以`docs/architecture/STAGE-06-PHOTO-ROLES.md`及`.ai/tasks/STAGE-06-IMPLEMENT-01.md`为准：本地角色建议/保存选择/显式布局集成；Architect批准有限ImportedPhoto.roleChoice附加契约和原生Vision。Stage07–15仍未授权。后续阶段仍须完整测试、独立Review、可运行版本与本人验收，DSH仅可推进到READY_FOR_ARCHITECT_REVIEW；职责与验收门槛不变。
 
 ## 7. 性能原则
 
@@ -101,6 +101,8 @@
 
 | 日期 | 变更 | 说明 |
 | --- | --- | --- |
+| 2026-10-10 | Stage06明确启动 | 所有者“进行stage06”；Architect定义照片角色建议/持久选择/布局集成，Stage07仍未授权 |
+| 2026-10-10 | Stage04/05本人真机验收收尾 | 新版三组操作逐次回复“正常”，按等价通过表述记录APPROVED；未测限制保留，Stage06仍未授权，不放宽分工或门槛 |
 | 2026-10-02 | 初版 | Stage 01 由 DSH 建立治理基线；规则内容来自项目所有者 Prompt（唯一任务来源）与 `docs/产品与架构基线.md`。同日 Architect 以 `docs/Stage-01-Architect-Review备忘.md` 取代了先前的执行任务书 |
 | 2026-10-03 | 上下文交接入口 | 按项目所有者要求新增 `项目要求与上下文交接.md`，规定接续先读及关键事实持续更新；原有权限与验收闸门不变 |
 | 2026-10-03 | Stage01所有者批准 / Stage02启动 | 所有者明确确认验收并要求继续；Architect定义照片导入和素材管线范围，Stage03仍未批准 |

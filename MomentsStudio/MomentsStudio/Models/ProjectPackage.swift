@@ -111,6 +111,7 @@ struct ProjectPackage: Identifiable, Codable, Equatable, Hashable {
         }
 
         var seenAssetIDs = Set<UUID>()
+        var savedPrimaryCount = 0
         for photo in photos {
             let assetID = photo.asset.id
 
@@ -128,6 +129,26 @@ struct ProjectPackage: Identifiable, Codable, Equatable, Hashable {
             }
             guard !photo.contentType.isEmpty else {
                 throw PhotoLibraryError.invalidPackage("photo \(assetID.uuidString) has no content type")
+            }
+
+            // Stage 06 additive contract. An impossible automatic choice would have
+            // thrown while decoding, but the value is re-checked here because every
+            // save path funnels through this validation before the manifest write,
+            // and a package may hold at most one saved primary photo.
+            if let choice = photo.roleChoice {
+                guard choice.isValid else {
+                    throw PhotoLibraryError.invalidPackage(
+                        "photo \(assetID.uuidString) has an impossible automatic role \(choice.role.rawValue)"
+                    )
+                }
+                if choice.role == .primary {
+                    savedPrimaryCount += 1
+                    guard savedPrimaryCount <= PhotoRoleChoice.primaryLimit else {
+                        throw PhotoLibraryError.invalidPackage(
+                            "more than one saved primary photo (photo \(assetID.uuidString))"
+                        )
+                    }
+                }
             }
 
             try PhotoLibraryPath.validate(

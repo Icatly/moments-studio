@@ -1,0 +1,15 @@
+# Stage06 FIX05补充检查
+
+同一批准范围的独立源码发现；真实DSH负责实现。11:34已发送Focus仅首个同asset层及旧automatic source补正。以下也需在最终交付前核对，不修改旧186断言或扩大Stage。
+
+1. `PhotoRolesSheet.hasChanges`需比较实际将保存的完整role/source与捕获值。仅比role会让automatic supporting→用户指定manual supporting无法Save，也会漏掉Analyze again产生的新automatic角色/清nil。其纯函数与effectiveManualRole若被非MainActor测试同步调用需真实nonisolated值边界，不能只修choices。
+2. `Use suggested roles`目前只令draft空，已存manual仍fallback，按钮含义与实际不一致；须把当前全部照片明确转本次automatic草稿后重算建议（仅显式Save持久化），或去掉无批准必要的误导按钮。取消仍不写。
+3. `Stage06RoleStorageTests.testVocabularyReductionKeepsOnlyWhitelistedSupportedLabels`期望包含`mountain range`，而批准精确白名单仅`mountain`，实现正确拒绝`mountain_range`；新测试期望应按白名单排除它，并保留不做substring猜测的断言。不得放宽白名单去迎合测试。
+4. 新workflow注释复制遗留Stage04/Photo analysis等不准确文字，仅在新Stage06文件校正为全部Stage01–05＋角色测试，不改冻结旧workflow。
+5. 新增`PhotoRolesSheet.init(projectID:store:photoImport:)`后，`RootView.sheetContent`仍调用`PhotoRolesSheet(projectID:)`，缺参数实际不能编译；按已有同实例环境及当前approved snapshot方案正确接线。核所有签名变更的生产/测试调用，不能以tree-sitter无语法错误当typecheck成功。
+6. `PhotoRolesRun.signature(of:)`目前不含roleChoice。规格要求异步run/key/accept/display覆盖完整metadata及roleChoice，角色变更也必须拒绝旧观测；复用实际完整roleSnapshot或等价签名，加已保存role/source变化的accept/reject/display回归。
+7. 最新UI初稿进一步问题：UI target无须`@testable import MomentsStudio`（未使用App类型，既有UI不链接/导入App模块）；只import XCTest沿用目标边界。gallery在Editor抓ID前必须滚到photoCount使真实lazy图库实例化，既有prepareEditorGallery内部冻结期望1张，不能直接用于2张。Automatic成功不保证角色一定不是primary，不能用NotEqual(primary)当验证清人工来源；UI应实际显示并检验来源，自动仍可建议primary。当前先Automatic清旧主图再选新主图，仍没检验“已有saved manual primary→直接选另一张primary”的碰撞路径。最后Focus选的是第一张而非非首张且只Apply一次，不能证明角色优先/重复Apply；对非首张主图检查实际transform/重复层集合。新tapEditor复制app.navigationBars.element并对layout sheet按钮用Editor滚动，改为当前控件实际可点击/对应sheet范围，不放宽旧断言。上述属FIX05 C7，尚未真实原生失败。
+8. 最终sourceLine新初稿：先effectiveManualRole返回stored manual，所以其后的stored manual分支永不可达，UI却期待`Saved earlier as your choice`，必不成立；explicit Automatic时则会掉入stored manual分支仍显示旧人工来源。根据真实draft absent/manual/automatic先分支，区分已存来源和本次拟保存来源，两者显示真实，UI按该实际用户文本断言。UseSuggested仍以!hasDraftEdits禁用，未改的已存manual照片因此无法点该按钮；检查允许reset的真实状态或移除该非必需入口。
+9. `importedThumbnailIdentifiers`共享helper返回按UUID字典排序的Set，不是导入顺序；新Gallery可用它证明数量，但选非首张Focus需从实际Editor有序query取id，或捕获逐次导入的集合差。最后primary重设成first并只检IDs的layerSnapshot仍没有真实transform主位；按第7项补足，勿在注释声称已证明没有的行为。
+
+本机静态发现不是已运行原生失败。完成FIX05 A–C及补充后准确报告实际清单和已/未执行检查，禁止push/dispatch/Stage07。

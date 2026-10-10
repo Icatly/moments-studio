@@ -85,6 +85,11 @@ struct RootView: View {
             CollageLayoutSheet(projectID: projectID)
         case .photoAnalysis(let projectID):
             PhotoAnalysisSheet(projectID: projectID)
+        case .photoRoles(let projectID):
+            // The sheet freezes its expected snapshot and captured roles at
+            // construction, so it needs the same root-owned store/import instances
+            // the editor uses — never a second copy.
+            PhotoRolesSheet(projectID: projectID, store: projectStore, photoImport: photoImport)
         }
     }
 }

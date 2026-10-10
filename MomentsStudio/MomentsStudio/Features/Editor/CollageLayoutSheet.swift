@@ -32,7 +32,9 @@ struct CollageLayoutSheet: View {
                         Text("Three layouts with your photos")
                             .font(Typography.sectionTitle)
                         Text(project.document.layers.isEmpty
-                             ? "Uses your imported photos. Choose a layout, then tap Apply."
+                             ? (PhotoRoleLayoutPlan.hasNoLayoutParticipant(store.photos(for: projectID))
+                                ? "Every photo is saved as collage material or not for layout. Change a role in Photo roles to include one."
+                                : "Uses your imported photos. Choose a layout, then tap Apply.")
                              : "Arranges visible, unlocked photo layers. Locked and hidden layers stay unchanged.")
                             .font(Typography.body)
                             .foregroundStyle(Color.secondary)

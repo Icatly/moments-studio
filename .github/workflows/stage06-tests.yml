@@ -1,0 +1,782 @@
+# Stage06 native tests: the FULL current source list — every preserved Stage01-05
+# regression plus the Stage06 photo-role tests (contract, policy, run guard, sheet
+# value model, real storage/Vision) — minimally adapted from the verified Stage05
+# entry. The Stage01-05 workflows are left untouched: their GitHub input is their own
+# frozen commit, so Stage04 keeps its 146 + 9 = 155 boundary and Stage05 its
+# 176 + 10 = 186 boundary.
+# Manual only; full scheme, frozen method manifest, original logs/xcresult, and evidence guard.
+# Local preparation is not an executed macOS result. Dispatch and public-source publication require authorization.
+# No Apple credentials, third-party app dependencies, or paid runner.
+name: Stage 06 Xcode 26 native test run
+on:
+  workflow_dispatch:
+    inputs:
+      # Optional one-off environment check for Stage 06. It only changes the
+      # simulator's content-size category for this run; it never adds a switch or
+      # any behaviour to the app itself, and the default keeps the normal size.
+      large_text:
+        description: "Run Stage 06 at the maximum accessibility text size (one-off simulator content size; default off)"
+        type: boolean
+        default: false
+      # Optional one-off environment check for Stage 06. It only switches the
+      # simulator's appearance for this run; the app itself has no colour-scheme
+      # override and the default keeps the normal appearance.
+      dark_appearance:
+        description: "Run Stage 06 in the native dark appearance (one-off simulator appearance; default off)"
+        type: boolean
+        default: false
+permissions:
+  contents: read
+env:
+  ARTIFACTS: stage06-test-artifacts
+  # Full Stage04 source, including every existing regression and new layout tests.
+  EXPECTED_UNIT_TEST_COUNT: "245"
+  EXPECTED_UI_TEST_COUNT: "11"
+  EXPECTED_TEST_COUNT: "256"
+jobs:
+  tests:
+    runs-on: macos-26
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Record the exact source and select an Xcode 26+ toolchain with an iphoneos SDK 26+
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$ARTIFACTS"
+          git rev-parse HEAD > "$ARTIFACTS/source-commit.txt"
+          sw_vers > "$ARTIFACTS/runner-os.txt"
+          uname -m > "$ARTIFACTS/runner-architecture.txt"
+          test "$(cat "$ARTIFACTS/runner-architecture.txt")" = arm64
+          printf '%s\n' 'Simulator-only automated evidence. This entry produces NO IPA, performs no signing and is NOT device testing or owner acceptance. The Stage 06 device package is prepared separately by .github/workflows/stage06-device.yml.' > "$ARTIFACTS/EVIDENCE-SCOPE.txt"
+          python3 - <<'PY'
+          import os, re, subprocess
+          from pathlib import Path
+
+          artifacts = Path(os.environ["ARTIFACTS"])
+
+          def capture(command, environment):
+              return subprocess.run(command, capture_output=True, text=True, check=False, env=environment)
+
+          def numbers(text):
+              return tuple(int(part) for part in re.findall(r"\d+", text)[:3])
+
+          candidate_lines = []
+          qualified = []
+          for app in sorted(Path("/Applications").glob("Xcode*.app")):
+              if not app.is_dir():
+                  continue
+              if "beta" in app.name.lower():
+                  candidate_lines.append(f"{app.name}: SKIPPED (beta toolchains are not allowed)")
+                  continue
+              environment = dict(os.environ, DEVELOPER_DIR=str(app))
+              version = capture(["/usr/bin/xcodebuild", "-version"], environment)
+              sdk = capture(["/usr/bin/xcrun", "--sdk", "iphoneos", "--show-sdk-version"], environment)
+              version_lines = version.stdout.strip().splitlines()
+              version_match = re.fullmatch(r"Xcode (\d+(?:\.\d+){0,2})", version_lines[0]) if version_lines else None
+              full_version = version_match.group(1) if version_match else ""
+              build_match = next((re.fullmatch(r"Build version (\S+)", line) for line in version_lines
+                                  if line.startswith("Build version")), None)
+              build = build_match.group(1) if build_match else ""
+              sdk_version = sdk.stdout.strip().splitlines()[0].strip() if sdk.stdout.strip() else ""
+              candidate_lines.append(
+                  f"{app.name}: xcode={full_version or '?'} build={build or '?'} iphoneos_sdk={sdk_version or '?'}"
+              )
+              if version.returncode != 0 or sdk.returncode != 0 or not full_version or not build:
+                  candidate_lines[-1] += " (inspection failed)"
+                  continue
+              xcode_numbers, sdk_numbers = numbers(full_version), numbers(sdk_version)
+              if xcode_numbers and sdk_numbers and xcode_numbers[0] >= 26 and sdk_numbers[0] >= 26:
+                  qualified.append((xcode_numbers, full_version, build, sdk_version, str(app)))
+
+          (artifacts / "xcode-candidates.txt").write_text("\n".join(candidate_lines) + "\n")
+          if not qualified:
+              print("\n".join(candidate_lines))
+              raise SystemExit(
+                  "No official Xcode 26+ installation with an iphoneos SDK 26+ is present on this runner; "
+                  "refusing to fake the Stage 06 test run."
+              )
+
+          qualified.sort(key=lambda entry: entry[0])
+          _, full_version, build, sdk_version, path = qualified[-1]
+          selection = (
+              f"selected_xcode_path={path}\n"
+              f"selected_xcode_version={full_version}\n"
+              f"selected_xcode_build={build}\n"
+              f"selected_iphoneos_sdk={sdk_version}\n"
+              "requirement=App Store Connect uploads need Xcode 26+ and the iOS 26+ SDK from 2026-04-28\n"
+          )
+          (artifacts / "xcode-selection.txt").write_text(selection)
+          with open(os.environ["GITHUB_ENV"], "a") as handle:
+              handle.write(f"DEVELOPER_DIR={path}\n")
+              handle.write(f"SELECTED_XCODE_PATH={path}\n")
+          print(selection)
+          PY
+
+      - name: Verify the project wiring and generate the Stage 06 test manifest before any test
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The existing stdlib-only project checker proves that every Swift file on
+          # disk belongs to exactly one target's Sources phase and that the shared
+          # scheme references all three targets. It never writes to the repository.
+          python3 tools/verify_project.py | tee "$ARTIFACTS/project-wiring.txt"
+          python3 - <<'PY'
+          import hashlib, os, re
+          from pathlib import Path
+          from xml.etree import ElementTree
+
+          artifacts = Path(os.environ["ARTIFACTS"])
+          expected_unit = int(os.environ["EXPECTED_UNIT_TEST_COUNT"])
+          expected_ui = int(os.environ["EXPECTED_UI_TEST_COUNT"])
+          expected_total = int(os.environ["EXPECTED_TEST_COUNT"])
+
+          # The scheme must actually run exactly the two test targets, unskipped;
+          # a skipped testable would silently hide part of the 196 methods.
+          scheme = Path("MomentsStudio/MomentsStudio.xcodeproj/xcshareddata/xcschemes/MomentsStudio.xcscheme")
+          tree = ElementTree.fromstring(scheme.read_text(encoding="utf-8"))
+          testables = {}
+          for reference in tree.findall(".//TestAction/Testables/TestableReference"):
+              buildable = reference.find("BuildableReference")
+              if buildable is None:
+                  raise SystemExit("A TestableReference has no BuildableReference; the scheme cannot be trusted.")
+              testables[buildable.get("BlueprintName")] = reference.get("skipped")
+          if testables != {"MomentsStudioTests": "NO", "MomentsStudioUITests": "NO"}:
+              raise SystemExit(
+                  "The scheme TestAction must run exactly the two test targets, both unskipped; "
+                  f"found {testables}"
+              )
+
+          # The two test target source directories, exactly as the project checker
+          # resolves them. Methods are read from the actual files, never guessed.
+          targets = {
+              "MomentsStudioTests": Path("MomentsStudio/MomentsStudioTests"),
+              "MomentsStudioUITests": Path("MomentsStudio/MomentsStudioUITests"),
+          }
+          method_pattern = re.compile(r"^\s*func\s+(test[A-Za-z0-9_]*)\s*\(", re.MULTILINE)
+
+          records = []
+          per_file = []
+          for target, directory in targets.items():
+              files = sorted(path for path in directory.rglob("*.swift") if path.is_file())
+              if not files:
+                  raise SystemExit(f"No Swift sources under {directory}; the checked-out source is not Stage 06.")
+              for path in files:
+                  data = path.read_bytes()
+                  digest = hashlib.sha256(data).hexdigest()
+                  methods = method_pattern.findall(data.decode("utf-8"))
+                  per_file.append((target, path.as_posix(), digest, len(methods)))
+                  for method in methods:
+                      records.append((target, path.as_posix(), digest, method))
+
+          methods_only = [record[3] for record in records]
+          duplicates = sorted({name for name in methods_only if methods_only.count(name) > 1})
+          if duplicates:
+              raise SystemExit(f"Duplicate test method names found in the source list: {duplicates}")
+
+          unit_count = sum(1 for record in records if record[0] == "MomentsStudioTests")
+          ui_count = sum(1 for record in records if record[0] == "MomentsStudioUITests")
+
+          # Stage 06 markers plus every preserved Stage 01-05 regression, by exact
+          # method count. A mismatch means the checked-out revision is not the
+          # frozen Stage 06 source, so no run may claim the Stage 06 boundary.
+          expected_files = {
+              "MomentsStudio/MomentsStudioTests/AppNavigationModelTests.swift": 6,
+              "MomentsStudio/MomentsStudioTests/CanvasDocumentTests.swift": 3,
+              "MomentsStudio/MomentsStudioTests/LargePhotoBatchTests.swift": 2,
+              "MomentsStudio/MomentsStudioTests/LayerModelTests.swift": 9,
+              "MomentsStudio/MomentsStudioTests/PhotoImportModelTests.swift": 6,
+              "MomentsStudio/MomentsStudioTests/PhotoLibraryTests.swift": 31,
+              "MomentsStudio/MomentsStudioTests/ProjectModelTests.swift": 5,
+              "MomentsStudio/MomentsStudioTests/ProjectPackageTests.swift": 8,
+              "MomentsStudio/MomentsStudioTests/ProjectStoreTests.swift": 11,
+              "MomentsStudio/MomentsStudioTests/Stage03ContractTests.swift": 34,
+              "MomentsStudio/MomentsStudioTests/Stage03StorageCoordinatorTests.swift": 16,
+              "MomentsStudio/MomentsStudioTests/Stage04LayoutTests.swift": 11,
+              "MomentsStudio/MomentsStudioTests/Stage04StorageTests.swift": 4,
+              "MomentsStudio/MomentsStudioTests/Stage05AnalysisRunTests.swift": 11,
+              "MomentsStudio/MomentsStudioTests/Stage05AnalysisStorageTests.swift": 8,
+              "MomentsStudio/MomentsStudioTests/Stage05PhotoAnalysisTests.swift": 11,
+              "MomentsStudio/MomentsStudioTests/Stage06RoleChoiceTests.swift": 7,
+              "MomentsStudio/MomentsStudioTests/Stage06RolePolicyTests.swift": 19,
+              "MomentsStudio/MomentsStudioTests/Stage06RoleStorageTests.swift": 15,
+              "MomentsStudio/MomentsStudioTests/Stage06RolesRunTests.swift": 10,
+              "MomentsStudio/MomentsStudioTests/Stage06RolesSheetModelTests.swift": 18,
+              "MomentsStudio/MomentsStudioTests/SyntheticImageFactory.swift": 0,
+              "MomentsStudio/MomentsStudioTests/TestGate.swift": 0,
+              "MomentsStudio/MomentsStudioUITests/Stage01SmokeUITests.swift": 2,
+              "MomentsStudio/MomentsStudioUITests/Stage02ImportUITests.swift": 3,
+              "MomentsStudio/MomentsStudioUITests/Stage03CanvasUITests.swift": 3,
+              "MomentsStudio/MomentsStudioUITests/Stage04LayoutUITests.swift": 1,
+              "MomentsStudio/MomentsStudioUITests/Stage05PhotoSummaryUITests.swift": 1,
+              "MomentsStudio/MomentsStudioUITests/Stage06PhotoRolesUITests.swift": 1,
+              "MomentsStudio/MomentsStudioUITests/UITestSupport.swift": 0,
+          }
+          counts_by_path = {entry[1]: entry[3] for entry in per_file}
+          mismatches = {
+              path: {"found": counts_by_path.get(path), "expected": expected}
+              for path, expected in expected_files.items()
+              if counts_by_path.get(path) != expected
+          }
+          if mismatches:
+              raise SystemExit(
+                  "The checked-out source is not the frozen Stage 06 test source; method counts differ: "
+                  f"{mismatches}. Commit/upload the final Stage 06 source revision before dispatch; "
+                  "never lower the expected counts."
+              )
+
+          if (unit_count, ui_count, len(records)) != (expected_unit, expected_ui, expected_total):
+              raise SystemExit(
+                  f"Expected {expected_unit} unit + {expected_ui} UI = {expected_total} test methods from the "
+                  f"frozen Stage 06 source, found {unit_count} + {ui_count} = {len(records)}. "
+                  "Only the frozen Stage 06 counts apply here."
+              )
+
+          manifest_lines = [
+              "# Stage 06 test manifest generated BEFORE the test run.",
+              "# These are encoded test methods, not executed results.",
+              f"# total={len(records)} unit={unit_count} ui={ui_count}",
+          ]
+          for target, path, digest, method in records:
+              manifest_lines.append(f"{target}\t{path}\t{digest}\t{method}")
+          (artifacts / "test-manifest.txt").write_text("\n".join(manifest_lines) + "\n")
+
+          (artifacts / "test-source-hashes.txt").write_text(
+              "\n".join(f"{digest}  {path}" for _, path, digest, _ in per_file) + "\n"
+          )
+          count_lines = [f"{target}\t{path}\t{count}" for target, path, _, count in per_file]
+          (artifacts / "test-method-counts.txt").write_text("\n".join(count_lines) + "\n")
+          (artifacts / "test-methods.txt").write_text("\n".join(method for _, _, _, method in records) + "\n")
+
+          manifest_sha = hashlib.sha256((artifacts / "test-manifest.txt").read_bytes()).hexdigest()
+          with open(os.environ["GITHUB_ENV"], "a") as handle:
+              handle.write(f"STAGE06_UNIT_TEST_COUNT={unit_count}\n")
+              handle.write(f"STAGE06_UI_TEST_COUNT={ui_count}\n")
+              handle.write(f"STAGE06_EXPECTED_TOTAL={len(records)}\n")
+              handle.write(f"STAGE06_MANIFEST_SHA256={manifest_sha}\n")
+          print(f"stage06 manifest: unit={unit_count} ui={ui_count} total={len(records)} "
+                f"manifest_sha256={manifest_sha}")
+          print("\n".join(count_lines))
+          PY
+
+      - name: Select an available iOS 26+ iPhone simulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DEVELOPER_DIR="$SELECTED_XCODE_PATH"
+          xcrun simctl list runtimes > "$ARTIFACTS/simulator-runtimes.txt"
+          xcrun simctl list devices available --json > "$ARTIFACTS/devices.json"
+          xcodebuild -showdestinations -project MomentsStudio/MomentsStudio.xcodeproj \
+            -scheme MomentsStudio > "$ARTIFACTS/available-destinations.txt" 2>&1
+          python3 - <<'PY'
+          import json, os, re
+          from pathlib import Path
+
+          artifacts = Path(os.environ["ARTIFACTS"])
+          data = json.loads((artifacts / "devices.json").read_text())
+          destinations = (artifacts / "available-destinations.txt").read_text().split("Ineligible destinations", 1)[0]
+          available_ids = set()
+          for entry in re.findall(r"\{([^{}]+)\}", destinations):
+              fields = dict(pair.strip().split(":", 1) for pair in entry.split(",") if ":" in pair)
+              fields = {key.strip(): value.strip() for key, value in fields.items()}
+              if fields.get("platform") == "iOS Simulator" and fields.get("arch") == "arm64":
+                  available_ids.add(fields.get("id"))
+          candidates = []
+          for runtime, devices in data["devices"].items():
+              match = re.search(r"iOS-(\d+(?:-\d+)*)$", runtime)
+              version = tuple(int(part) for part in match.group(1).split("-")) if match else ()
+              if not version or version[0] < 26:
+                  continue
+              available = [d for d in devices if d.get("isAvailable") and d["name"].startswith("iPhone")
+                           and d["udid"] in available_ids]
+              if available:
+                  candidates.append((version, runtime, available[0]))
+
+          if not candidates:
+              raise SystemExit(
+                  "No arm64 iPhone destination on an iOS 26+ runtime was found; inspect devices.json and available-destinations.txt. "
+                  "Tests are not skipped or faked."
+              )
+
+          candidates.sort(key=lambda entry: entry[0])
+          _, runtime, device = candidates[-1]
+          (artifacts / "destination.txt").write_text(f"{runtime}: {device['name']} ({device['udid']})\n")
+          with open(os.environ["GITHUB_ENV"], "a") as handle:
+              handle.write(f"STAGE06_SIMULATOR_ID={device['udid']}\n")
+          print(f"selected {runtime}: {device['name']} ({device['udid']})")
+          PY
+
+      - name: Build the existing scheme for iphoneos Release without signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DEVELOPER_DIR="$SELECTED_XCODE_PATH"
+          xcodebuild -version | tee "$ARTIFACTS/xcodebuild-version.txt"
+          xcrun --sdk iphoneos --show-sdk-version > "$ARTIFACTS/device-sdk-version.txt"
+          # Kept from the verified Stage 02 workflow as a device-build check only.
+          # Success here is not an IPA, not device testing and not owner acceptance.
+          xcodebuild build -project MomentsStudio/MomentsStudio.xcodeproj \
+            -scheme MomentsStudio -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/Stage06TestsDeviceDerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee "$ARTIFACTS/xcodebuild-device.log"
+
+      - name: Validate the unsigned device product
+        shell: bash
+        run: |
+          set -euo pipefail
+          device_app="$RUNNER_TEMP/Stage06TestsDeviceDerivedData/Build/Products/Release-iphoneos/MomentsStudio.app"
+          test -d "$device_app"
+          python3 - "$device_app/Info.plist" <<'PY'
+          import plistlib, sys
+          from pathlib import Path
+          data = plistlib.loads(Path(sys.argv[1]).read_bytes())
+          assert data["CFBundleIdentifier"] == "com.example.MomentsStudio", data
+          assert data["CFBundleExecutable"] == "MomentsStudio", data
+          assert data["CFBundleSupportedPlatforms"] == ["iPhoneOS"], data
+          assert data["DTPlatformName"] == "iphoneos", data
+          assert data["MinimumOSVersion"] == "17.0", data
+          Path("stage06-test-artifacts/device-Info.plist").write_bytes(Path(sys.argv[1]).read_bytes())
+          PY
+          lipo "$device_app/MomentsStudio" -verify_arch arm64
+          xcrun vtool -show-build "$device_app/MomentsStudio" > "$ARTIFACTS/macho-build-version.txt"
+          python3 - <<'PY'
+          from pathlib import Path
+          lines = Path("stage06-test-artifacts/macho-build-version.txt").read_text().splitlines()
+          assert any(line.split() == ["platform", "IOS"] for line in lines), lines
+          assert not any("IOSSIMULATOR" in line for line in lines), lines
+          PY
+
+      - name: Seed the synthetic Photos fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DEVELOPER_DIR="$SELECTED_XCODE_PATH"
+          # Reuses the existing stdlib-only fixture generator; its Stage 02 filename
+          # is historical, the synthetic images stay in the runner's temporary
+          # directory and are not uploaded.
+          python3 tools/generate_stage02_photo_fixtures.py "$RUNNER_TEMP/stage06-photo-fixtures"
+          (cd "$RUNNER_TEMP/stage06-photo-fixtures" && shasum -a 256 ./*.png) > "$ARTIFACTS/photo-fixtures-sha256.txt"
+          xcrun simctl bootstatus "$STAGE06_SIMULATOR_ID" -b
+          # Read-only capability probe: the help text and the current content size
+          # are recorded with their exit status. No size is changed, no unknown
+          # parameter is passed and the test/gate conditions stay untouched.
+          set +e
+          xcrun simctl help ui > "$ARTIFACTS/simctl-ui-help.txt" 2>&1
+          simctl_help_ui_status=$?
+          xcrun simctl ui "$STAGE06_SIMULATOR_ID" content_size > "$ARTIFACTS/content-size-current.txt" 2>&1
+          simctl_content_size_status=$?
+          set -e
+          echo "exit_status=$simctl_help_ui_status" >> "$ARTIFACTS/simctl-ui-help.txt"
+          echo "exit_status=$simctl_content_size_status" >> "$ARTIFACTS/content-size-current.txt"
+          echo "simctl help ui exit=$simctl_help_ui_status; content size read exit=$simctl_content_size_status"
+          xcrun simctl addmedia "$STAGE06_SIMULATOR_ID" "$RUNNER_TEMP"/stage06-photo-fixtures/*.png
+
+      - name: Apply the maximum accessibility content size when requested
+        if: inputs.large_text
+        shell: bash
+        env:
+          STAGE06_TARGET_CONTENT_SIZE: accessibility-extra-extra-extra-large
+        run: |
+          set -euo pipefail
+          export DEVELOPER_DIR="$SELECTED_XCODE_PATH"
+          applied="$ARTIFACTS/content-size-applied.txt"
+          : > "$applied"
+
+          # Legal categories observed from the real `simctl help ui` captured by the
+          # read-only probe of the fixture step (Standard sizes: extra-small ..
+          # extra-extra-extra-large; Extended range: accessibility-medium ..
+          # accessibility-extra-extra-extra-large; plus the non-settable
+          # `unknown`/`unsupported`).
+          help_file="$ARTIFACTS/simctl-ui-help.txt"
+          test -f "$help_file"
+          # The captured help must itself have reported success; a non-zero capture is
+          # not capability evidence.
+          if ! grep -qx 'exit_status=0' "$help_file"; then
+            echo "::error::the captured simctl help did not report exit_status=0; refusing to treat it as capability evidence"
+            exit 1
+          fi
+          # Exact search for the legal maximum through a fixed string.
+          if ! grep -qF "$STAGE06_TARGET_CONTENT_SIZE" "$help_file"; then
+            echo "::error::the captured simctl help does not list $STAGE06_TARGET_CONTENT_SIZE; refusing to set a size that is not evidenced"
+            exit 1
+          fi
+
+          set +e
+          original=$(xcrun simctl ui "$STAGE06_SIMULATOR_ID" content_size)
+          original_exit=$?
+          set -e
+          printf 'previous_content_size=%s\nprevious_exit=%s\n' "$original" "$original_exit" >> "$applied"
+          printf '%s\n' "$original" > "$ARTIFACTS/content-size-original.txt"
+          if [ "$original_exit" -ne 0 ]; then
+            echo "::error::could not read the current content size (exit=$original_exit); nothing was changed"
+            exit 1
+          fi
+          # Exactly one legal category, matched as a whole value - a substring or
+          # multi-token value such as "small medium" must never be accepted.
+          case "$original" in
+            extra-small|small|medium|large|extra-large|extra-extra-large|extra-extra-extra-large|accessibility-medium|accessibility-large|accessibility-extra-large|accessibility-extra-extra-large|accessibility-extra-extra-extra-large) ;;
+            *)
+              echo "::error::current content size '$original' is not a single legal observed category (unknown/unsupported are rejected); refusing to change it"
+              exit 1
+              ;;
+          esac
+          echo "STAGE06_ORIGINAL_CONTENT_SIZE=$original" >> "$GITHUB_ENV"
+
+          set +e
+          xcrun simctl ui "$STAGE06_SIMULATOR_ID" content_size "$STAGE06_TARGET_CONTENT_SIZE"
+          set_exit=$?
+          readback=$(xcrun simctl ui "$STAGE06_SIMULATOR_ID" content_size)
+          readback_exit=$?
+          set -e
+          printf 'command=simctl ui content_size %s\nset_exit=%s\nreadback=%s\nreadback_exit=%s\n' \
+            "$STAGE06_TARGET_CONTENT_SIZE" "$set_exit" "$readback" "$readback_exit" >> "$applied"
+          if [ "$set_exit" -ne 0 ] || [ "$readback_exit" -ne 0 ] || [ "$readback" != "$STAGE06_TARGET_CONTENT_SIZE" ]; then
+            echo "::error::content size was not applied exactly (set_exit=$set_exit readback_exit=$readback_exit readback=$readback expected=$STAGE06_TARGET_CONTENT_SIZE)"
+            exit 1
+          fi
+          echo "content size applied exactly: $readback (previous $original)"
+
+      - name: Apply the dark appearance when requested
+        if: inputs.dark_appearance
+        shell: bash
+        env:
+          STAGE06_TARGET_APPEARANCE: dark
+        run: |
+          set -euo pipefail
+          export DEVELOPER_DIR="$SELECTED_XCODE_PATH"
+          applied="$ARTIFACTS/appearance-applied.txt"
+          original_file="$ARTIFACTS/appearance-original.txt"
+          : > "$applied"
+          : > "$original_file"
+
+          # Capability evidence: the captured help must itself have succeeded and
+          # must list the light|dark appearance option (observed in the real help of
+          # run 37227995563, exit_status=0).
+          help_file="$ARTIFACTS/simctl-ui-help.txt"
+          test -f "$help_file"
+          if ! grep -qx 'exit_status=0' "$help_file"; then
+            echo "::error::the captured simctl help did not report exit_status=0; refusing to treat it as capability evidence"
+            exit 1
+          fi
+          if ! grep -qF 'appearance [light | dark]' "$help_file"; then
+            echo "::error::the captured simctl help does not list 'appearance [light | dark]'; refusing to set an unsupported appearance"
+            exit 1
+          fi
+
+          set +e
+          original=$(xcrun simctl ui "$STAGE06_SIMULATOR_ID" appearance)
+          original_exit=$?
+          set -e
+          printf 'command=simctl ui "$STAGE06_SIMULATOR_ID" appearance\nvalue=%s\nexit=%s\n' \
+            "$original" "$original_exit" >> "$original_file"
+          if [ "$original_exit" -ne 0 ]; then
+            echo "::error::could not read the current appearance (exit=$original_exit); nothing was changed"
+            exit 1
+          fi
+          # Only the two real appearances are accepted as a restore target.
+          case "$original" in
+            light|dark) ;;
+            *)
+              echo "::error::current appearance '$original' is neither light nor dark; refusing to change it"
+              exit 1
+              ;;
+          esac
+          echo "STAGE06_ORIGINAL_APPEARANCE=$original" >> "$GITHUB_ENV"
+
+          set +e
+          xcrun simctl ui "$STAGE06_SIMULATOR_ID" appearance "$STAGE06_TARGET_APPEARANCE"
+          set_exit=$?
+          readback=$(xcrun simctl ui "$STAGE06_SIMULATOR_ID" appearance)
+          readback_exit=$?
+          set -e
+          printf 'original=%s\ntarget=%s\ncommand=simctl ui "$STAGE06_SIMULATOR_ID" appearance %s\nset_exit=%s\nreadback=%s\nreadback_exit=%s\n' \
+            "$original" "$STAGE06_TARGET_APPEARANCE" "$STAGE06_TARGET_APPEARANCE" "$set_exit" "$readback" "$readback_exit" >> "$applied"
+          if [ "$set_exit" -ne 0 ] || [ "$readback_exit" -ne 0 ] || [ "$readback" != "$STAGE06_TARGET_APPEARANCE" ]; then
+            echo "::error::the dark appearance was not applied exactly (set_exit=$set_exit readback_exit=$readback_exit readback=$readback expected=$STAGE06_TARGET_APPEARANCE)"
+            exit 1
+          fi
+          echo "appearance applied exactly: $readback (previous $original)"
+
+      - name: Run the full Stage 06 scheme on the iOS 26+ simulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DEVELOPER_DIR="$SELECTED_XCODE_PATH"
+          # The whole scheme, no only-testing, no skip, no retry: the runner must
+          # report the real exit code and the real failures.
+          xcodebuild test -project MomentsStudio/MomentsStudio.xcodeproj \
+            -scheme MomentsStudio -configuration Debug \
+            -destination "platform=iOS Simulator,arch=arm64,id=$STAGE06_SIMULATOR_ID" \
+            -derivedDataPath "$RUNNER_TEMP/Stage06TestsDerivedData" \
+            -resultBundlePath "$ARTIFACTS/Stage06-Tests.xcresult" \
+            -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee "$ARTIFACTS/xcodebuild-test.log"
+
+      - name: Export readable test results and retained attachments
+        if: always()
+        shell: bash
+        run: |
+          set -uo pipefail
+          export DEVELOPER_DIR="${SELECTED_XCODE_PATH:-/Applications/Xcode.app}"
+          if test -d "$ARTIFACTS/Stage06-Tests.xcresult"; then
+            xcrun xcresulttool help export attachments > "$ARTIFACTS/attachment-export-help.txt" 2>&1
+            if ! xcrun xcresulttool get test-results summary --path "$ARTIFACTS/Stage06-Tests.xcresult" --compact > "$ARTIFACTS/test-summary.json" 2> "$ARTIFACTS/test-summary-export.log"; then
+              echo '::warning::Readable test summary export failed; inspect the raw result bundle and export log.'
+            fi
+            if ! xcrun xcresulttool export attachments --path "$ARTIFACTS/Stage06-Tests.xcresult" --output-path "$ARTIFACTS/failure-attachments" > "$ARTIFACTS/attachment-export.log" 2>&1; then
+              echo '::warning::Test attachment export failed; inspect the raw result bundle and export log.'
+            fi
+          else
+            echo '::warning::No result bundle was produced; the test command failed before writing results.'
+          fi
+
+      - name: Assert the Stage 06 176 + 10 = 186 test contract
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, re
+          from pathlib import Path
+
+          frozen = int(os.environ["EXPECTED_TEST_COUNT"])
+          frozen_unit = int(os.environ["EXPECTED_UNIT_TEST_COUNT"])
+          frozen_ui = int(os.environ["EXPECTED_UI_TEST_COUNT"])
+          expected = int(os.environ.get("STAGE06_EXPECTED_TOTAL", frozen))
+          manifest_unit = int(os.environ.get("STAGE06_UNIT_TEST_COUNT", "0"))
+          manifest_ui = int(os.environ.get("STAGE06_UI_TEST_COUNT", "0"))
+          artifacts = Path(os.environ["ARTIFACTS"])
+
+          # The gate must be tied to the real pre-test source list: a missing
+          # manifest, a manifest that does not match the frozen boundary, or a
+          # mismatch between the manifest and the frozen counts all fail here
+          # instead of letting an unknown source pass.
+          manifest_path = artifacts / "test-manifest.txt"
+          if not manifest_path.is_file():
+              raise SystemExit("No pre-test manifest was produced; the source list under test is unknown.")
+          manifest_methods = [line for line in manifest_path.read_text().splitlines()
+                              if line and not line.startswith("#")]
+          if (frozen_unit + frozen_ui != frozen
+                  or (len(manifest_methods), manifest_unit, manifest_ui, expected)
+                  != (frozen, frozen_unit, frozen_ui, frozen)):
+              raise SystemExit(
+                  f"The pre-test manifest does not match the frozen Stage 06 boundary {frozen}: "
+                  f"methods={len(manifest_methods)} unit={manifest_unit} ui={manifest_ui} expected={expected}"
+              )
+
+          summary_path = artifacts / "test-summary.json"
+          if not summary_path.exists():
+              raise SystemExit("No test summary was exported; the Stage 06 run cannot claim the contract.")
+
+          summary = json.loads(summary_path.read_text())
+          total = summary.get("totalTestCount")
+          passed = summary.get("passedTests")
+          failed = summary.get("failedTests")
+          skipped = summary.get("skippedTests")
+          expected_failures = summary.get("expectedFailures", 0)
+          print(f"total={total} passed={passed} failed={failed} skipped={skipped} expectedFailures={expected_failures}")
+
+          devices = summary.get("devicesAndConfigurations") or []
+          (artifacts / "test-device.txt").write_text(json.dumps(devices, indent=2) + "\n")
+          if len(devices) != 1:
+              raise SystemExit("Expected one actual device/configuration in the result summary.")
+          device = devices[0].get("device", {})
+          os_match = re.fullmatch(r"(\d+)(?:\.\d+)*", str(device.get("osVersion", "")))
+          if (not os_match or int(os_match.group(1)) < 26
+                  or device.get("platform") != "iOS Simulator"
+                  or device.get("architecture") != "arm64"
+                  or not os.environ.get("STAGE06_SIMULATOR_ID")
+                  or device.get("deviceId") != os.environ["STAGE06_SIMULATOR_ID"]):
+              raise SystemExit("Actual test device must match the selected arm64 iOS 26+ Simulator UDID.")
+
+          if (total, passed, failed, skipped, expected_failures) != (expected, expected, 0, 0, 0):
+              raise SystemExit(
+                  f"Expected exactly {expected} tests: {expected} passed, 0 failed, 0 skipped, 0 expected failures. "
+                  "A failing or skipped test is reported, never hidden by retries or skips."
+              )
+          PY
+
+      - name: Verify the requested environment is still in effect after the tests
+        if: always() && (inputs.large_text || inputs.dark_appearance)
+        shell: bash
+        env:
+          REQUESTED_LARGE_TEXT: ${{ inputs.large_text }}
+          REQUESTED_DARK_APPEARANCE: ${{ inputs.dark_appearance }}
+        run: |
+          set -euo pipefail
+          export DEVELOPER_DIR="${SELECTED_XCODE_PATH:-/Applications/Xcode.app}"
+          report="$ARTIFACTS/environment-after-tests.txt"
+          : > "$report"
+          failures=0
+
+          # Only the values that were actually requested are checked.
+          if [ "$REQUESTED_LARGE_TEXT" = "true" ]; then
+            set +e
+            size=$(xcrun simctl ui "$STAGE06_SIMULATOR_ID" content_size)
+            size_exit=$?
+            set -e
+            printf 'content_size=%s\nexit=%s\n' "$size" "$size_exit" >> "$report"
+            if [ "$size_exit" -ne 0 ] || [ "$size" != "accessibility-extra-extra-extra-large" ]; then
+              echo "::error::content size is no longer the requested maximum after the tests (exit=$size_exit value=$size)"
+              failures=$((failures + 1))
+            fi
+          fi
+
+          if [ "$REQUESTED_DARK_APPEARANCE" = "true" ]; then
+            set +e
+            appearance=$(xcrun simctl ui "$STAGE06_SIMULATOR_ID" appearance)
+            appearance_exit=$?
+            set -e
+            printf 'appearance=%s\nexit=%s\n' "$appearance" "$appearance_exit" >> "$report"
+            if [ "$appearance_exit" -ne 0 ] || [ "$appearance" != "dark" ]; then
+              echo "::error::the appearance is no longer dark after the tests (exit=$appearance_exit value=$appearance)"
+              failures=$((failures + 1))
+            fi
+          fi
+
+          echo "requested environment checked after the tests; failures=$failures"
+          test "$failures" -eq 0
+
+      - name: Package the simulator app for later interactive acceptance
+        shell: bash
+        run: |
+          set -euo pipefail
+          # A SIMULATOR build only: it is not a device IPA and it is not owner
+          # acceptance. It exists so a reviewer can still open the same revision
+          # interactively after a passing automated run.
+          simulator_app="$RUNNER_TEMP/Stage06TestsDerivedData/Build/Products/Debug-iphonesimulator/MomentsStudio.app"
+          test -d "$simulator_app"
+          ditto -c -k --sequesterRsrc --keepParent "$simulator_app" "$ARTIFACTS/MomentsStudio-simulator.zip"
+          shasum -a 256 "$ARTIFACTS/MomentsStudio-simulator.zip" > "$ARTIFACTS/app-sha256.txt"
+          cp "$ARTIFACTS/source-commit.txt" "$ARTIFACTS/app-source-sha.txt"
+          printf '%s\n' 'simulator build (iphonesimulator). Not a signed device IPA; Stage 06 device packaging is stage06-device.yml.' >> "$ARTIFACTS/EVIDENCE-SCOPE.txt"
+          xcrun simctl bootstatus "$STAGE06_SIMULATOR_ID" -b
+          xcrun simctl install "$STAGE06_SIMULATOR_ID" "$simulator_app"
+          xcrun simctl launch "$STAGE06_SIMULATOR_ID" com.example.MomentsStudio
+          sleep 2
+          xcrun simctl io "$STAGE06_SIMULATOR_ID" screenshot "$ARTIFACTS/launch.png"
+
+      - name: Restore the original content size when it was changed
+        if: always() && inputs.large_text && env.STAGE06_ORIGINAL_CONTENT_SIZE != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DEVELOPER_DIR="${SELECTED_XCODE_PATH:-/Applications/Xcode.app}"
+          restored="$ARTIFACTS/content-size-restored.txt"
+          : > "$restored"
+
+          set +e
+          xcrun simctl ui "$STAGE06_SIMULATOR_ID" content_size "$STAGE06_ORIGINAL_CONTENT_SIZE"
+          restore_exit=$?
+          readback=$(xcrun simctl ui "$STAGE06_SIMULATOR_ID" content_size)
+          readback_exit=$?
+          set -e
+          printf 'target=%s\nrestore_exit=%s\nreadback=%s\nreadback_exit=%s\n' \
+            "$STAGE06_ORIGINAL_CONTENT_SIZE" "$restore_exit" "$readback" "$readback_exit" >> "$restored"
+          if [ "$restore_exit" -ne 0 ] || [ "$readback_exit" -ne 0 ] || [ "$readback" != "$STAGE06_ORIGINAL_CONTENT_SIZE" ]; then
+            echo "::error::the original content size was not restored exactly (restore_exit=$restore_exit readback_exit=$readback_exit readback=$readback expected=$STAGE06_ORIGINAL_CONTENT_SIZE)"
+            exit 1
+          fi
+          echo "content size restored exactly: $readback"
+
+      - name: Restore the original appearance when it was changed
+        if: always() && inputs.dark_appearance && env.STAGE06_ORIGINAL_APPEARANCE != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DEVELOPER_DIR="${SELECTED_XCODE_PATH:-/Applications/Xcode.app}"
+          restored="$ARTIFACTS/appearance-restored.txt"
+          : > "$restored"
+
+          set +e
+          xcrun simctl ui "$STAGE06_SIMULATOR_ID" appearance "$STAGE06_ORIGINAL_APPEARANCE"
+          restore_exit=$?
+          readback=$(xcrun simctl ui "$STAGE06_SIMULATOR_ID" appearance)
+          readback_exit=$?
+          set -e
+          printf 'target=%s\nrestore_exit=%s\nreadback=%s\nreadback_exit=%s\n' \
+            "$STAGE06_ORIGINAL_APPEARANCE" "$restore_exit" "$readback" "$readback_exit" >> "$restored"
+          if [ "$restore_exit" -ne 0 ] || [ "$readback_exit" -ne 0 ] || [ "$readback" != "$STAGE06_ORIGINAL_APPEARANCE" ]; then
+            echo "::error::the original appearance was not restored exactly (restore_exit=$restore_exit readback_exit=$readback_exit readback=$readback expected=$STAGE06_ORIGINAL_APPEARANCE)"
+            exit 1
+          fi
+          echo "appearance restored exactly: $readback"
+
+      - name: Check that only expected evidence will be uploaded
+        id: evidence_guard
+        if: always()
+        shell: bash
+        run: |
+          set -uo pipefail
+          python3 - <<'PY'
+          import os, re
+          from pathlib import Path
+
+          artifacts = Path(os.environ["ARTIFACTS"])
+          # Early toolchain/wiring failures still need their real logs. Upload
+          # safety is independent of the native result gate, which rejects a
+          # missing manifest or summary and never turns an early failure green.
+          required = ("test-manifest.txt", "test-methods.txt", "test-source-hashes.txt")
+          missing = [name for name in required if not (artifacts / name).is_file()]
+          status = "SOURCE_MANIFEST_MISSING/NOT_VERIFIED" if missing else "SOURCE_MANIFEST_AVAILABLE/NOT_NATIVE_TEST_RESULT"
+          (artifacts / "source-validation-status.txt").write_text(status + "\nmissing=" + ",".join(missing) + "\n")
+          if missing:
+              print(f"::warning::{status}; retaining early diagnostics; missing: {missing}")
+          files = sorted(path for path in artifacts.rglob("*") if path.is_file())
+          names = [path.relative_to(artifacts).as_posix() for path in files]
+          inventory = [f"{name}\t{path.stat().st_size}" for name, path in zip(names, files)]
+          (artifacts / "artifact-inventory.txt").write_text("\n".join(inventory) + "\n")
+          print("\n".join(inventory))
+
+          forbidden = (".p12", ".mobileprovision", ".pem", ".key", ".cer", ".env", ".p8", "id_rsa", "credentials")
+          offenders = [name for name in names if any(token in name.lower() for token in forbidden)]
+          if offenders:
+              raise SystemExit(f"Refusing to upload credential-like files: {offenders}")
+
+          # XCTest exports its own failure diagnostics into failure-attachments/,
+          # including one UUID-named screen recording of the failed run. The
+          # runner produces that recording from the synthetic fixtures and system
+          # default media only - never from an owner photo library, desktop
+          # screenshot or device media. It is therefore allowed, but *only* when
+          # the xcresult export manifest and the original result bundle are both
+          # present, which pins it to that export instead of to any file that
+          # merely happens to sit in a folder.
+          diagnostic_recording = re.compile(
+              r"^failure-attachments/[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}"
+              r"-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\.mp4$"
+          )
+          export_manifest = artifacts / "failure-attachments/manifest.json"
+          result_bundle = artifacts / "Stage06-Tests.xcresult"
+          diagnostic_export_verified = export_manifest.is_file() and result_bundle.is_dir()
+
+          media_suffixes = (".heic", ".jpg", ".jpeg", ".mov", ".mp4")
+          media = [name for name in names if name.lower().endswith(media_suffixes)]
+          allowed = [name for name in media
+                     if diagnostic_export_verified and diagnostic_recording.fullmatch(name)]
+          rejected = [name for name in media if name not in allowed]
+          if rejected:
+              raise SystemExit(
+                  "Refusing to upload media files that are not xcresult-exported XCTest diagnostic "
+                  f"recordings (manifest={export_manifest.is_file()}, bundle={result_bundle.is_dir()}): {rejected}"
+              )
+          if allowed:
+              print(
+                  f"Allowed {len(allowed)} XCTest diagnostic recording(s) exported from the xcresult: {allowed}. "
+                  "Provenance: synthetic fixtures and system default media only; no owner photo library, "
+                  "desktop screenshot or device media is included in this artifact."
+              )
+          PY
+
+      - name: Preserve Stage 06 test evidence even on failure
+        if: ${{ always() && steps.evidence_guard.outcome == 'success' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: stage06-xcode26-test-evidence
+          path: stage06-test-artifacts/
+          retention-days: 2
+          if-no-files-found: error

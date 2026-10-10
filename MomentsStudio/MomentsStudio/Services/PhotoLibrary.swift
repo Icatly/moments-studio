@@ -521,6 +521,50 @@ actor PhotoLibrary {
     /// manifest, no asset, no project state. Cancellation propagates as
     /// `CancellationError` and is never reported as an ordinary bad-photo result.
     func analyzePhoto(projectID: UUID, assetID: UUID) throws -> PhotoAnalysis {
+        let photo: ImportedPhoto
+        let thumbnail: CGImage
+        do {
+            (photo, thumbnail) = try loadThumbnail(projectID: projectID, assetID: assetID)
+        } catch let failure as PhotoAnalysisFailure {
+            throw failure
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            throw PhotoAnalysisFailure.unreadable
+        }
+
+        let display = photo.displayPixelSize
+        do {
+            return try PhotoAnalyzer.analyze(
+                assetID: assetID,
+                thumbnail: thumbnail,
+                displayWidth: display.width,
+                displayHeight: display.height
+            )
+        } catch let failure as PhotoAnalysisFailure {
+            throw failure
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            throw PhotoAnalysisFailure.unreadable
+        }
+    }
+
+    /// Cancellation for the read-only analysis path. It throws `CancellationError`
+    /// (not `PhotoLibraryError.cancelled`) so the caller can tell "cancelled" from
+    /// "this photo could not be analyzed".
+    private func checkAnalysisCancellation() throws {
+        if Task.isCancelled { throw CancellationError() }
+    }
+
+    // MARK: - Photo roles (Stage 06)
+
+    /// Resolves one photo and its generated thumbnail from the **current** package.
+    ///
+    /// Shared by the Stage 05 measurement and the Stage 06 role observation so both
+    /// read exactly the same trusted path: current manifest, stored metadata,
+    /// 320px derivative, never an original. Read-only: nothing is written.
+    private func loadThumbnail(projectID: UUID, assetID: UUID) throws -> (photo: ImportedPhoto, thumbnail: CGImage) {
         try checkAnalysisCancellation()
 
         let package: ProjectPackage
@@ -529,7 +573,6 @@ actor PhotoLibrary {
         } catch is CancellationError {
             throw CancellationError()
         } catch {
-            // No readable package means the photo cannot be resolved at all.
             throw PhotoAnalysisFailure.missing
         }
         guard let photo = package.photos.first(where: { $0.asset.id == assetID }) else {
@@ -554,28 +597,208 @@ actor PhotoLibrary {
             throw PhotoAnalysisFailure.unreadable
         }
         try checkAnalysisCancellation()
+        return (photo, thumbnail)
+    }
 
+    /// Read-only role evidence for one photo of one project (Stage 06).
+    ///
+    /// It performs the local Vision classification/face pass plus the Stage 05
+    /// pixel statistics on the **generated thumbnail** through the normal path
+    /// guard, and it writes nothing: no manifest, no role, no analysis cache, no
+    /// project state. Nothing observed here is persisted anywhere.
+    ///
+    /// Cancellation propagates as `CancellationError`; a Vision failure is typed as
+    /// `.visionUnavailable` and may still be accompanied by usable Stage 05
+    /// statistics, so the policy can fall back to light/size evidence instead of
+    /// inventing semantics.
+    func observeRole(projectID: UUID, assetID: UUID) throws -> PhotoRoleObservation {
+        let photo: ImportedPhoto
+        let thumbnail: CGImage
         do {
-            return try PhotoAnalyzer.analyze(
+            (photo, thumbnail) = try loadThumbnail(projectID: projectID, assetID: assetID)
+        } catch let failure as PhotoAnalysisFailure {
+            throw Self.roleFailure(for: failure)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            throw PhotoRoleObservationFailure.unreadable
+        }
+
+        let display = photo.displayPixelSize
+        var analysis: PhotoAnalysis?
+        var analysisFailure: PhotoAnalysisFailure?
+        do {
+            analysis = try PhotoAnalyzer.analyze(
                 assetID: assetID,
                 thumbnail: thumbnail,
                 displayWidth: display.width,
                 displayHeight: display.height
             )
         } catch let failure as PhotoAnalysisFailure {
-            throw failure
+            analysisFailure = failure
         } catch is CancellationError {
             throw CancellationError()
         } catch {
-            throw PhotoAnalysisFailure.unreadable
+            analysisFailure = .unreadable
+        }
+        try checkAnalysisCancellation()
+
+        // A Vision failure must **not** throw away a successful pixel measurement:
+        // the approved fallback keeps the measured size/light data for a limited
+        // suggestion and reports the recognition as unfinished, without inventing a
+        // label, a score or a face. Cancellation still propagates as cancellation.
+        do {
+            return try PhotoRoleAnalyzer.observe(
+                assetID: assetID,
+                thumbnail: thumbnail,
+                displayWidth: display.width,
+                displayHeight: display.height,
+                analysis: analysis,
+                analysisFailure: analysisFailure
+            )
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            guard let fallback = PhotoRoleAnalyzer.observationAfterVisionFailure(
+                error,
+                assetID: assetID,
+                displayWidth: display.width,
+                displayHeight: display.height,
+                analysis: analysis,
+                analysisFailure: analysisFailure
+            ) else { throw error }
+            return fallback
         }
     }
 
-    /// Cancellation for the read-only analysis path. It throws `CancellationError`
-    /// (not `PhotoLibraryError.cancelled`) so the caller can tell "cancelled" from
-    /// "this photo could not be analyzed".
-    private func checkAnalysisCancellation() throws {
-        if Task.isCancelled { throw CancellationError() }
+    /// Maps the Stage 05 read failures onto the role-observation vocabulary so the
+    /// sheet has one typed reason to show.
+    private static func roleFailure(for failure: PhotoAnalysisFailure) -> PhotoRoleObservationFailure {
+        switch failure {
+        case .missing: return .missing
+        case .unreadable: return .unreadable
+        case .invalidMetadata: return .invalidMetadata
+        case .noVisiblePixels: return .unreadable
+        }
+    }
+
+    /// The exact photo identity **and saved role choice** the sheet snapshotted
+    /// before it offered choices.
+    ///
+    /// It is the same signature the roles run uses for its accept/display guard and
+    /// its task key (`PhotoRolesRun.signature(of:)`), so the read path, the display
+    /// path and the save path can never disagree about what "unchanged" means.
+    static func roleSnapshot(of photo: ImportedPhoto) -> String {
+        PhotoRolesRun.signature(of: photo)
+    }
+
+    func roleSnapshots(projectID: UUID) throws -> [UUID: String] {
+        let package: ProjectPackage
+        do {
+            package = try loadPackage(projectID: projectID)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            throw PhotoRoleSaveError.projectMissing
+        }
+        return Dictionary(uniqueKeysWithValues: package.photos.map { ($0.asset.id, Self.roleSnapshot(of: $0)) })
+    }
+
+    /// Commits one project's saved role choices with **complete batch** semantics.
+    ///
+    /// `choices` is a total map for the package the caller snapshotted: every photo
+    /// that is currently in the project must appear in it (an absent entry would be
+    /// ambiguous), and a photo the caller assigns `nil` has its saved choice
+    /// **cleared**. The request also carries the complete photo snapshot, so it is
+    /// refused as stale when any photo was added, removed, or changed its metadata or
+    /// saved choice since the sheet looked. "Missing key" and "no suggestion" are
+    /// therefore never conflated.
+    ///
+    /// Reuses the import/edit commit path exactly: the package is validated, the
+    /// manifest is written atomically by the same writer, and **no asset file is
+    /// touched**. Only `photos[].roleChoice` and the project's `updatedAt` change;
+    /// the document, the originals, the derivatives and every other project field
+    /// keep their values.
+    ///
+    /// The caller (the single mutation gate in `PhotoImportModel`) guarantees at
+    /// most one mutation in flight. An impossible draft (unknown combination, more
+    /// than one primary) is reported as `PhotoRoleSaveError.impossible` — a
+    /// rejection, not a retryable write failure — and a real write failure keeps the
+    /// previously committed manifest untouched.
+    func saveRoleChoices(
+        projectID: UUID,
+        choices: [UUID: PhotoRoleChoice],
+        expecting snapshot: [UUID: String],
+        at date: Date
+    ) throws -> PhotoLibraryMutationResult {
+        try checkCancellation()
+        guard !snapshot.isEmpty else { throw PhotoRoleSaveError.projectMissing }
+
+        let package: ProjectPackage
+        do {
+            package = try loadPackage(projectID: projectID)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            throw PhotoRoleSaveError.projectMissing
+        }
+        try validatePackageEntry(package)
+
+        // The committed package must still be exactly the one the sheet described:
+        // same photos, same references, same metadata and same saved choices.
+        let current = Dictionary(uniqueKeysWithValues: package.photos.map {
+            ($0.asset.id, Self.roleSnapshot(of: $0))
+        })
+        guard current == snapshot else { throw PhotoRoleSaveError.photosChanged }
+        // Every chosen asset must belong to this package. A current asset that is
+        // **absent** from the map is not an error: that is exactly how a choice is
+        // cleared, including "no suggestion" and a partial failure.
+        guard choices.keys.allSatisfy({ current.keys.contains($0) }) else {
+            throw PhotoRoleSaveError.photosChanged
+        }
+
+        var photos = package.photos
+        for index in photos.indices {
+            // One total decision for the current photo set: the map sets the value,
+            // and an absent entry clears the saved choice.
+            let chosen = choices[photos[index].asset.id]
+            if photos[index].roleChoice != chosen {
+                photos[index].roleChoice = chosen
+            }
+        }
+        // Validate before the write, so an impossible draft never reaches disk and
+        // the at-most-one-primary rule is enforced by the same code that reads it.
+        // It is a rejection (the draft can never become valid), never a retryable IO
+        // failure.
+        do {
+            try ProjectPackage.validate(
+                photos: photos,
+                projectID: package.project.id,
+                canvasSize: package.project.document.canvasSize,
+                layers: package.project.document.layers
+            )
+        } catch let error as PhotoLibraryError {
+            throw PhotoRoleSaveError.impossible(error.errorDescription ?? "those roles cannot be saved together")
+        }
+
+        var updatedProject = package.project
+        updatedProject.updatedAt = date
+        let updatedPackage = ProjectPackage(project: updatedProject, photos: photos)
+
+        try checkCancellation()
+        try ensureLibraryDirectories()
+        // Commit point: only after this succeeds is the role choice committed. A
+        // thrown IO error leaves the previously committed manifest untouched, and
+        // the writer's own last-line validation is still mapped to a rejection.
+        do {
+            try writeManifest(updatedPackage)
+        } catch let error as PhotoLibraryError {
+            if case .invalidPackage = error {
+                throw PhotoRoleSaveError.impossible(error.errorDescription ?? "those roles cannot be saved together")
+            }
+            throw error
+        }
+        return PhotoLibraryMutationResult(package: updatedPackage, warnings: [])
     }
 
     // MARK: - Staging
