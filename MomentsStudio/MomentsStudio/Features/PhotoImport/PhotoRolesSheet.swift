@@ -121,6 +121,36 @@ struct PhotoRolesSheet: View {
                         .disabled(isRunning || isSaving || !canResetToSuggested)
                         .accessibilityIdentifier("roles.useSuggested")
 
+                        // The two auxiliary actions live in the content area, not in the
+                        // navigation bar: the fourth-round run could not find the
+                        // confirmation action at all (debug attachment: query chain
+                        // matched nothing), and reducing the number of navigation-bar
+                        // items removes that crowding. Cancel and Save choices keep the
+                        // bar; these keep their exact actions, identifiers, disabled
+                        // rules and 44pt targets, stacked so narrow screens and large
+                        // text cannot squeeze them into an unreachable row.
+                        VStack(alignment: .leading, spacing: Spacing.small) {
+                            Button("Analyze again") {
+                                // Recomputation keeps the user's own draft and the
+                                // snapshot the draft was made against; it only
+                                // invalidates the current evidence, so no stale
+                                // observation can be written back.
+                                run.invalidate()
+                                reloadID += 1
+                                message = nil
+                                canRetrySave = false
+                            }
+                            .frame(minHeight: Layout.minimumTapTarget)
+                            .disabled(isSaving)
+                            .accessibilityIdentifier("roles.analyzeAgain")
+
+                            Button("Reload") { reload() }
+                                .frame(minHeight: Layout.minimumTapTarget)
+                                .disabled(isSaving)
+                                .accessibilityIdentifier("roles.reload")
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
                         if let message {
                             Text(message)
                                 .font(Typography.caption)
@@ -155,26 +185,9 @@ struct PhotoRolesSheet: View {
                         .disabled(isSaving)
                         .accessibilityIdentifier("roles.cancel")
                 }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Analyze again") {
-                        // Recomputation keeps the user's own draft and the snapshot
-                        // the draft was made against; it only invalidates the current
-                        // evidence, so no stale observation can be written back.
-                        run.invalidate()
-                        reloadID += 1
-                        message = nil
-                        canRetrySave = false
-                    }
-                    .frame(minHeight: Layout.minimumTapTarget)
-                    .disabled(isSaving)
-                    .accessibilityIdentifier("roles.analyzeAgain")
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Reload") { reload() }
-                        .frame(minHeight: Layout.minimumTapTarget)
-                        .disabled(isSaving)
-                        .accessibilityIdentifier("roles.reload")
-                }
+                // The confirmation action is the only trailing item, so the navigation
+                // bar cannot overflow it. Its action, identifier, disabled rule and 44pt
+                // target are unchanged from the previous revision.
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save choices") { save() }
                         .frame(minHeight: Layout.minimumTapTarget)

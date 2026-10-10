@@ -181,11 +181,43 @@ final class Stage06PhotoRolesUITests: XCTestCase {
         XCTAssertTrue(element("roles.scroll", in: app).waitForDisappearance(timeout: 30))
     }
 
+    /// Returns the sheet's save control when it is really reachable.
+    ///
+    /// It is looked up with the existing generic `element(_:in:)` helper (any element
+    /// type), because the fourth-round debug attachment showed the `Button` query chain
+    /// matching nothing — a wrapped item does not have to be a `Button` in the
+    /// accessibility hierarchy. Reachability is still required (exists + enabled +
+    /// hittable) before anything is tapped, so the save is never bypassed.
+    ///
+    /// Diagnostics run **before** the failing assertion: this test class sets
+    /// `continueAfterFailure = false`, so nothing after an `XCTFail` would execute.
+    /// `exists` is read first and every other property only when the element really
+    /// exists, so collecting a diagnostic cannot itself trigger a second failed query.
+    private func reachableSave(_ app: XCUIApplication, timeout: TimeInterval = 30) -> XCUIElement {
+        let save = element("roles.save", in: app)
+        if save.waitUntilEnabledAndHittable(timeout: timeout) {
+            return save
+        }
+        let identifiers = app.descendants(matching: .any).allElementsBoundByIndex
+            .map(\.identifier)
+            .filter { !$0.isEmpty }
+        var diagnostic = "exists=\(save.exists)"
+        if save.exists {
+            diagnostic += " enabled=\(save.isEnabled) hittable=\(save.isHittable) frame=\(save.frame)"
+            if !save.isHittable {
+                attachFullAppScreenshot(app, named: "Stage06 roles save not hittable")
+            }
+        }
+        attachFullAppScreenshot(app, named: "Stage06 roles save missing")
+        XCTFail("roles.save was not enabled and hittable after \(timeout)s. \(diagnostic). "
+            + "Identifiers on screen: \(Array(Set(identifiers)).sorted().prefix(40))")
+        return save
+    }
+
     private func saveChoices(_ app: XCUIApplication) {
-        let save = app.buttons["roles.save"]
-        XCTAssertTrue(save.waitUntilEnabledAndHittable())
+        let save = reachableSave(app)
         save.tap()
-        XCTAssertTrue(app.buttons["roles.save"].waitForDisappearance(timeout: 60),
+        XCTAssertTrue(element("roles.save", in: app).waitForDisappearance(timeout: 60),
                       "a successful save closes the sheet")
     }
 
@@ -278,6 +310,11 @@ final class Stage06PhotoRolesUITests: XCTestCase {
         XCTAssertEqual(shownRole(secondImported, in: app), "Primary photo")
         XCTAssertTrue(sourceText(secondImported, in: app).hasPrefix("Your choice:"),
                       "an explicit pick must display its manual source")
+        // Real full-page evidence of the Photo roles sheet itself: the first manual pick
+        // and its source are already asserted above, so this frame shows the actual
+        // picker values, source lines and the save control before the first save. (The
+        // screenshot at the end of this test is the Layouts preview, not this page.)
+        attachFullAppScreenshot(app, named: "Stage06 roles first manual pick before first save")
         saveChoices(app)
 
         // 2. Reopening shows the stored choice and the real stored source.
